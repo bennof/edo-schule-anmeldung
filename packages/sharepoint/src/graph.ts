@@ -28,7 +28,8 @@ export class GraphClient {
     private readonly getToken: TokenProvider;
     private readonly fetchFn: typeof fetch;
 
-    constructor(getToken: TokenProvider, fetchFn: typeof fetch = fetch) {
+    // wrapped: browsers reject fetch called with a `this` other than window
+    constructor(getToken: TokenProvider, fetchFn: typeof fetch = (input, init) => fetch(input, init)) {
         this.getToken = getToken;
         this.fetchFn = fetchFn;
     }

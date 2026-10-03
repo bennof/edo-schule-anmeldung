@@ -8,11 +8,13 @@
     "test": "pnpm -r test",
     "dev:public": "pnpm --filter @anmeldung/public dev",
     "dev:secretariat": "pnpm --filter @anmeldung/secretariat dev",
-    "test:integration": "node scripts/integration-test.ts"
+    "test:integration": "node scripts/integration-test.ts",
+    "test:e2e": "node scripts/e2e-login.ts"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.0.0",
     "@types/node": "^24.19.1",
+    "playwright-core": "^1.63.0",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
     "typescript": "^5.9.0",

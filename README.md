@@ -30,6 +30,7 @@ pnpm build                 # build both SPAs
 pnpm dev:public            # http://localhost:5174
 pnpm dev:secretariat       # http://localhost:5173
 pnpm test:integration      # against the SharePoint test site, needs .env
+pnpm test:e2e              # secretariat login with the M365 test user (headless Chromium)
 
 cd server && cargo test && cargo run
 ```
