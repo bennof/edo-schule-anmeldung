@@ -87,29 +87,29 @@ try {
             procedureId: created.procedure,
             formId: created.form,
             state: 'submitted',
+            childName: 'Testkind',
             data: { nachname: 'Testkind', foerderbedarf: 'nein', sorgeberechtigter1: { nachname: 'Eltern' } },
         });
         created.applications.push(app.id);
         await nav('Anmeldungen');
-        const row = page.getByRole('row').filter({ has: page.getByRole('cell', { name: app.id, exact: true }) });
-        await row.getByRole('button', { name: 'Öffnen' }).click();
+        await page.locator(`tr[data-id="${app.id}"]`).getByRole('button', { name: 'Öffnen' }).click();
+        await field('nachname').waitFor({ timeout: 20000 });
         assert((await field('nachname').locator('input').inputValue()) === 'Testkind', 'value not loaded');
         assert(await field('foerderschwerpunkt').isVisible(), 'hidden field not shown');
         assert(await field('sorgeberechtigter2.nachname').isVisible(), 'hidden group not shown');
         assert((await field('geburtsdatum').locator('input').inputValue()) === '', 'unanswered field not empty');
     });
 
-    await step('edit and save, survives reload', async () => {
+    await step('edit is saved automatically and survives reload', async () => {
         const id = created.applications[0];
         await field('foerderschwerpunkt').locator('input').fill('Lernen');
         await field('schulen[0].von').locator('input').fill('2021');
-        await page.getByRole('button', { name: 'Speichern' }).click();
-        await page.getByText('Gespeichert.').waitFor({ timeout: 20000 });
+        await page.getByTestId('save-status').getByText(/Gespeichert \d/).waitFor({ timeout: 20000 });
 
         await page.reload();
         await page.getByText('Angemeldet als').waitFor({ timeout: 20000 });
-        const row = page.getByRole('row').filter({ has: page.getByRole('cell', { name: id, exact: true }) });
-        await row.getByRole('button', { name: 'Öffnen' }).click();
+        await page.locator(`tr[data-id="${id}"]`).getByRole('button', { name: 'Öffnen' }).click();
+        await field('foerderschwerpunkt').waitFor({ timeout: 20000 });
         assert((await field('foerderschwerpunkt').locator('input').inputValue()) === 'Lernen', 'edit lost after reload');
 
         const stored = (await applications.get(id))!.data as Record<string, any>;
@@ -118,11 +118,11 @@ try {
     });
 
     await step('create empty application for a procedure', async () => {
-        await page.getByRole('button', { name: '← Zur Liste' }).click();
+        await page.getByRole('button', { name: '← Zurück' }).click();
         await page.getByLabel('Verfahren').selectOption(created.procedure);
         await page.getByRole('button', { name: 'Leere Anmeldung anlegen' }).click();
-        const heading = await page.getByRole('heading', { name: /Anmeldung \d+/ }).textContent({ timeout: 20000 });
-        created.applications.push(/Anmeldung (\d+)/.exec(heading ?? '')![1]);
+        const heading = await page.getByRole('heading', { name: /#\d+/ }).textContent({ timeout: 20000 });
+        created.applications.push(/#(\d+)/.exec(heading ?? '')![1]);
         assert((await applications.get(created.applications[1]))?.state === 'created', 'state not created');
     });
 

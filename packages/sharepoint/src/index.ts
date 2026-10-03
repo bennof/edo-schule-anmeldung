@@ -5,3 +5,4 @@ export { ConfigStore } from './config.ts';
 export { provision, type ProvisionReport } from './provision.ts';
 export { DEFAULT_CONFIG, LISTS, SCHEMA_VERSION, type ListKey } from './schema.ts';
 export { AppointmentError, AppointmentService, sortAppointments } from './appointments.ts';
+export { ApplicationError, ApplicationService, ConflictError, childNameOf, type ApplicationSummary, type EditableFields } from './applications.ts';

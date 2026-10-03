@@ -1,57 +1,57 @@
-<!-- Applications: open an existing application in the full secretariat form
-     and save it (backlog C4). Search, filters and autosave follow in Sprint 5. -->
+<!-- Applications panel (backlog K1-K4): all applications independent of
+     appointments, name search, status filter, open in the full editor. -->
 <script lang="ts">
-    import type { Application, FormDefinition, Procedure } from '@anmeldung/domain';
-    import { FormRenderer } from '@anmeldung/form-ui';
-    import { normalizeData, type FormData, type FormJson } from '@anmeldung/forms';
-    import { applications, errorText, forms, loadOptions, procedures } from '../services.ts';
+    import { APPLICATION_STATES, type Appointment, type ApplicationState, type Procedure } from '@anmeldung/domain';
+    import type { ApplicationSummary } from '@anmeldung/sharepoint';
+    import ApplicationEditor from '../components/ApplicationEditor.svelte';
+    import { APPLICATION_STATE_LABEL, formatDateTime } from '../labels.ts';
+    import { applicationService, applications, appointments, errorText, procedures } from '../services.ts';
 
-    let list: Application[] = $state([]);
+    let list: ApplicationSummary[] = $state([]);
+    let appointmentByApplication: Map<string, Appointment> = $state(new Map());
     let procedureList: Procedure[] = $state([]);
+    let loading = $state(true);
     let message = $state('');
     let busy = $state(false);
+    let query = $state('');
+    let stateFilter: ApplicationState[] = $state([]);
+    let openId: string | undefined = $state();
     let newProcedureId = $state('');
 
-    let current: { app: Application; form: FormJson } | undefined = $state();
-    let data: FormData = $state({});
-    let savedJson = $state('');
-    const dirty = $derived(current !== undefined && JSON.stringify(data) !== savedJson);
+    /** case- and accent-insensitive */
+    const normalize = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 
     const procedureTitle = (id: string) => procedureList.find((p) => p.id === id)?.info.title ?? `Verfahren ${id}`;
+    const counts = $derived(Object.fromEntries(APPLICATION_STATES.map((s) => [s, list.filter((a) => a.state === s).length])));
+    const visible = $derived.by(() => {
+        const terms = normalize(query).split(/\s+/).filter(Boolean);
+        return list.filter((a) => {
+            if (stateFilter.length && !stateFilter.includes(a.state)) return false;
+            const haystack = normalize(`${a.childName ?? ''} ${a.contactName ?? ''} ${a.contactEmail ?? ''}`);
+            return terms.every((t) => haystack.includes(t));
+        });
+    });
 
     async function load(): Promise<void> {
-        [list, procedureList] = await Promise.all([applications.list(), procedures.list()]);
-        list.sort((a, b) => Number(b.id) - Number(a.id));
-        newProcedureId ||= procedureList[0]?.id ?? '';
-    }
-
-    async function open(app: Application): Promise<void> {
-        if (dirty && !confirm('Ungespeicherte Änderungen verwerfen?')) return;
-        message = '';
-        const def: FormDefinition | undefined = await forms.get(app.formId);
-        if (!def) {
-            message = `Formular ${app.formId} nicht gefunden.`;
-            return;
-        }
-        const form = def.formJson as FormJson;
-        data = normalizeData(form, (app.data ?? {}) as FormData);
-        savedJson = JSON.stringify(data);
-        current = { app, form };
-    }
-
-    async function save(): Promise<void> {
-        if (!current) return;
-        busy = true;
         try {
-            const snapshot = $state.snapshot(data);
-            await applications.update(current.app.id, { data: snapshot });
-            savedJson = JSON.stringify(snapshot);
-            message = 'Gespeichert.';
+            const [summaries, allAppointments, procs] = await Promise.all([
+                applicationService.listSummaries(),
+                appointments.repo.list(undefined, ['applicationId', 'datetime', 'state', 'verantwortlicherId']),
+                procedures.list(),
+            ]);
+            list = summaries.sort((a, b) => (a.childName ?? a.contactName ?? '').localeCompare(b.childName ?? b.contactName ?? '', 'de'));
+            appointmentByApplication = new Map(allAppointments.filter((a) => a.applicationId).map((a) => [a.applicationId!, a]));
+            procedureList = procs;
+            newProcedureId ||= procs[0]?.id ?? '';
         } catch (e) {
             message = `Fehler: ${errorText(e)}`;
         } finally {
-            busy = false;
+            loading = false;
         }
+    }
+
+    function toggleState(state: ApplicationState): void {
+        stateFilter = stateFilter.includes(state) ? stateFilter.filter((s) => s !== state) : [...stateFilter, state];
     }
 
     /** For registrations without a digital form (e.g. on paper). */
@@ -61,8 +61,7 @@
         busy = true;
         try {
             const app = await applications.create({ procedureId: procedure.id, formId: procedure.formId, data: {}, state: 'created' });
-            await load();
-            await open(app);
+            openId = app.id;
         } catch (e) {
             message = `Fehler: ${errorText(e)}`;
         } finally {
@@ -70,73 +69,86 @@
         }
     }
 
-    const childName = (app: Application) => {
-        const d = (app.data ?? {}) as Record<string, unknown>;
-        return [d.vorname, d.nachname].filter(Boolean).join(' ') || '–';
-    };
-
-    load().catch((e) => (message = `Fehler: ${errorText(e)}`));
+    load();
 </script>
 
-{#if current}
-    <section>
-        <header class="bar">
-            <button class="secondary" onclick={() => { if (!dirty || confirm('Ungespeicherte Änderungen verwerfen?')) current = undefined; }}>
-                ← Zur Liste
-            </button>
-            <h2>Anmeldung {current.app.id} · {procedureTitle(current.app.procedureId)}</h2>
-            <span class="state">Status: {current.app.state}</span>
-            {#if current.app.submittedAt}<span class="muted">abgeschickt {new Date(current.app.submittedAt).toLocaleString('de-DE')}</span>{/if}
-            <button onclick={save} disabled={busy || !dirty}>Speichern</button>
-            {#if dirty}<span class="muted">Ungespeicherte Änderungen</span>{:else if message}<span>{message}</span>{/if}
-        </header>
-        {#key current.app.id}
-            <FormRenderer form={current.form} {data} mode="secretariat" {loadOptions} />
-        {/key}
-    </section>
+{#if openId}
+    <ApplicationEditor applicationId={openId} onclose={() => ((openId = undefined), load())} />
 {:else}
     <section>
         <h2>Anmeldungen</h2>
-        {#if message}<p>{message}</p>{/if}
-        <p class="actions">
-            <select bind:value={newProcedureId} aria-label="Verfahren">
-                {#each procedureList as p (p.id)}<option value={p.id}>{p.info.title}</option>{/each}
-            </select>
-            <button onclick={createEmpty} disabled={busy || !newProcedureId}>Leere Anmeldung anlegen</button>
-        </p>
-        <table>
-            <thead><tr><th>ID</th><th>Kind</th><th>Verfahren</th><th>Status</th><th></th></tr></thead>
-            <tbody>
-                {#each list as app (app.id)}
-                    <tr>
-                        <td>{app.id}</td>
-                        <td>{childName(app)}</td>
-                        <td>{procedureTitle(app.procedureId)}</td>
-                        <td>{app.state}</td>
-                        <td><button onclick={() => open(app)}>Öffnen</button></td>
-                    </tr>
-                {:else}
-                    <tr><td colspan="5" class="muted">Noch keine Anmeldungen.</td></tr>
-                {/each}
-            </tbody>
-        </table>
+        {#if message}<p class="error">{message}</p>{/if}
+        <div class="tools">
+            <input type="search" placeholder="Name des Kindes oder der Eltern suchen …" bind:value={query} aria-label="Suche" />
+            <span class="actions">
+                <select bind:value={newProcedureId} aria-label="Verfahren">
+                    {#each procedureList as p (p.id)}<option value={p.id}>{p.info.title}</option>{/each}
+                </select>
+                <button class="secondary" onclick={createEmpty} disabled={busy || !newProcedureId}>Leere Anmeldung anlegen</button>
+            </span>
+        </div>
+        <div class="filters" role="group" aria-label="Statusfilter">
+            {#each APPLICATION_STATES as state (state)}
+                <button type="button" class="chip" aria-pressed={stateFilter.includes(state)} onclick={() => toggleState(state)}>
+                    {APPLICATION_STATE_LABEL[state]} ({counts[state]})
+                </button>
+            {/each}
+        </div>
+
+        {#if loading}
+            <p>Wird geladen …</p>
+        {:else}
+            <p class="muted">{visible.length} von {list.length} Anmeldungen</p>
+            <table>
+                <thead><tr><th>Kind</th><th>Kontakt</th><th>Termin</th><th>Verfahren</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                    {#each visible as a (a.id)}
+                        {@const appt = appointmentByApplication.get(a.id)}
+                        <tr data-id={a.id}>
+                            <td>{a.childName ?? '–'}</td>
+                            <td>{a.contactName ?? ''} {#if a.contactEmail}<br /><small class="muted">{a.contactEmail}</small>{/if}</td>
+                            <td>{appt ? formatDateTime(appt.datetime) : '–'}</td>
+                            <td>{procedureTitle(a.procedureId)}</td>
+                            <td><span class="badge state-{a.state}">{APPLICATION_STATE_LABEL[a.state]}</span></td>
+                            <td><button onclick={() => (openId = a.id)}>Öffnen</button></td>
+                        </tr>
+                    {:else}
+                        <tr><td colspan="6" class="muted">Keine Anmeldungen gefunden.</td></tr>
+                    {/each}
+                </tbody>
+            </table>
+        {/if}
     </section>
 {/if}
 
 <style>
-    .bar {
+    .tools {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.75rem;
-        align-items: center;
-        position: sticky;
-        top: 0;
-        background: white;
-        padding: 0.5rem 0;
-        z-index: 1;
+        gap: 1rem;
+        justify-content: space-between;
     }
-    .bar h2 {
-        margin: 0;
-        font-size: 1.2rem;
+    .tools input[type='search'] {
+        flex: 1;
+        min-width: 16rem;
+        padding: 0.4rem 0.6rem;
+    }
+    .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin: 0.75rem 0;
+    }
+    .chip {
+        border: 1px solid #ccc;
+        border-radius: 999px;
+        padding: 0.15rem 0.6rem;
+        font-size: 0.85rem;
+        background: white;
+        color: inherit;
+    }
+    .chip[aria-pressed='true'] {
+        background: #dde8fb;
+        border-color: #2456a6;
     }
 </style>

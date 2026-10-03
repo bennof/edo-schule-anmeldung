@@ -63,9 +63,10 @@ export class SharePointSite {
      * Lists items. `filter` is an OData filter on fields, e.g. `fields/State eq 'available'`;
      * only indexed columns may be filtered reliably.
      */
-    async listItems(key: ListKey, filter?: string): Promise<ListItem[]> {
+    async listItems(key: ListKey, filter?: string, select?: string[]): Promise<ListItem[]> {
         const id = await this.listId(key);
-        let path = `${this.base}/lists/${id}/items?$expand=fields&$top=500`;
+        const expand = select ? `fields($select=${select.join(',')})` : 'fields';
+        let path = `${this.base}/lists/${id}/items?$expand=${expand}&$top=500`;
         if (filter) path += `&$filter=${encodeURIComponent(filter)}`;
         const items = await this.graph.collect<GraphListItem>(path);
         return items.map(toListItem);
@@ -92,14 +93,15 @@ export class SharePointSite {
 
     /**
      * Updates fields. With `ifMatch` (an item eTag) the update fails with
-     * status 412 if the item was changed in the meantime.
+     * status 412 if the item was changed in the meantime. Returns the new eTag.
      */
-    async updateItem(key: ListKey, itemId: string, fields: Fields, ifMatch?: string): Promise<void> {
+    async updateItem(key: ListKey, itemId: string, fields: Fields, ifMatch?: string): Promise<string> {
         const id = await this.listId(key);
-        await this.graph.request('PATCH', `${this.base}/lists/${id}/items/${itemId}/fields`, {
+        const res = await this.graph.request('PATCH', `${this.base}/lists/${id}/items/${itemId}/fields`, {
             body: fields,
             headers: ifMatch ? { 'If-Match': ifMatch } : undefined,
         });
+        return res.headers.get('ETag') ?? ((await res.json().catch(() => ({}))) as Record<string, string>)['@odata.etag'] ?? '';
     }
 
     /** Creates many items using batching; returns them in input order. */

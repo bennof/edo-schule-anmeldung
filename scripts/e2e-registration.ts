@@ -194,6 +194,7 @@ try {
         const app = (await applications.get(appId))!;
         const d = app.data as Record<string, any>;
         assert(app.state === 'submitted' && app.submittedAt && app.formId === created.form, `state ${app.state}`);
+        assert(app.childName === 'Testkind, Mia' && app.contactName === 'Eva Testkind', `names ${app.childName}/${app.contactName}`);
         assert(d.nachname === 'Testkind' && d.geburtsland === 'DE' && d.herkunftssprache === 'DE', 'basic values');
         assert(d.erziehungsberechtigter2.rolle === 'vater' && d.erziehungsberechtigter2.nachname === 'Testkind', 'copied group');
         assert(d.weitereSchulen.length === 1 && d.weitereSchulen[0].schule.name === 'KGS Süd', 'repeat group');
@@ -205,10 +206,10 @@ try {
 
     await step('secretariat opens the submitted application with catalog labels', async () => {
         await admin.getByRole('navigation').getByRole('link', { name: 'Anmeldungen' }).click();
-        const row = admin.getByRole('row').filter({ has: admin.getByRole('cell', { name: appId, exact: true }) });
-        await row.getByText('Mia Testkind').waitFor({ timeout: 20000 });
+        const row = admin.locator(`tr[data-id="${appId}"]`);
+        await row.getByText('Testkind, Mia').waitFor({ timeout: 20000 });
         await row.getByRole('button', { name: 'Öffnen' }).click();
-        await admin.getByText(/abgeschickt \d/).waitFor();
+        await admin.locator('dt', { hasText: 'Online abgeschickt' }).waitFor({ timeout: 20000 });
         await field(admin, 'staatsangehoerigkeit').getByText('Deutschland').waitFor({ timeout: 20000 });
         assert(await field(admin, 'foerderschwerpunkte').isVisible(), 'secretariat mode should show hidden fields');
     });

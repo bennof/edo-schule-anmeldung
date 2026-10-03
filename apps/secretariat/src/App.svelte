@@ -7,6 +7,7 @@
     import Applications from './views/Applications.svelte';
     import Appointments from './views/Appointments.svelte';
     import Assets from './views/Assets.svelte';
+    import Day from './views/Day.svelte';
     import Forms from './views/Forms.svelte';
     import Procedures from './views/Procedures.svelte';
     import Setup from './views/Setup.svelte';
@@ -14,12 +15,13 @@
     type Status = 'loading' | 'signedOut' | 'denied' | 'ready' | 'error';
 
     const VIEWS = [
-        { hash: '#start', label: 'Start', component: Setup },
+        { hash: '#tag', label: 'Tagesansicht', component: Day },
+        { hash: '#anmeldungen', label: 'Anmeldungen', component: Applications },
+        { hash: '#termine', label: 'Termine', component: Appointments },
         { hash: '#verfahren', label: 'Verfahren', component: Procedures },
         { hash: '#formulare', label: 'Formulare', component: Forms },
-        { hash: '#termine', label: 'Termine', component: Appointments },
-        { hash: '#anmeldungen', label: 'Anmeldungen', component: Applications },
         { hash: '#dateien', label: 'Dateien', component: Assets },
+        { hash: '#einstellungen', label: 'Einstellungen', component: Setup },
     ];
 
     let status: Status = $state('loading');
@@ -27,7 +29,8 @@
     let message = $state('');
     let route = $state(location.hash);
     window.addEventListener('hashchange', () => (route = location.hash));
-    const view = $derived(VIEWS.find((v) => v.hash === route) ?? VIEWS[0]);
+    // sub-routes like #tag/2026-10-07 belong to their view
+    const view = $derived(VIEWS.find((v) => route === v.hash || route.startsWith(`${v.hash}/`)) ?? VIEWS[0]);
 
     async function start(): Promise<void> {
         try {

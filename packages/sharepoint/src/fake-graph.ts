@@ -53,11 +53,18 @@ export class FakeGraph {
             if (parts.length === 3 && method === 'GET') {
                 let items = list.items;
                 const filter = url.searchParams.get('$filter');
-                if (filter) {
-                    const m = /^fields\/(\w+) eq '(.*)'$/.exec(filter)!;
-                    items = items.filter((i) => String(i.fields[m[1]]) === m[2].replaceAll("''", "'"));
+                for (const term of filter ? filter.split(' and ') : []) {
+                    const eq = /^fields\/(\w+) eq '(.*)'$/.exec(term);
+                    const sw = /^startswith\(fields\/(\w+),'(.*)'\)$/.exec(term);
+                    if (eq) items = items.filter((i) => String(i.fields[eq[1]]) === eq[2].replaceAll("''", "'"));
+                    else if (sw) items = items.filter((i) => String(i.fields[sw[1]] ?? '').startsWith(sw[2].replaceAll("''", "'")));
+                    else throw new Error(`fake graph: unsupported filter ${term}`);
                 }
-                return reply(200, { value: items });
+                const select = /fields\(\$select=([^)]*)\)/.exec(url.searchParams.get('$expand') ?? '')?.[1]?.split(',');
+                const shaped = select
+                    ? items.map((i) => ({ ...i, fields: Object.fromEntries(Object.entries(i.fields).filter(([k]) => select.includes(k))) }))
+                    : items;
+                return reply(200, { value: shaped });
             }
             if (parts.length === 3 && method === 'POST') {
                 const item = { id: this.id(), eTag: `"${this.id()}"`, fields: { ...body.fields } };
@@ -78,7 +85,7 @@ export class FakeGraph {
                 else item.fields[k] = v;
             }
             item.eTag = `"${this.id()}"`;
-            return reply(200, item.fields);
+            return new Response(JSON.stringify(item.fields), { status: 200, headers: { 'Content-Type': 'application/json', ETag: item.eTag } });
         }
         return reply(400, { error: { code: 'badRequest', message: path } });
     };

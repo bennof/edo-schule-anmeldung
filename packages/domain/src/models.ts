@@ -40,6 +40,11 @@ export interface Application {
     interviewerComment?: string;
     /** ISO 8601, set on public submission */
     submittedAt?: string;
+    /** "Nachname, Vorname" of the child, derived from data (search/list) */
+    childName?: string;
+    /** contact from the booking; kept when the appointment is cancelled */
+    contactName?: string;
+    contactEmail?: string;
 }
 
 export interface FormDefinition {

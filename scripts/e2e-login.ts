@@ -12,6 +12,7 @@ try {
     await step('sign in with the test user', () => signIn(page, env.APP_TEST_USER, env.APP_TEST_USER_PWD));
     await step('site access granted, schema visible', async () => {
         await page.getByText('Angemeldet als').waitFor({ timeout: 20000 });
+        await page.getByRole('navigation').getByRole('link', { name: 'Einstellungen' }).click();
         await page.getByText(/Schema: Version \d+/).waitFor({ timeout: 20000 });
         const schema = (await page.getByText(/Schema:/).textContent())?.replace(/\s+/g, ' ').trim();
         assert(!schema?.includes('nicht initialisiert'), `unexpected: ${schema}`);

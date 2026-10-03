@@ -3,7 +3,7 @@
 import { APPLICATION_STATES, APPOINTMENT_STATES } from '@anmeldung/domain';
 
 /** Bump when lists or columns are added. Stored in Config as `schemaVersion`. */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export type ColumnType = 'text' | 'note' | 'json' | 'boolean' | 'choice';
 
@@ -65,6 +65,10 @@ export const LISTS = {
             { name: 'SecretariatComment', prop: 'secretariatComment', type: 'note' },
             { name: 'InterviewerComment', prop: 'interviewerComment', type: 'note' },
             { name: 'SubmittedAt', prop: 'submittedAt', type: 'text' },
+            // denormalized for the applications panel and name search (K1/K2)
+            { name: 'ChildName', prop: 'childName', type: 'text', indexed: true },
+            { name: 'ContactName', prop: 'contactName', type: 'text', indexed: true },
+            { name: 'ContactEmail', prop: 'contactEmail', type: 'text' },
             // SHA-256 of the family's access token (public form); never the token itself
             { name: 'AccessTokenHash', prop: 'accessTokenHash', type: 'text' },
         ],

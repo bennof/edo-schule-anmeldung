@@ -124,6 +124,15 @@
         });
     };
 
+    /** L1: phone cancellation; the application stays */
+    const cancelBooking = (a: Appointment) => {
+        if (!confirm(`Termin ${a.datetime.slice(11)} Uhr von ${a.nameCustomer ?? 'unbekannt'} freigeben? Die Anmeldung bleibt erhalten.`)) return;
+        return run(async () => {
+            await appointments.cancelBooking(a.id);
+            return 'Termin freigegeben.';
+        });
+    };
+
     const saveEdit = () => {
         const e = editing!;
         const a = list.find((x) => x.id === e.id)!;
@@ -237,6 +246,9 @@
                                         {/if}
                                     </td>
                                     <td>
+                                        {#if a.state === 'booked'}
+                                            <button class="secondary" onclick={() => cancelBooking(a)} disabled={busy}>Absage</button>
+                                        {/if}
                                         {#if a.state === 'draft'}
                                             <button class="secondary" onclick={() => (editing = { id: a.id, time: a.datetime.slice(11), verantwortlicher: a.verantwortlicherId ?? '' })} disabled={busy || !!editing}>Ändern</button>
                                             <button class="secondary" onclick={() => removeDrafts([a])} disabled={busy}>Löschen</button>

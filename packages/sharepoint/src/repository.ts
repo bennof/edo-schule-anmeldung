@@ -18,13 +18,20 @@ export class Repository<T extends Entity> {
         this.columns = LISTS[key].columns;
     }
 
-    async list(filter?: string): Promise<T[]> {
-        return (await this.site.listItems(this.key, filter)).map((i) => this.toEntity(i.id, i.fields));
+    /** With `props`, only these properties are loaded (e.g. to skip large JSON columns). */
+    async list(filter?: string, props?: (keyof T & string)[]): Promise<T[]> {
+        const select = props?.map((p) => this.column(p).name);
+        return (await this.site.listItems(this.key, filter, select)).map((i) => this.toEntity(i.id, i.fields));
     }
 
     async get(id: string): Promise<T | undefined> {
+        return (await this.getTracked(id))?.entity;
+    }
+
+    /** Entity with its eTag, for updates that must not overwrite concurrent changes. */
+    async getTracked(id: string): Promise<{ entity: T; eTag: string } | undefined> {
         const item = await this.site.getItem(this.key, id);
-        return item && this.toEntity(item.id, item.fields);
+        return item && { entity: this.toEntity(item.id, item.fields), eTag: item.eTag };
     }
 
     async create(entity: Omit<T, 'id'>): Promise<T> {
@@ -32,9 +39,9 @@ export class Repository<T extends Entity> {
         return this.toEntity(item.id, item.fields);
     }
 
-    /** Updates the given properties; `undefined` clears a column. */
-    async update(id: string, changes: Partial<Omit<T, 'id'>>, ifMatch?: string): Promise<void> {
-        await this.site.updateItem(this.key, id, this.toFields(changes as Partial<T>, true), ifMatch);
+    /** Updates the given properties; `undefined` clears a column. Returns the new eTag. */
+    async update(id: string, changes: Partial<Omit<T, 'id'>>, ifMatch?: string): Promise<string> {
+        return this.site.updateItem(this.key, id, this.toFields(changes as Partial<T>, true), ifMatch);
     }
 
     async delete(id: string): Promise<void> {
@@ -43,9 +50,18 @@ export class Repository<T extends Entity> {
 
     /** Builds an OData filter term for a domain property. */
     filter(prop: keyof T & string, value: string): string {
+        return `fields/${this.column(prop).name} eq '${value.replaceAll("'", "''")}'`;
+    }
+
+    /** OData filter: text property starts with a prefix (e.g. a date). */
+    startsWith(prop: keyof T & string, prefix: string): string {
+        return `startswith(fields/${this.column(prop).name},'${prefix.replaceAll("'", "''")}')`;
+    }
+
+    private column(prop: string): ColumnSpec {
         const col = this.columns.find((c) => c.prop === prop);
         if (!col) throw new Error(`Unknown property ${prop}`);
-        return `fields/${col.name} eq '${value.replaceAll("'", "''")}'`;
+        return col;
     }
 
     toEntity(id: string, fields: Fields): T {

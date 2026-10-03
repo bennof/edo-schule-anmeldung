@@ -178,7 +178,8 @@ impl Api {
             Update::NotFound => return Ok(Reply::not_found()),
         }
         // F5: the application belongs to the booking from the start
-        let (application_id, access_token) = match self.create_application(&procedure_id, appointment_id) {
+        let (application_id, access_token) = match self.create_application(&procedure_id, appointment_id, &name, &email)
+        {
             Ok(created) => (Some(created.0), Some(created.1)),
             Err(e) => {
                 eprintln!("booking {appointment_id}: application not created: {e}");
@@ -199,7 +200,13 @@ impl Api {
 
     /// Creates the application for a booked appointment and links both.
     /// Returns the application id and the family's access token.
-    fn create_application(&self, procedure_id: &str, appointment_id: &str) -> Result<(String, String), String> {
+    fn create_application(
+        &self,
+        procedure_id: &str,
+        appointment_id: &str,
+        contact_name: &str,
+        contact_email: &str,
+    ) -> Result<(String, String), String> {
         let procedure = self
             .active_procedure(procedure_id)?
             .ok_or("procedure no longer active")?;
@@ -212,6 +219,9 @@ impl Api {
                 "State": "created",
                 "Data": "{}",
                 "AccessTokenHash": token::hash(&access_token),
+                // kept on the application when the appointment is cancelled (K2)
+                "ContactName": contact_name,
+                "ContactEmail": contact_email,
             }),
         )?;
         let link = json!({ "ApplicationId": item.id });
@@ -309,6 +319,7 @@ impl Api {
         }
         let fields = json!({
             "Data": input["data"].to_string(),
+            "ChildName": child_name(&input["data"]),
             "State": "submitted",
             "SubmittedAt": Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
         });
@@ -387,6 +398,20 @@ impl Api {
             .site
             .get_item(FORMS, form_id)?
             .and_then(|f| f.text("FormJson").and_then(|j| serde_json::from_str(j).ok())))
+    }
+}
+
+/// "Nachname, Vorname" from the top-level fields `nachname`/`vorname`
+/// (same convention as childNameOf in packages/sharepoint).
+pub fn child_name(data: &Value) -> Value {
+    let parts: Vec<&str> = ["nachname", "vorname"]
+        .iter()
+        .filter_map(|k| data[*k].as_str().map(str::trim).filter(|s| !s.is_empty()))
+        .collect();
+    if parts.is_empty() {
+        Value::Null
+    } else {
+        Value::String(parts.join(", "))
     }
 }
 
@@ -548,6 +573,16 @@ mod tests {
         assert!(is_asset_key("logo"));
         assert!(!is_asset_key("../x"));
         assert!(!is_asset_key(".env"));
+    }
+
+    #[test]
+    fn derives_child_name() {
+        assert_eq!(
+            child_name(&json!({ "nachname": " Muster ", "vorname": "Mia" })),
+            json!("Muster, Mia")
+        );
+        assert_eq!(child_name(&json!({ "vorname": "Mia" })), json!("Mia"));
+        assert_eq!(child_name(&json!({})), Value::Null);
     }
 
     #[test]
