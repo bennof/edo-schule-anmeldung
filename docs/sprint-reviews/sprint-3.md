@@ -61,3 +61,22 @@ Ein Verfahren ist öffentlich, solange das heutige Datum zwischen Beginn und End
 ## Nächster Schritt
 
 Sprint 4 – Vollständige Anmeldung (F5, F6, G4, G5, C5). Für C5 brauche ich das **bisherige Anmeldeformular** der Schule (PDF/Word/Foto).
+
+## Nachtrag: IP-Filter, Einwilligungstext, Daemon-Berechtigungen
+
+**IP-Filter (umgesetzt):**
+- Neue Spalte `RequestIp` in Appointments (Schema-Version 2; die Provisionierung ergänzt sie in bestehenden Listen).
+- Der Server zählt gebuchte Termine je Verfahren und IP-Adresse. Ab dem Wert von `maxBookingsPerIp` (Config, nicht öffentlich, Vorgabe 3, `0` = aus) antwortet er mit 429 und dem Hinweis, sich ans Sekretariat zu wenden.
+- Hinter einem Reverse-Proxy `TRUST_PROXY=1` setzen; dann gilt die erste Adresse aus `X-Forwarded-For`, sonst die Verbindungsadresse.
+- Bei einer Absage wird die IP zusammen mit den übrigen Buchungsdaten gelöscht. Das Sekretariat sieht die IP in der Terminliste.
+- Grenzen: Gleichzeitige Anfragen derselben IP können das Limit knapp überschreiten. Familien hinter einem gemeinsamen Anschluss (z. B. Schulnetz) teilen sich das Limit.
+- Getestet live: 3. Buchung derselben IP bei Limit 2 → 429, Limit 0 → Filter aus.
+
+**Einwilligungstext (umgesetzt):** Config-Eintrag `consentText` (öffentlich). Die Provisionierung legt einen Platzhalter an, wenn er fehlt, und überschreibt nie einen vorhandenen Text. Die Public SPA zeigt den Eintrag an. Ist er leer, erscheint ein kurzer Standardsatz.
+
+**Daemon-Berechtigungen auf Listenebene (vorbereitet, Admin-Schritt offen):**
+- Gesetzt (`node scripts/daemon-permissions.ts grant`): Config, Assets, Forms, Procedures = `read`; Appointments, Applications = `write`.
+- Der Rust-Server spricht Listen jetzt direkt über ihren Namen an und braucht keinen Lesezugriff mehr auf die ganze Site.
+- **Offen, nur durch Entra-Admin möglich:** Der App-Registrierung „Anmeldesystem Public Daemon“ die Anwendungsberechtigung **`Lists.SelectedOperations.Selected`** (Microsoft Graph) hinzufügen und Admin-Zustimmung erteilen.
+- Danach: `node scripts/daemon-permissions.ts revoke-site` → `pnpm test:integration`. Bei Problemen: `restore-site`. Anschließend kann `Sites.Selected` beim Daemon entfernt werden.
+- Einschränkung: Graph kennt nur `read`/`write`/`owner`. `write` auf Applications schließt Lesen ein. Damit der Daemon nur selbst angelegte Anmeldungen lesen kann, in SharePoint unter Applications → Listeneinstellungen → Erweiterte Einstellungen → *Berechtigungen auf Elementebene* „Nur eigene Elemente lesen“ setzen. Das geht per App-Secret nicht automatisiert (SharePoint-REST verlangt dafür ein Zertifikat).

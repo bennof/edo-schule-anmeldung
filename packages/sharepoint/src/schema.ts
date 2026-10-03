@@ -3,7 +3,7 @@
 import { APPLICATION_STATES, APPOINTMENT_STATES } from '@anmeldung/domain';
 
 /** Bump when lists or columns are added. Stored in Config as `schemaVersion`. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export type ColumnType = 'text' | 'note' | 'json' | 'boolean' | 'choice';
 
@@ -51,6 +51,7 @@ export const LISTS = {
             { name: 'EmailCustomer', prop: 'emailCustomer', type: 'text' },
             { name: 'NameCustomer', prop: 'nameCustomer', type: 'text' },
             { name: 'RequestTime', prop: 'requestTime', type: 'text' },
+            { name: 'RequestIp', prop: 'requestIp', type: 'text', indexed: true },
         ],
     },
     applications: {
@@ -86,6 +87,20 @@ export const LISTS = {
 } as const satisfies Record<string, ListSpec>;
 
 export type ListKey = keyof typeof LISTS;
+
+/**
+ * Config entries created by provisioning when missing; existing values are
+ * never overwritten.
+ */
+export const DEFAULT_CONFIG = [
+    {
+        key: 'consentText',
+        value: 'Ich bin einverstanden, dass meine Angaben zur Terminvergabe und Anmeldung gespeichert werden. (Platzhalter – Text in der Config-Liste anpassen.)',
+        isPublic: true,
+    },
+    // bookings per IP address and procedure; 0 = unlimited
+    { key: 'maxBookingsPerIp', value: '3', isPublic: false },
+] as const;
 
 /** Graph columnDefinition for a column spec. */
 export function columnDefinition(col: ColumnSpec): Record<string, unknown> {

@@ -15,7 +15,7 @@ export class AppointmentError extends Error {}
 type Tracked = { appointment: Appointment; eTag: string };
 
 /** Fields cleared when a booking is released (cancellation). */
-const BOOKING_FIELDS = ['applicationId', 'emailCustomer', 'nameCustomer', 'requestTime'] as const;
+const BOOKING_FIELDS = ['applicationId', 'emailCustomer', 'nameCustomer', 'requestTime', 'requestIp'] as const;
 
 export class AppointmentService {
     private readonly site: SharePointSite;

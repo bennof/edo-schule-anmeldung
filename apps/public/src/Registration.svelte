@@ -8,9 +8,12 @@
 
     interface Props {
         procedure: PublicProcedure;
+        /** from the public config entry `consentText` */
+        consentText?: string;
     }
 
-    let { procedure }: Props = $props();
+    let { procedure, consentText }: Props = $props();
+    const FALLBACK_CONSENT = 'Ich bin einverstanden, dass meine Angaben zur Terminvergabe gespeichert werden.';
 
     type Step = 'slots' | 'contact' | 'booked' | 'form';
     let step: Step = $state('slots');
@@ -55,7 +58,9 @@
             booking = await api.book(selected.id, name.trim(), email.trim());
             step = 'booked';
         } catch (err) {
-            if (err instanceof ApiError && err.code === 'taken') {
+            if (err instanceof ApiError && err.code === 'limit') {
+                error = err.message;
+            } else if (err instanceof ApiError && err.code === 'taken') {
                 error = 'Dieser Termin wurde gerade vergeben. Bitte wählen Sie einen anderen Termin.';
                 step = 'slots';
                 await loadSlots();
@@ -97,7 +102,7 @@
         <label>E-Mail-Adresse <input type="email" bind:value={email} autocomplete="email" required /></label>
         <label class="consent">
             <input type="checkbox" bind:checked={consent} />
-            Ich bin einverstanden, dass Name und E-Mail-Adresse für die Terminvergabe gespeichert werden.
+            <span data-testid="consent-text">{consentText?.trim() || FALLBACK_CONSENT}</span>
         </label>
         <p>
             <button type="submit" disabled={busy || !contactValid}>Termin verbindlich buchen</button>

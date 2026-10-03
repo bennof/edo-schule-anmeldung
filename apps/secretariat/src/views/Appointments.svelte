@@ -230,7 +230,12 @@
                                     <td>{a.datetime.slice(11)}</td>
                                     <td>{a.verantwortlicherId ?? ''}</td>
                                     <td><span class="badge {a.state}">{STATE_LABEL[a.state]}</span></td>
-                                    <td>{#if a.nameCustomer}{a.nameCustomer} <small class="muted">{a.emailCustomer}</small>{/if}</td>
+                                    <td>
+                                        {#if a.nameCustomer}
+                                            {a.nameCustomer} <small class="muted">{a.emailCustomer}</small>
+                                            {#if a.requestIp}<br /><small class="muted" title="IP-Adresse der Buchung">IP {a.requestIp}</small>{/if}
+                                        {/if}
+                                    </td>
                                     <td>
                                         {#if a.state === 'draft'}
                                             <button class="secondary" onclick={() => (editing = { id: a.id, time: a.datetime.slice(11), verantwortlicher: a.verantwortlicherId ?? '' })} disabled={busy || !!editing}>Ändern</button>

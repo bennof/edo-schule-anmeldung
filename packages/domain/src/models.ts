@@ -26,6 +26,8 @@ export interface Appointment {
     nameCustomer?: string;
     /** Time of the booking request (ISO 8601) */
     requestTime?: string;
+    /** IP address the booking came from (abuse protection) */
+    requestIp?: string;
 }
 
 export interface Application {

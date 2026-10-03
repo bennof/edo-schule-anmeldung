@@ -23,6 +23,7 @@ fn main() {
         &settings.client_id,
         &settings.client_secret,
     );
+    let trust_proxy = settings.trust_proxy;
     let api = Arc::new(api::Api::new(sharepoint::Site::new(
         graph,
         &settings.site_id,
@@ -42,7 +43,7 @@ fn main() {
             let (server, api) = (Arc::clone(&server), Arc::clone(&api));
             thread::spawn(move || {
                 while let Ok(request) = server.recv() {
-                    handle(&api, request);
+                    handle(&api, request, trust_proxy);
                 }
             })
         })
@@ -52,9 +53,19 @@ fn main() {
     }
 }
 
-fn handle(api: &api::Api, mut request: Request) {
+fn handle(api: &api::Api, mut request: Request, trust_proxy: bool) {
     let method = request.method().as_str().to_uppercase();
     let path = request.url().split('?').next().unwrap_or("").to_string();
+    let forwarded = request
+        .headers()
+        .iter()
+        .find(|h| h.field.equiv("X-Forwarded-For"))
+        .map(|h| h.value.as_str().to_string());
+    let ip = client_ip(
+        request.remote_addr().map(|a| a.ip()),
+        forwarded.as_deref(),
+        trust_proxy,
+    );
 
     let mut body = Vec::new();
     let too_large = request.body_length().is_some_and(|l| l as u64 > MAX_BODY)
@@ -72,7 +83,7 @@ fn handle(api: &api::Api, mut request: Request) {
             body: b"payload too large".to_vec(),
         }
     } else {
-        api.handle(&method, &path, &body)
+        api.handle(&method, &path, &body, &ip)
     };
     // log method, path and status only, never bodies (personal data)
     println!("{method} {path} {}", reply.status);
@@ -85,5 +96,35 @@ fn handle(api: &api::Api, mut request: Request) {
         .with_header(Header::from_bytes("Cache-Control", "no-store").expect("valid header"));
     if let Err(e) = request.respond(response) {
         eprintln!("failed to send response: {e}");
+    }
+}
+
+/// Client address: the socket peer, or the first X-Forwarded-For entry when
+/// running behind a trusted reverse proxy.
+fn client_ip(peer: Option<std::net::IpAddr>, forwarded: Option<&str>, trust_proxy: bool) -> String {
+    if trust_proxy
+        && let Some(first) = forwarded.and_then(|f| f.split(',').next())
+        && let Ok(ip) = first.trim().parse::<std::net::IpAddr>()
+    {
+        return ip.to_string();
+    }
+    peer.map(|ip| ip.to_string())
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn client_ip_uses_forwarded_only_when_trusted() {
+        let peer = Some("10.0.0.5".parse().unwrap());
+        assert_eq!(
+            client_ip(peer, Some("203.0.113.7, 10.0.0.1"), true),
+            "203.0.113.7"
+        );
+        assert_eq!(client_ip(peer, Some("203.0.113.7"), false), "10.0.0.5");
+        assert_eq!(client_ip(peer, Some("not an ip"), true), "10.0.0.5");
+        assert_eq!(client_ip(None, None, false), "unknown");
     }
 }

@@ -11,6 +11,8 @@ pub struct Settings {
     pub client_id: String,
     pub client_secret: String,
     pub site_id: String,
+    /// take the client IP from X-Forwarded-For (only behind a trusted reverse proxy)
+    pub trust_proxy: bool,
 }
 
 impl Settings {
@@ -30,6 +32,7 @@ impl Settings {
             client_id: require("DAEMON_CLIENT_ID")?,
             client_secret: require("DAEMON_CLIENT_SECRET")?,
             site_id: require("SHAREPOINT_ID")?,
+            trust_proxy: get("TRUST_PROXY").is_some_and(|v| v == "1" || v == "true"),
         })
     }
 }

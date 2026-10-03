@@ -144,6 +144,8 @@ try {
         await pub.getByLabel('Name (sorgeberechtigte Person)', { exact: true }).fill('Eva Testfamilie');
         await pub.getByLabel('E-Mail-Adresse', { exact: true }).fill('eva@example.org');
         assert(await pub.getByRole('button', { name: 'Termin verbindlich buchen' }).isDisabled(), 'consent not required');
+        const consent = await pub.getByTestId('consent-text').textContent();
+        assert(consent === (await config.get('consentText')), `consent text not from config: ${consent}`);
         await pub.getByRole('checkbox').check();
         await pub.getByRole('button', { name: 'Termin verbindlich buchen' }).click();
         await pub.getByRole('heading', { name: 'Ihr Termin ist gebucht' }).waitFor({ timeout: 20000 });

@@ -37,6 +37,7 @@ describe('provision', () => {
         const report = await provision(newSite());
         expect(report.createdLists).toEqual([]);
         expect(report.createdColumns).toEqual([]);
+        expect(report.createdConfig).toEqual([]);
         expect(await repo.get(created.id)).toEqual(created);
         expect(fake.requests.some((r) => r.startsWith('DELETE'))).toBe(false);
     });
@@ -53,6 +54,21 @@ describe('provision', () => {
         await provision(site);
         await new ConfigStore(site).set('schemaVersion', String(SCHEMA_VERSION + 1));
         await expect(provision(newSite())).rejects.toThrow(/schema version/);
+    });
+});
+
+describe('default config', () => {
+    it('seeds missing defaults without overwriting existing values', async () => {
+        const first = await provision(site);
+        expect(first.createdConfig).toEqual(['consentText', 'maxBookingsPerIp']);
+        const config = new ConfigStore(site);
+        expect((await config.publicEntries()).map((e) => e.key)).toEqual(['consentText']);
+
+        await config.set('consentText', 'Eigener Text');
+        await config.delete('maxBookingsPerIp');
+        const second = await provision(newSite());
+        expect(second.createdConfig).toEqual(['maxBookingsPerIp']);
+        expect(await config.get('consentText')).toBe('Eigener Text');
     });
 });
 
@@ -114,7 +130,7 @@ describe('config', () => {
         await config.set('schoolName', 'Gesamtschule Nord');
 
         expect(await config.get('schoolName')).toBe('Gesamtschule Nord');
-        expect((await config.publicEntries()).map((e) => e.key)).toEqual(['schoolName']);
+        expect((await config.publicEntries()).map((e) => e.key)).toEqual(['consentText', 'schoolName']);
 
         await config.delete('internalNote');
         expect(await config.get('internalNote')).toBeUndefined();

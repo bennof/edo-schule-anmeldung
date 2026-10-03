@@ -53,7 +53,7 @@ describe('appointment service', () => {
     it('cancels a booking: back to available, booking data removed', async () => {
         const [a] = await service.createDrafts(plan());
         await service.publish([a.id]);
-        await service.repo.update(a.id, { state: 'booked', nameCustomer: 'X', emailCustomer: 'x@y.de', applicationId: '7', requestTime: 't' });
+        await service.repo.update(a.id, { state: 'booked', nameCustomer: 'X', emailCustomer: 'x@y.de', applicationId: '7', requestTime: 't', requestIp: '10.0.0.1' });
         await service.cancelBooking(a.id);
         expect(await service.repo.get(a.id)).toEqual({ id: a.id, procedureId: 'p1', datetime: a.datetime, verantwortlicherId: 'A', state: 'available' });
     });

@@ -3,5 +3,5 @@ export { SharePointSite, isAssetKey, type AssetInfo, type Fields, type ListItem 
 export { Repository, type Entity } from './repository.ts';
 export { ConfigStore } from './config.ts';
 export { provision, type ProvisionReport } from './provision.ts';
-export { LISTS, SCHEMA_VERSION, type ListKey } from './schema.ts';
+export { DEFAULT_CONFIG, LISTS, SCHEMA_VERSION, type ListKey } from './schema.ts';
 export { AppointmentError, AppointmentService, sortAppointments } from './appointments.ts';

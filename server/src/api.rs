@@ -32,6 +32,8 @@ impl Reply {
 
 /// Logo key in the Assets library; further public assets come from optionsSource.
 const LOGO_KEY: &str = "logo";
+/// Used when the config entry is missing (see DEFAULT_CONFIG in schema.ts).
+const DEFAULT_MAX_BOOKINGS_PER_IP: usize = 3;
 
 pub struct Api {
     site: Site,
@@ -50,7 +52,7 @@ impl Api {
         Api { site }
     }
 
-    pub fn handle(&self, method: &str, path: &str, body: &[u8]) -> Reply {
+    pub fn handle(&self, method: &str, path: &str, body: &[u8], client_ip: &str) -> Reply {
         let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
         let result = match (method, parts.as_slice()) {
             ("GET", ["api", "health"]) => Ok(Reply::json(200, json!({ "status": "ok" }))),
@@ -60,7 +62,7 @@ impl Api {
                 self.appointments(id)
             }
             ("POST", ["api", "appointments", id, "booking"]) if is_item_id(id) => {
-                self.book(id, body)
+                self.book(id, body, client_ip)
             }
             ("GET", ["api", "assets", key]) if is_asset_key(key) => self.asset(key),
             _ => Ok(Reply::not_found()),
@@ -134,7 +136,7 @@ impl Api {
 
     /// F4: books a slot. The eTag check makes concurrent bookings of the
     /// same slot fail for all but one request.
-    fn book(&self, appointment_id: &str, body: &[u8]) -> Result<Reply, String> {
+    fn book(&self, appointment_id: &str, body: &[u8], client_ip: &str) -> Result<Reply, String> {
         let input: Value = serde_json::from_slice(body).unwrap_or(Value::Null);
         let (name, email) = match validate_booking(input["name"].as_str(), input["email"].as_str())
         {
@@ -152,11 +154,19 @@ impl Api {
         if item.text("State") != Some("available") || datetime.as_str() <= now_local().as_str() {
             return Ok(taken());
         }
+        if self.ip_limit_reached(&procedure_id, client_ip)? {
+            return Ok(Reply::error(
+                429,
+                "limit",
+                "Von diesem Anschluss wurden bereits zu viele Termine gebucht. Bitte wenden Sie sich an das Sekretariat.",
+            ));
+        }
         let fields = json!({
             "State": "booked",
             "NameCustomer": name,
             "EmailCustomer": email,
             "RequestTime": Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
+            "RequestIp": client_ip,
         });
         match self
             .site
@@ -169,6 +179,26 @@ impl Api {
             Update::Conflict => Ok(taken()),
             Update::NotFound => Ok(Reply::not_found()),
         }
+    }
+
+    /// IP filter: number of booked appointments of this procedure from the
+    /// same address against the `maxBookingsPerIp` config entry (0 = off).
+    /// Concurrent requests may exceed the limit by a few bookings.
+    fn ip_limit_reached(&self, procedure_id: &str, client_ip: &str) -> Result<bool, String> {
+        let limit = self
+            .site
+            .list_items(CONFIG, Some("fields/Title eq 'maxBookingsPerIp'"))?
+            .first()
+            .and_then(|i| i.text("Value").and_then(|v| v.trim().parse::<usize>().ok()))
+            .unwrap_or(DEFAULT_MAX_BOOKINGS_PER_IP);
+        if limit == 0 {
+            return Ok(false);
+        }
+        let filter = format!(
+            "fields/ProcedureId eq '{procedure_id}' and fields/RequestIp eq '{}' and fields/State eq 'booked'",
+            client_ip.replace('\'', "''")
+        );
+        Ok(self.site.list_items(APPOINTMENTS, Some(&filter))?.len() >= limit)
     }
 
     /// Public assets: the logo and option lists referenced by active forms.

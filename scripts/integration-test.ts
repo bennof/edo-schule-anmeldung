@@ -34,12 +34,12 @@ const site = newSite();
 
 await step('provisioning', async () => {
     const r = await provision(site);
-    console.log(`      created lists: ${r.createdLists.join(', ') || '-'}; columns: ${r.createdColumns.join(', ') || '-'}`);
+    console.log(`      created lists: ${r.createdLists.join(', ') || '-'}; columns: ${r.createdColumns.join(', ') || '-'}; config: ${r.createdConfig.join(', ') || '-'}`);
 });
 
 await step('provisioning is idempotent', async () => {
     const r = await provision(newSite());
-    assert(r.createdLists.length === 0 && r.createdColumns.length === 0, `second run changed schema: ${JSON.stringify(r)}`);
+    assert(r.createdLists.length + r.createdColumns.length + r.createdConfig.length === 0, `second run changed schema: ${JSON.stringify(r)}`);
 });
 
 await step('schema version stored in Config', async () => {

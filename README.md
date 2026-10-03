@@ -38,8 +38,14 @@ pnpm test:e2e              # browser tests (headless Chromium); secretariat test
 cd server && cargo test && cargo run
 ```
 
+## Daemon permissions
+
+`node scripts/daemon-permissions.ts show|grant|revoke-site|restore-site` manages the
+public daemon's SharePoint grants (list-level target, see docs/sprint-reviews/sprint-3.md).
+
 ## Configuration
 
-Copy `.env.example` to `.env`. `.env` is test infrastructure and is never committed.
+Copy `.env.example` to `.env`. The Rust server additionally reads `BIND_ADDR`,
+`WORKERS` and `TRUST_PROXY` (set to 1 behind a reverse proxy). `.env` is test infrastructure and is never committed.
 Only the keys whitelisted in `apps/secretariat/vite.config.ts` reach browser code;
 client secrets never do.

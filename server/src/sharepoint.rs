@@ -60,28 +60,26 @@ impl Site {
         format!("/sites/{}", self.site_id)
     }
 
+    /// Resolves a list by name. Addresses the list directly, so it also works
+    /// with list-level grants only (no site-wide read).
     fn list_id(&self, name: &str) -> Result<String, String> {
         if let Some(id) = self.list_ids.lock().map_err(|_| "lock poisoned")?.get(name) {
             return Ok(id.clone());
         }
-        let res = self.graph.request(
-            "GET",
-            &format!("{}/lists?$select=id,displayName", self.base()),
-            None,
-            None,
-        )?;
+        let path = format!("{}/lists/{}?$select=id", self.base(), encode(name));
+        let res = self.graph.request("GET", &path, None, None)?;
         if !res.ok() {
-            return Err(res.error_text());
+            return Err(format!("list {name}: {}", res.error_text()));
         }
-        let mut ids = self.list_ids.lock().map_err(|_| "lock poisoned")?;
-        for list in res.json()?["value"].as_array().into_iter().flatten() {
-            if let (Some(n), Some(id)) = (list["displayName"].as_str(), list["id"].as_str()) {
-                ids.insert(n.to_string(), id.to_string());
-            }
-        }
-        ids.get(name)
-            .cloned()
-            .ok_or_else(|| format!("list {name} missing"))
+        let id = res.json()?["id"]
+            .as_str()
+            .ok_or_else(|| format!("list {name}: no id"))?
+            .to_string();
+        self.list_ids
+            .lock()
+            .map_err(|_| "lock poisoned")?
+            .insert(name.to_string(), id.clone());
+        Ok(id)
     }
 
     /// Lists items, optionally filtered with an OData expression on indexed fields.

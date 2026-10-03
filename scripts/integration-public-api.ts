@@ -55,9 +55,12 @@ const drafts = await appointments.createDrafts([
     { procedureId: active.id, datetime: `${day(3)}T08:40`, state: 'draft', verantwortlicherId: 'A' },
     { procedureId: active.id, datetime: `${day(-2)}T08:00`, state: 'draft', verantwortlicherId: 'A' },
     { procedureId: inactive.id, datetime: `${day(3)}T09:00`, state: 'draft' },
+    { procedureId: active.id, datetime: `${day(3)}T09:20`, state: 'draft', verantwortlicherId: 'A' },
 ]);
-const [slotA, slotB, slot2, draftSlot, pastSlot, inactiveSlot] = drafts;
-await appointments.publish([slotA.id, slotB.id, slot2.id, pastSlot.id, inactiveSlot.id]);
+const [slotA, slotB, slot2, draftSlot, pastSlot, inactiveSlot, slotLimit] = drafts;
+await appointments.publish([slotA.id, slotB.id, slot2.id, pastSlot.id, inactiveSlot.id, slotLimit.id]);
+const previousLimit = await config.get('maxBookingsPerIp');
+await config.set('maxBookingsPerIp', '2', false);
 await config.set(`${tag}-public`, 'sichtbar', true);
 await config.set(`${tag}-intern`, 'geheim', false);
 await site.putAsset(`${tag}-intern.txt`, new Blob(['intern'], { type: 'text/plain' }));
@@ -78,6 +81,8 @@ try {
         const ids = body.procedures.map((p: { id: string }) => p.id);
         assert(ids.includes(active.id) && !ids.includes(inactive.id), `procedures ${ids}`);
         assert(body.procedures.find((p: { id: string }) => p.id === active.id).title === `${tag} aktiv`, 'title');
+        assert(typeof body.config.consentText === 'string' && body.config.consentText.length > 0, 'consentText missing');
+        assert(!('maxBookingsPerIp' in body.config), 'internal limit exposed');
     });
 
     await step('form of active procedure; inactive procedure hidden', async () => {
@@ -90,7 +95,7 @@ try {
         const { status, body } = await get(`/procedures/${active.id}/appointments`);
         assert(status === 200, `status ${status}`);
         const ids = body.map((s: { id: string }) => s.id).sort();
-        assert(JSON.stringify(ids) === JSON.stringify([slotA.id, slotB.id, slot2.id].sort()), `slots ${JSON.stringify(body)}`);
+        assert(JSON.stringify(ids) === JSON.stringify([slotA.id, slotB.id, slot2.id, slotLimit.id].sort()), `slots ${JSON.stringify(body)}`);
         assert(body.every((s: object) => Object.keys(s).join() === 'datetime,id' || Object.keys(s).join() === 'id,datetime'), 'extra fields');
         assert((await get(`/procedures/${inactive.id}/appointments`)).status === 404, 'inactive procedure slots visible');
     });
@@ -122,7 +127,17 @@ try {
         const r = await book(slotA.id);
         assert(r.status === 200, `status ${r.status}`);
         const left = (await get(`/procedures/${active.id}/appointments`)).body.map((s: { id: string }) => s.id);
-        assert(JSON.stringify(left) === JSON.stringify([slotB.id]), `left ${left}`);
+        assert(JSON.stringify(left) === JSON.stringify([slotB.id, slotLimit.id]), `left ${left}`);
+    });
+
+    await step('IP filter: third booking from the same address is refused (limit 2)', async () => {
+        const stored = (await appointments.repo.get(slotA.id))!;
+        assert(stored.requestIp === '127.0.0.1', `requestIp ${stored.requestIp}`);
+        const r = await book(slotLimit.id, 'Dritte Buchung', 'drei@example.org');
+        assert(r.status === 429 && r.body.error === 'limit', `status ${r.status}`);
+        assert((await appointments.repo.get(slotLimit.id))!.state === 'available', 'slot booked despite limit');
+        await config.set('maxBookingsPerIp', '0', false);
+        assert((await book(slotLimit.id, 'Dritte Buchung', 'drei@example.org')).status === 200, 'limit 0 should disable the filter');
     });
 
     await step('assets: unlisted keys are not public', async () => {
@@ -131,7 +146,7 @@ try {
     });
 
     await step('server log contains no personal data', async () => {
-        assert(!/Person \d|example\.org/.test(serverLog), 'personal data in log');
+        assert(!/Person \d|example\.org|Dritte/.test(serverLog), 'personal data in log');
     });
 } finally {
     server.kill();
@@ -140,6 +155,8 @@ try {
     await procedures.delete(inactive.id).catch(() => {});
     await forms.delete(form.id).catch(() => {});
     await config.delete(`${tag}-public`).catch(() => {});
+    if (previousLimit === undefined) await config.delete('maxBookingsPerIp').catch(() => {});
+    else await config.set('maxBookingsPerIp', previousLimit, false).catch(() => {});
     await config.delete(`${tag}-intern`).catch(() => {});
     await site.deleteAsset(`${tag}-intern.txt`).catch(() => {});
     console.log('      test data removed');

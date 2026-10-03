@@ -1,17 +1,18 @@
 // Idempotent schema provisioning (backlog B2): creates missing lists and
 // columns, never deletes or alters existing ones, then records schemaVersion.
 import { ConfigStore } from './config.ts';
-import { LISTS, SCHEMA_VERSION, columnDefinition, type ListSpec } from './schema.ts';
+import { DEFAULT_CONFIG, LISTS, SCHEMA_VERSION, columnDefinition, type ListSpec } from './schema.ts';
 import type { SharePointSite } from './site.ts';
 
 export interface ProvisionReport {
     createdLists: string[];
     createdColumns: string[];
+    createdConfig: string[];
     schemaVersion: number;
 }
 
 export async function provision(site: SharePointSite): Promise<ProvisionReport> {
-    const report: ProvisionReport = { createdLists: [], createdColumns: [], schemaVersion: SCHEMA_VERSION };
+    const report: ProvisionReport = { createdLists: [], createdColumns: [], createdConfig: [], schemaVersion: SCHEMA_VERSION };
     const configExists = (await site.findListId(LISTS.config.name)) !== undefined;
     if (configExists) {
         const stored = Number(await new ConfigStore(site).get('schemaVersion'));
@@ -30,7 +31,14 @@ export async function provision(site: SharePointSite): Promise<ProvisionReport> 
         }
     }
 
-    await new ConfigStore(site).set('schemaVersion', String(SCHEMA_VERSION), false);
+    const config = new ConfigStore(site);
+    const existing = new Set((await config.all()).map((e) => e.key));
+    for (const entry of DEFAULT_CONFIG) {
+        if (existing.has(entry.key)) continue;
+        await config.set(entry.key, entry.value, entry.isPublic);
+        report.createdConfig.push(entry.key);
+    }
+    await config.set('schemaVersion', String(SCHEMA_VERSION), false);
     return report;
 }
 

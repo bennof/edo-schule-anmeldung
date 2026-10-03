@@ -54,7 +54,7 @@
             {/each}
         {:else}
             {#if procedure.description}<p class="description">{procedure.description}</p>{/if}
-            {#key procedure.id}<Registration {procedure} />{/key}
+            {#key procedure.id}<Registration {procedure} consentText={config.config.consentText} />{/key}
         {/if}
     {/if}
 </main>
