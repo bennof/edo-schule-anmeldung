@@ -4,6 +4,13 @@ import { LISTS, type ListKey } from './schema.ts';
 
 export type Fields = Record<string, unknown>;
 
+export interface AssetInfo {
+    key: string;
+    size: number;
+    contentType: string;
+    lastModified: string;
+}
+
 export interface ListItem {
     id: string;
     eTag: string;
@@ -95,6 +102,34 @@ export class SharePointSite {
         });
     }
 
+    /** Creates many items using batching; returns them in input order. */
+    async createItems(key: ListKey, fieldsList: Fields[]): Promise<ListItem[]> {
+        const id = await this.listId(key);
+        const bodies = await this.graph.batch(
+            fieldsList.map((fields) => ({ method: 'POST', path: `${this.base}/lists/${id}/items`, body: { fields } })),
+        );
+        return bodies.map((b) => toListItem(b as GraphListItem));
+    }
+
+    /** Updates fields of many items using batching. */
+    async updateItems(key: ListKey, updates: { id: string; fields: Fields; ifMatch?: string }[]): Promise<void> {
+        const id = await this.listId(key);
+        await this.graph.batch(
+            updates.map((u) => ({
+                method: 'PATCH',
+                path: `${this.base}/lists/${id}/items/${u.id}/fields`,
+                body: u.fields,
+                headers: u.ifMatch ? { 'If-Match': u.ifMatch } : undefined,
+            })),
+        );
+    }
+
+    /** Deletes many items using batching. */
+    async deleteItems(key: ListKey, itemIds: string[]): Promise<void> {
+        const id = await this.listId(key);
+        await this.graph.batch(itemIds.map((itemId) => ({ method: 'DELETE', path: `${this.base}/lists/${id}/items/${itemId}` })));
+    }
+
     async deleteItem(key: ListKey, itemId: string): Promise<void> {
         const id = await this.listId(key);
         await this.graph.request('DELETE', `${this.base}/lists/${id}/items/${itemId}`);
@@ -103,9 +138,19 @@ export class SharePointSite {
     // --- asset library (key -> blob) ---
 
     private async assetPath(key: string): Promise<string> {
-        if (!/^[A-Za-z0-9._-]+$/.test(key)) throw new Error(`Invalid asset key "${key}"`);
+        if (!isAssetKey(key)) throw new Error(`Invalid asset key "${key}"`);
         const listId = await this.listId('assets');
         return `${this.base}/lists/${listId}/drive/root:/${key}:`;
+    }
+
+    async listAssets(): Promise<AssetInfo[]> {
+        const listId = await this.listId('assets');
+        const items = await this.graph.collect<{ name: string; size: number; lastModifiedDateTime: string; file?: { mimeType: string } }>(
+            `${this.base}/lists/${listId}/drive/root/children?$select=name,size,lastModifiedDateTime,file`,
+        );
+        return items
+            .filter((i) => i.file)
+            .map((i) => ({ key: i.name, size: i.size, contentType: i.file!.mimeType, lastModified: i.lastModifiedDateTime }));
     }
 
     async putAsset(key: string, data: Blob): Promise<void> {
@@ -128,6 +173,11 @@ export class SharePointSite {
     async deleteAsset(key: string): Promise<void> {
         await this.graph.request('DELETE', await this.assetPath(key));
     }
+}
+
+/** Asset keys are file names: letters, digits, dot, dash, underscore. */
+export function isAssetKey(key: string): boolean {
+    return /^[A-Za-z0-9._-]+$/.test(key) && !key.startsWith('.');
 }
 
 function toListItem(item: GraphListItem): ListItem {

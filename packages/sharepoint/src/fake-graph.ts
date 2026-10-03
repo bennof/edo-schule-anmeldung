@@ -15,6 +15,7 @@ export class FakeGraph {
     readonly fetch: typeof fetch = async (input, init) => {
         const url = new URL(String(input));
         const method = init?.method ?? 'GET';
+        if (url.pathname === '/v1.0/$batch') return this.batch(JSON.parse(String(init!.body)));
         const path = decodeURIComponent(url.pathname.replace(/^\/v1\.0\/sites\/[^/]+/, ''));
         const body = init?.body ? JSON.parse(String(init.body)) : undefined;
         this.requests.push(`${method} ${path}`);
@@ -81,6 +82,20 @@ export class FakeGraph {
         }
         return reply(400, { error: { code: 'badRequest', message: path } });
     };
+
+    private async batch(body: { requests: { id: string; method: string; url: string; body?: unknown; headers?: Record<string, string> }[] }): Promise<Response> {
+        const responses = [];
+        for (const r of body.requests) {
+            const res = await this.fetch(`https://graph.microsoft.com/v1.0${r.url}`, {
+                method: r.method,
+                headers: r.headers,
+                body: r.body === undefined ? undefined : JSON.stringify(r.body),
+            });
+            const text = await res.text();
+            responses.push({ id: r.id, status: res.status, body: text ? JSON.parse(text) : undefined });
+        }
+        return reply(200, { responses });
+    }
 
     private id(): string {
         return String(this.nextId++);

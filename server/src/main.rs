@@ -1,53 +1,89 @@
 //! Public server: the only component the public SPA talks to.
 //! It keeps no personal data; SharePoint is the persistent store.
 
-use std::env;
-use tiny_http::{Header, Method, Request, Response, Server};
+mod api;
+mod graph;
+mod settings;
+mod sharepoint;
+
+use std::io::Read;
+use std::sync::Arc;
+use std::thread;
+use tiny_http::{Header, Request, Response, Server};
+
+const MAX_BODY: u64 = 16 * 1024;
 
 fn main() {
-    let addr = env::var("BIND_ADDR").unwrap_or_else(|_| "127.0.0.1:8080".to_string());
-    let server = Server::http(&addr).unwrap_or_else(|e| panic!("cannot bind {addr}: {e}"));
-    println!("anmeldung-server listening on http://{addr}");
+    let settings = settings::Settings::load().unwrap_or_else(|e| {
+        eprintln!("configuration error: {e}");
+        std::process::exit(1);
+    });
+    let graph = graph::Graph::new(
+        &settings.tenant_id,
+        &settings.client_id,
+        &settings.client_secret,
+    );
+    let api = Arc::new(api::Api::new(sharepoint::Site::new(
+        graph,
+        &settings.site_id,
+    )));
 
-    for request in server.incoming_requests() {
-        handle(request);
+    let server = Arc::new(Server::http(&settings.bind_addr).unwrap_or_else(|e| {
+        eprintln!("cannot bind {}: {e}", settings.bind_addr);
+        std::process::exit(1);
+    }));
+    println!(
+        "anmeldung-server listening on http://{}",
+        settings.bind_addr
+    );
+
+    let workers: Vec<_> = (0..settings.workers)
+        .map(|_| {
+            let (server, api) = (Arc::clone(&server), Arc::clone(&api));
+            thread::spawn(move || {
+                while let Ok(request) = server.recv() {
+                    handle(&api, request);
+                }
+            })
+        })
+        .collect();
+    for w in workers {
+        let _ = w.join();
     }
 }
 
-fn handle(request: Request) {
-    let (status, body) = route(request.method(), request.url());
-    let response = Response::from_string(body)
-        .with_status_code(status)
-        .with_header(json_header());
+fn handle(api: &api::Api, mut request: Request) {
+    let method = request.method().as_str().to_uppercase();
+    let path = request.url().split('?').next().unwrap_or("").to_string();
+
+    let mut body = Vec::new();
+    let too_large = request.body_length().is_some_and(|l| l as u64 > MAX_BODY)
+        || request
+            .as_reader()
+            .take(MAX_BODY + 1)
+            .read_to_end(&mut body)
+            .is_err()
+        || body.len() as u64 > MAX_BODY;
+
+    let reply = if too_large {
+        api::Reply {
+            status: 413,
+            content_type: "text/plain".into(),
+            body: b"payload too large".to_vec(),
+        }
+    } else {
+        api.handle(&method, &path, &body)
+    };
+    // log method, path and status only, never bodies (personal data)
+    println!("{method} {path} {}", reply.status);
+    let response = Response::from_data(reply.body)
+        .with_status_code(reply.status)
+        .with_header(
+            Header::from_bytes("Content-Type", reply.content_type.as_bytes())
+                .expect("valid header"),
+        )
+        .with_header(Header::from_bytes("Cache-Control", "no-store").expect("valid header"));
     if let Err(e) = request.respond(response) {
         eprintln!("failed to send response: {e}");
-    }
-}
-
-fn route(method: &Method, url: &str) -> (u16, String) {
-    let path = url.split('?').next().unwrap_or(url);
-    match (method, path) {
-        (Method::Get, "/api/health") => (200, r#"{"status":"ok"}"#.to_string()),
-        _ => (404, r#"{"error":"not found"}"#.to_string()),
-    }
-}
-
-fn json_header() -> Header {
-    Header::from_bytes("Content-Type", "application/json; charset=utf-8").expect("valid header")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn health_is_ok() {
-        assert_eq!(route(&Method::Get, "/api/health"), (200, r#"{"status":"ok"}"#.to_string()));
-    }
-
-    #[test]
-    fn unknown_paths_are_404() {
-        assert_eq!(route(&Method::Get, "/api/nope").0, 404);
-        assert_eq!(route(&Method::Post, "/api/health").0, 404);
     }
 }

@@ -5,6 +5,8 @@
     import { clientConfig } from './config.ts';
     import { errorText, site } from './services.ts';
     import Applications from './views/Applications.svelte';
+    import Appointments from './views/Appointments.svelte';
+    import Assets from './views/Assets.svelte';
     import Forms from './views/Forms.svelte';
     import Procedures from './views/Procedures.svelte';
     import Setup from './views/Setup.svelte';
@@ -15,7 +17,9 @@
         { hash: '#start', label: 'Start', component: Setup },
         { hash: '#verfahren', label: 'Verfahren', component: Procedures },
         { hash: '#formulare', label: 'Formulare', component: Forms },
+        { hash: '#termine', label: 'Termine', component: Appointments },
         { hash: '#anmeldungen', label: 'Anmeldungen', component: Applications },
+        { hash: '#dateien', label: 'Dateien', component: Assets },
     ];
 
     let status: Status = $state('loading');

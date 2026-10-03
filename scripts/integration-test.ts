@@ -1,8 +1,9 @@
 // Integration test against the real SharePoint test site (SHAREPOINT_ID in .env).
 // Runs the same adapter code the Secretariat SPA uses, authenticated app-only.
 // Usage: pnpm test:integration
-import type { Appointment } from '../packages/domain/src/index.ts';
+import { generateSchedule, type Appointment } from '../packages/domain/src/index.ts';
 import {
+    AppointmentService,
     ConfigStore,
     GraphClient,
     Repository,
@@ -79,6 +80,25 @@ await step('appointment CRUD with filter and If-Match', async () => {
         await repo.delete(a.id);
     }
     assert((await repo.get(a.id)) === undefined, 'item not deleted');
+});
+
+await step('appointment service: batch create, publish, delete (45 items)', async () => {
+    const service = new AppointmentService(site);
+    const procedureId = `itest-${Date.now()}`;
+    const plan = generateSchedule({ procedureId, date: '2030-01-07', start: '08:00', end: '11:45', intervalMinutes: 15, verantwortliche: ['A', 'B', 'C'] });
+    const created = await service.createDrafts(plan);
+    try {
+        assert(created.length === 45, `created ${created.length}`);
+        await service.publish(created.slice(0, 30).map((a) => a.id));
+        const list = await service.listForProcedure(procedureId);
+        const available = list.filter((a) => a.state === 'available').length;
+        assert(available === 30, `available ${available}`);
+        const err = await service.deleteDrafts([created[0].id]).then(() => undefined, (e) => e);
+        assert(err, 'deleting a published appointment must fail');
+    } finally {
+        await site.deleteItems('appointments', created.map((a) => a.id));
+    }
+    assert((await service.listForProcedure(procedureId)).length === 0, 'cleanup failed');
 });
 
 await step('application JSON round-trip', async () => {

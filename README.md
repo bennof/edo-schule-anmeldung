@@ -11,7 +11,7 @@ packages/forms        form JSON schema, types, checks, framework-free form runti
 packages/form-ui      Svelte form renderer (public and secretariat mode)
 apps/public           public SPA (Svelte), dev port 5174, proxies /api to the server
 apps/secretariat      secretariat SPA (Svelte, Microsoft 365 login), dev port 5173
-server                public Rust server (tiny_http), port 8080
+server                public Rust server (tiny_http, ureq), port 8080, daemon identity
 scripts               Node test tooling (integration test against SharePoint)
 docs/sprint-reviews   sprint reviews
 ```
@@ -30,7 +30,8 @@ pnpm check                 # type checks
 pnpm build                 # build both SPAs
 pnpm dev:public            # http://localhost:5174
 pnpm dev:secretariat       # http://localhost:5173
-pnpm test:integration      # against the SharePoint test site, needs .env
+pnpm dev:server            # Rust public server on :8080 (reads ../.env)
+pnpm test:integration      # adapter and public API against the SharePoint test site
 pnpm test:e2e              # browser tests (headless Chromium); secretariat tests sign in
                            # with the M365 test user and clean up their SharePoint data
 
