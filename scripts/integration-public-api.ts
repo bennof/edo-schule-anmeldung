@@ -6,7 +6,7 @@ import { execSync, spawn } from 'node:child_process';
 import type { Appointment, FormDefinition, Procedure } from '../packages/domain/src/index.ts';
 import testForm from '../packages/forms/examples/test-form.json' with { type: 'json' };
 import { AppointmentService, ConfigStore, GraphClient, Repository, SharePointSite } from '../packages/sharepoint/src/index.ts';
-import { appTokenProvider, readEnv } from './env.ts';
+import { appTokenProvider, clientCredentialsToken, readEnv } from './env.ts';
 
 const env = readEnv();
 const site = new SharePointSite(new GraphClient(appTokenProvider(env)), env.SHAREPOINT_ID);
@@ -143,6 +143,25 @@ try {
     await step('assets: unlisted keys are not public', async () => {
         assert((await get(`/assets/${tag}-intern.txt`)).status === 404, 'internal asset exposed');
         assert((await get('/assets/..%2F.env')).status === 404, 'traversal');
+    });
+
+    await step('daemon has list-level access only: non-granted library content is invisible', async () => {
+        const token = await clientCredentialsToken(env.DAEMON_CLIENT_ID, env.DAEMON_CLIENT_SECRET);
+        const daemonGet = (path: string) =>
+            fetch(`https://graph.microsoft.com/v1.0/sites/${env.SHAREPOINT_ID}${path}`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.status);
+        assert((await daemonGet('/lists/Config?$select=id')) === 200, 'granted list not readable');
+        // a file in the default library "Dokumente", which has no grant
+        const probe = `${tag}-probe.txt`;
+        await site.graph.request('PUT', `/sites/${env.SHAREPOINT_ID}/drive/root:/${probe}:/content`, {
+            raw: new Blob(['probe'], { type: 'text/plain' }),
+            headers: { 'Content-Type': 'text/plain' },
+        });
+        try {
+            const status = await daemonGet(`/drive/root:/${probe}:/content`);
+            assert(status === 404 || status === 403, `daemon can read the default library (${status})`);
+        } finally {
+            await site.graph.request('DELETE', `/sites/${env.SHAREPOINT_ID}/drive/root:/${probe}:`);
+        }
     });
 
     await step('server log contains no personal data', async () => {

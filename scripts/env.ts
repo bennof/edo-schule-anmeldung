@@ -35,3 +35,20 @@ export function appTokenProvider(env: Record<string, string>): () => Promise<str
         return cached.token;
     };
 }
+
+/** One-off client-credentials token for any app registration in the tenant (tests only). */
+export async function clientCredentialsToken(clientId: string, clientSecret: string): Promise<string> {
+    const env = readEnv();
+    const res = await fetch(`https://login.microsoftonline.com/${env.TENANT_ID}/oauth2/v2.0/token`, {
+        method: 'POST',
+        body: new URLSearchParams({
+            client_id: clientId,
+            client_secret: clientSecret,
+            grant_type: 'client_credentials',
+            scope: 'https://graph.microsoft.com/.default',
+        }),
+    });
+    const body = await res.json();
+    if (!body.access_token) throw new Error(`token request failed: ${body.error ?? res.status}`);
+    return body.access_token;
+}

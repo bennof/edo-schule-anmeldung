@@ -74,9 +74,10 @@ Sprint 4 – Vollständige Anmeldung (F5, F6, G4, G5, C5). Für C5 brauche ich d
 
 **Einwilligungstext (umgesetzt):** Config-Eintrag `consentText` (öffentlich). Die Provisionierung legt einen Platzhalter an, wenn er fehlt, und überschreibt nie einen vorhandenen Text. Die Public SPA zeigt den Eintrag an. Ist er leer, erscheint ein kurzer Standardsatz.
 
-**Daemon-Berechtigungen auf Listenebene (vorbereitet, Admin-Schritt offen):**
+**Daemon-Berechtigungen auf Listenebene (umgesetzt):**
 - Gesetzt (`node scripts/daemon-permissions.ts grant`): Config, Assets, Forms, Procedures = `read`; Appointments, Applications = `write`.
 - Der Rust-Server spricht Listen jetzt direkt über ihren Namen an und braucht keinen Lesezugriff mehr auf die ganze Site.
-- **Offen, nur durch Entra-Admin möglich:** Der App-Registrierung „Anmeldesystem Public Daemon“ die Anwendungsberechtigung **`Lists.SelectedOperations.Selected`** (Microsoft Graph) hinzufügen und Admin-Zustimmung erteilen.
-- Danach: `node scripts/daemon-permissions.ts revoke-site` → `pnpm test:integration`. Bei Problemen: `restore-site`. Anschließend kann `Sites.Selected` beim Daemon entfernt werden.
+- `Lists.SelectedOperations.Selected` wurde in Entra gesetzt und die Site-weite Schreibberechtigung entfernt (`revoke-site`). Der Server läuft nur mit Listenrechten, alle Integrationstests sind grün.
+- Test belegt: Der Daemon sieht zwar, welche Listen es gibt, aber keinen Inhalt nicht freigegebener Listen (Datei in „Dokumente“ → 404) und darf dort nicht schreiben.
+- Optional: `Sites.Selected` beim Daemon in Entra entfernen; es wird nicht mehr gebraucht. Rückweg bei Problemen: `restore-site`.
 - Einschränkung: Graph kennt nur `read`/`write`/`owner`. `write` auf Applications schließt Lesen ein. Damit der Daemon nur selbst angelegte Anmeldungen lesen kann, in SharePoint unter Applications → Listeneinstellungen → Erweiterte Einstellungen → *Berechtigungen auf Elementebene* „Nur eigene Elemente lesen“ setzen. Das geht per App-Secret nicht automatisiert (SharePoint-REST verlangt dafür ein Zertifikat).
