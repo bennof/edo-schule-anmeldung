@@ -1,0 +1,1 @@
+{ "formatVersion": 1, "sections": [{ "id": "a", "title": "A", "items": [{ "kind": "field", "id": "x", "type": "text", "label": "X" }] }] }

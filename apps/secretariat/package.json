@@ -1,0 +1,16 @@
+{
+  "name": "@anmeldung/secretariat",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "check": "svelte-check --tsconfig ./tsconfig.json"
+  },
+  "dependencies": {
+    "@anmeldung/domain": "workspace:*",
+    "@anmeldung/sharepoint": "workspace:*",
+    "@azure/msal-browser": "^4.0.0"
+  }
+}

@@ -1,0 +1,9 @@
+{ "formatVersion": 1, "title": "T",
+  "groups": {
+    "p": { "items": [{ "kind": "field", "id": "name", "type": "text", "label": "N" }] },
+    "q": { "items": [{ "kind": "field", "id": "name", "type": "text", "label": "N" }] }
+  },
+  "sections": [{ "id": "a", "title": "A", "items": [
+    { "kind": "group", "id": "eins", "group": "p", "label": "1" },
+    { "kind": "group", "id": "zwei", "group": "q", "label": "2", "copyFrom": ["eins"] }
+  ] }] }

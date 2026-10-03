@@ -1,0 +1,6 @@
+{ "formatVersion": 1, "title": "T",
+  "groups": { "s": { "items": [{ "kind": "field", "id": "name", "type": "text", "label": "N" }] } },
+  "sections": [{ "id": "a", "title": "A", "items": [
+    { "kind": "group", "id": "schulen", "group": "s", "label": "S", "repeat": {} },
+    { "kind": "field", "id": "x", "type": "text", "label": "X", "visibleIf": { "field": "/schulen/name", "filled": true } }
+  ] }] }

@@ -1,0 +1,6 @@
+{ "formatVersion": 1, "title": "T",
+  "groups": {
+    "p": { "items": [{ "kind": "group", "id": "inner", "group": "q", "label": "Q" }] },
+    "q": { "items": [{ "kind": "group", "id": "inner", "group": "p", "label": "P" }] }
+  },
+  "sections": [{ "id": "a", "title": "A", "items": [{ "kind": "group", "id": "g", "group": "p", "label": "G" }] }] }

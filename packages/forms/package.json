@@ -1,0 +1,17 @@
+{
+  "name": "@anmeldung/forms",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema.json": "./schema/form.schema.json"
+  },
+  "scripts": {
+    "check": "tsc -p .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1"
+  }
+}

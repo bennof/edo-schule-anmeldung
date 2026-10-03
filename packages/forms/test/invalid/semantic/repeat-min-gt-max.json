@@ -1,0 +1,3 @@
+{ "formatVersion": 1, "title": "T",
+  "groups": { "s": { "items": [{ "kind": "field", "id": "name", "type": "text", "label": "N" }] } },
+  "sections": [{ "id": "a", "title": "A", "items": [{ "kind": "group", "id": "g", "group": "s", "label": "G", "repeat": { "minItems": 3, "maxItems": 2 } }] }] }

@@ -1,0 +1,1 @@
+{ "formatVersion": 1, "title": "T", "sections": [{ "id": "a", "title": "A", "items": [{ "kind": "field", "id": "x", "type": "select", "label": "X", "options": [{ "value": "A" }] }] }] }
