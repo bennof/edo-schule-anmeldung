@@ -37,9 +37,9 @@ Gefunden und behoben: Ohne hochgeladenes Logo erzeugte jeder Seitenaufruf einen 
 ## Bitte prüfen / entscheiden
 
 1. **Texte im Schulformular:** Die Vorlage enthielt für die Einverständnisse nur Seriendruckfelder, nicht die Wortlaute. Formulierungen, Belehrungs-Zusammenfassungen und die Platzhalter (Klassenfahrt ca. 180 €) bitte von der Schule prüfen lassen. Auswahllisten (Religion, Religionsunterricht, Rollen, Förderschwerpunkte mit NRW-Kürzeln) ebenso.
-2. **Unterschrift vor SVWS-Übernahme:** Vorschlag für Sprint 5 (K5): ein Sekretariatsfeld „Anmeldebogen unterschrieben“ (Datum). `checked → ready_for_svws` ist erst danach möglich.
+2. ~~Unterschrift vor SVWS-Übernahme als Feld~~: entschieden, entfällt. Der unterschriebene Antrag auf Papier ist der Auslöser für die Übernahme; die Freigabe bleibt ein bewusster Schritt des Sekretariats.
 3. **Applications-Leserecht des Daemons:** Jetzt relevant, da der Server Anmeldungen anlegt. Empfehlung: In SharePoint unter Applications → Listeneinstellungen → Erweiterte Einstellungen die *Berechtigungen auf Elementebene* auf „Nur eigene Elemente lesen“ setzen. Das geht nur manuell. Der Server liest ohnehin nur Anmeldungen mit passendem Schlüssel.
-4. **Entwurf im Browser:** Der Formularentwurf liegt bis zum Absenden im `localStorage` des Geräts. Auf gemeinsam genutzten Geräten könnte das stören. Optionen: Knopf „Daten auf diesem Gerät löschen“, oder Fortsetzen über einen Link in der Bestätigungsmail (H1, Sprint 6).
+4. ~~Entwurf im Browser~~: umgesetzt als Häkchen „Eingaben auf diesem Gerät speichern, bis die Anmeldung abgeschickt ist“ (Buchungsbestätigung und oben im Formular). Standard ohne Häkchen: Daten nur im aktuellen Browser-Tab (überleben Neuladen, weg beim Schließen). Mit Häkchen: auf dem Gerät bis zum Absenden. Entfernen des Häkchens löscht sie sofort vom Gerät. Getestet im Browser-Test.
 
 ## Nächster Schritt
 

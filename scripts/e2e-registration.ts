@@ -64,7 +64,7 @@ try {
     ]);
     await appointments.publish(drafts.map((d) => d.id));
 
-    const pub = await browser.newPage();
+    const pub = await (await browser.newContext()).newPage();
     const pubProblems = watchConsole(pub);
     const openProcedure = async () => {
         await pub.goto(URLS.public);
@@ -134,6 +134,32 @@ try {
         }
     });
 
+    const deviceKeys = (p: Page) => p.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('anmeldung.')));
+    const keep = (p: Page) => p.getByRole('checkbox', { name: /Eingaben auf diesem Gerät speichern/ });
+
+    await step('default: nothing stored on the device, a new tab starts fresh', async () => {
+        await pub.waitForTimeout(700);
+        assert(!(await keep(pub).isChecked()), 'keep option ticked by default');
+        assert((await deviceKeys(pub)).length === 0, 'data in localStorage without consent');
+        const tab = await pub.context().newPage();
+        await tab.goto(URLS.public);
+        await tab.getByRole('heading', { name: /Termin wählen|Bitte wählen Sie das Anmeldeverfahren/ }).waitFor({ timeout: 15000 });
+        assert(!(await tab.getByRole('heading', { name: 'Willkommen zurück' }).isVisible()), 'new tab resumed');
+        await tab.close();
+    });
+
+    await step('ticked: kept on the device, a new tab resumes; unticked: removed', async () => {
+        await keep(pub).check();
+        assert((await deviceKeys(pub)).sort().join() === 'anmeldung.draft.v1,anmeldung.session.v1', `keys ${await deviceKeys(pub)}`);
+        const tab = await pub.context().newPage();
+        await tab.goto(URLS.public);
+        await tab.getByRole('heading', { name: 'Willkommen zurück' }).waitFor({ timeout: 20000 });
+        assert(await keep(tab).isChecked(), 'option not remembered');
+        await tab.close();
+        await keep(pub).uncheck();
+        assert((await deviceKeys(pub)).length === 0, 'device data not removed');
+    });
+
     await step('reload keeps the draft and resumes at the form', async () => {
         await pub.waitForTimeout(700); // draft is saved with a short debounce
         await pub.reload();
@@ -155,8 +181,10 @@ try {
         await field(pub, 'kenntnisDatenschutz').getByRole('checkbox').check();
         await pub.getByRole('button', { name: 'Anmeldung absenden' }).click();
         await pub.getByRole('heading', { name: /Vielen Dank/ }).waitFor({ timeout: 20000 });
-        const stored = await pub.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('anmeldung.')));
-        assert(stored.length === 0, `left in localStorage: ${stored}`);
+        const stored = await pub.evaluate(() =>
+            [...Object.keys(localStorage), ...Object.keys(sessionStorage)].filter((k) => k.startsWith('anmeldung.')),
+        );
+        assert(stored.length === 0, `left in storage: ${stored}`);
     });
 
     let appId = '';

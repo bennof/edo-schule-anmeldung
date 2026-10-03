@@ -35,6 +35,7 @@
     let form: FormJson | undefined = $state();
     let data: FormData = $state({});
     let submitAttempted = $state(false);
+    let keepOnDevice = $state(session.isPersistent());
 
     const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const contactValid = $derived(name.trim().length >= 2 && EMAIL.test(email.trim()) && consent);
@@ -45,7 +46,8 @@
         if (step !== 'form' || !current) return;
         const json = JSON.stringify(data);
         const id = current.applicationId;
-        const timer = setTimeout(() => session.saveDraft(id, JSON.parse(json)), 400);
+        const persistent = keepOnDevice;
+        const timer = setTimeout(() => session.saveDraft(id, JSON.parse(json), persistent), 400);
         return () => clearTimeout(timer);
     });
 
@@ -75,7 +77,7 @@
             const booking = await api.book(selected.id, name.trim(), email.trim());
             if (booking.applicationId && booking.token) {
                 current = { applicationId: booking.applicationId, token: booking.token, procedureId: booking.procedureId, datetime: booking.datetime };
-                session.save(current);
+                session.save(current, keepOnDevice);
             } else {
                 error = 'Ihr Termin ist gebucht, das Formular konnte aber nicht vorbereitet werden. Bitte wenden Sie sich an das Sekretariat.';
             }
@@ -148,10 +150,24 @@
         return e instanceof Error ? e.message : String(e);
     }
 
+    function toggleKeep(): void {
+        session.setPersistent(keepOnDevice);
+    }
+
     const when = (datetime: string) => `${formatDay(datetime.slice(0, 10))}, ${datetime.slice(11)} Uhr`;
 
     if (!resumed) loadSlots();
 </script>
+
+{#snippet keepOption()}
+    <label class="keep">
+        <input type="checkbox" bind:checked={keepOnDevice} onchange={toggleKeep} />
+        <span>
+            Eingaben auf diesem Gerät speichern, bis die Anmeldung abgeschickt ist.
+            <small>Nicht an gemeinsam genutzten Geräten verwenden. Ohne Häkchen bleiben die Eingaben nur erhalten, solange dieser Browser-Tab geöffnet ist.</small>
+        </span>
+    </label>
+{/snippet}
 
 {#if error}<p class="error" role="alert">{error}</p>{/if}
 
@@ -176,7 +192,8 @@
     <h2>{resumed ? 'Willkommen zurück' : 'Ihr Termin ist gebucht'}</h2>
     {#if current}
         <p class="chosen"><strong>{when(current.datetime)}</strong></p>
-        <p>Bitte füllen Sie jetzt das Anmeldeformular aus. Ihre Eingaben werden auf diesem Gerät zwischengespeichert.</p>
+        <p>Bitte füllen Sie jetzt das Anmeldeformular aus.</p>
+        {@render keepOption()}
         <button onclick={openForm} disabled={busy}>{resumed ? 'Anmeldeformular fortsetzen' : 'Weiter zum Anmeldeformular'}</button>
     {:else if selected}
         <p class="chosen"><strong>{when(selected.datetime)}</strong></p>
@@ -184,6 +201,7 @@
 {:else if step === 'form' && form && current}
     <h2>{form.title}</h2>
     <p class="chosen">Ihr Termin: {when(current.datetime)}</p>
+    {@render keepOption()}
     <form onsubmit={submit} novalidate>
         <FormRenderer {form} {data} showAllErrors={submitAttempted} {loadOptions} />
         {#if submitAttempted && formErrors.length}
@@ -217,5 +235,18 @@
     }
     .chosen {
         font-size: 1.1rem;
+    }
+    .keep {
+        display: flex;
+        gap: 0.5rem;
+        align-items: start;
+        background: #f4f6fa;
+        padding: 0.6rem 0.8rem;
+        border-radius: 4px;
+        margin: 0.75rem 0 1rem;
+    }
+    .keep small {
+        display: block;
+        color: #555;
     }
 </style>
