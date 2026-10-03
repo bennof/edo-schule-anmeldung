@@ -66,10 +66,7 @@ impl Graph {
         {
             return Ok(token.clone());
         }
-        let url = format!(
-            "https://login.microsoftonline.com/{}/oauth2/v2.0/token",
-            self.tenant_id
-        );
+        let url = format!("https://login.microsoftonline.com/{}/oauth2/v2.0/token", self.tenant_id);
         let mut res = self
             .agent
             .post(&url)
@@ -80,24 +77,13 @@ impl Graph {
                 ("scope", "https://graph.microsoft.com/.default"),
             ])
             .map_err(|e| format!("token request failed: {e}"))?;
-        let body: Value = res
-            .body_mut()
-            .read_json()
-            .map_err(|e| format!("token response: {e}"))?;
+        let body: Value = res.body_mut().read_json().map_err(|e| format!("token response: {e}"))?;
         let token = body["access_token"]
             .as_str()
-            .ok_or_else(|| {
-                format!(
-                    "token request failed: {}",
-                    body["error"].as_str().unwrap_or("unknown")
-                )
-            })?
+            .ok_or_else(|| format!("token request failed: {}", body["error"].as_str().unwrap_or("unknown")))?
             .to_string();
         let lifetime = body["expires_in"].as_u64().unwrap_or(3600);
-        *cached = Some((
-            token.clone(),
-            Instant::now() + Duration::from_secs(lifetime),
-        ));
+        *cached = Some((token.clone(), Instant::now() + Duration::from_secs(lifetime)));
         Ok(token)
     }
 
@@ -114,11 +100,7 @@ impl Graph {
             let bearer = format!("Bearer {}", self.token()?);
             let result = match (method, body) {
                 ("GET", _) => self.agent.get(&url).header("Authorization", &bearer).call(),
-                ("DELETE", _) => self
-                    .agent
-                    .delete(&url)
-                    .header("Authorization", &bearer)
-                    .call(),
+                ("DELETE", _) => self.agent.delete(&url).header("Authorization", &bearer).call(),
                 ("PATCH", Some(b)) => {
                     let mut req = self.agent.patch(&url).header("Authorization", &bearer);
                     if let Some(etag) = if_match {
@@ -126,11 +108,7 @@ impl Graph {
                     }
                     req.send_json(b)
                 }
-                ("POST", Some(b)) => self
-                    .agent
-                    .post(&url)
-                    .header("Authorization", &bearer)
-                    .send_json(b),
+                ("POST", Some(b)) => self.agent.post(&url).header("Authorization", &bearer).send_json(b),
                 _ => return Err(format!("unsupported request {method}")),
             };
             let mut res = result.map_err(|e| format!("Graph request failed: {e}"))?;

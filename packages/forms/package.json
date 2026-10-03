@@ -7,11 +7,14 @@
     ".": "./src/index.ts",
     "./schema.json": "./schema/form.schema.json",
     "./validate": "./src/validate-definition.ts",
-    "./examples/test-form.json": "./examples/test-form.json"
+    "./examples/test-form.json": "./examples/test-form.json",
+    "./examples/anmeldung-klasse5.json": "./examples/anmeldung-klasse5.json",
+    "./catalogs/*": "./catalogs/*"
   },
   "scripts": {
     "check": "tsc -p .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "catalogs": "node scripts/generate-catalogs.ts"
   },
   "dependencies": {
     "ajv": "^8.17.1"

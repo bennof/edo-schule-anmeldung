@@ -41,6 +41,8 @@ export interface FieldItem {
     label: string;
     help?: string;
     required?: boolean;
+    /** boolean only: must be true (acknowledgement checkbox) */
+    mustAccept?: true;
     requiredIf?: Condition;
     visibleIf?: Condition;
     minLength?: number;

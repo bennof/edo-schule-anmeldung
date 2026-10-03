@@ -126,6 +126,9 @@ describe('validation', () => {
         expect(validateField(f({ type: 'year' }), 99, s)?.code).toBe('invalid');
         expect(validateField(f({ type: 'integer' }), 1.5, s)?.code).toBe('invalid');
         expect(validateField(f({ type: 'boolean', required: true }), false, s)).toBeUndefined();
+        expect(validateField(f({ type: 'boolean', mustAccept: true }), false, s)?.code).toBe('required');
+        expect(validateField(f({ type: 'boolean', mustAccept: true }), undefined, s)?.code).toBe('required');
+        expect(validateField(f({ type: 'boolean', mustAccept: true }), true, s)).toBeUndefined();
         expect(validateField(f({ type: 'text', maxLength: 3 }), 'abcd', s)?.code).toBe('maxLength');
         const options = [
             { key: 'a', value: 'A' },

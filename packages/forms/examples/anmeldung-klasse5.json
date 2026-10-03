@@ -1,0 +1,334 @@
+{
+  "formatVersion": 1,
+  "title": "Anmeldung Klasse 5 – Schuljahr 2026/27",
+  "groups": {
+    "adresse": {
+      "items": [
+        { "kind": "field", "id": "strasse", "type": "text", "label": "Straße, Hausnummer", "required": true, "maxLength": 100 },
+        { "kind": "field", "id": "plz", "type": "text", "label": "PLZ", "required": true, "pattern": "^\\d{5}$" },
+        { "kind": "field", "id": "ort", "type": "text", "label": "Wohnort", "required": true, "maxLength": 80 },
+        { "kind": "field", "id": "ortsteil", "type": "text", "label": "Ortsteil", "maxLength": 80 }
+      ]
+    },
+    "schule": {
+      "items": [
+        { "kind": "field", "id": "name", "type": "text", "label": "Name der Schule", "required": true, "maxLength": 120 },
+        { "kind": "field", "id": "plz", "type": "text", "label": "PLZ", "pattern": "^\\d{5}$" },
+        { "kind": "field", "id": "ort", "type": "text", "label": "Ort", "required": true, "maxLength": 80 }
+      ]
+    },
+    "schulbesuch": {
+      "items": [
+        { "kind": "group", "id": "schule", "group": "schule", "label": "Schule" },
+        { "kind": "field", "id": "von", "type": "year", "label": "Von (Jahr)", "required": true, "min": 2010, "max": 2030 },
+        { "kind": "field", "id": "bis", "type": "year", "label": "Bis (Jahr)", "min": 2010, "max": 2030, "help": "Leer lassen, wenn Ihr Kind die Schule zurzeit besucht." }
+      ]
+    },
+    "erziehungsberechtigter": {
+      "items": [
+        {
+          "kind": "field",
+          "id": "rolle",
+          "type": "select",
+          "label": "Rolle",
+          "required": true,
+          "options": [
+            { "key": "mutter", "value": "Mutter" },
+            { "key": "vater", "value": "Vater" },
+            { "key": "pflegemutter", "value": "Pflegemutter" },
+            { "key": "pflegevater", "value": "Pflegevater" },
+            { "key": "vormund", "value": "Vormund" },
+            { "key": "sonstige", "value": "Sonstige erziehungsberechtigte Person" }
+          ]
+        },
+        { "kind": "field", "id": "nachname", "type": "text", "label": "Nachname", "required": true, "maxLength": 80 },
+        { "kind": "field", "id": "vorname", "type": "text", "label": "Vorname", "required": true, "maxLength": 80 },
+        { "kind": "field", "id": "abweichendeAdresse", "type": "boolean", "label": "Wohnt diese Person an einer anderen Adresse als das Kind?", "required": true },
+        { "kind": "group", "id": "adresse", "group": "adresse", "label": "Adresse", "visibleIf": { "field": "abweichendeAdresse", "equals": true } },
+        { "kind": "field", "id": "geburtsland", "type": "searchselect", "label": "Geburtsland", "optionsSource": "laender.json" },
+        { "kind": "field", "id": "telefonFestnetz", "type": "phone", "label": "Telefon Festnetz" },
+        {
+          "kind": "field",
+          "id": "telefonMobil",
+          "type": "phone",
+          "label": "Telefon mobil",
+          "requiredIf": { "field": "telefonFestnetz", "filled": false },
+          "help": "Mindestens eine Telefonnummer ist erforderlich."
+        },
+        { "kind": "field", "id": "email", "type": "email", "label": "E-Mail" }
+      ]
+    },
+    "notfallkontakt": {
+      "items": [
+        { "kind": "field", "id": "name", "type": "text", "label": "Name", "required": true, "maxLength": 100 },
+        { "kind": "field", "id": "beziehung", "type": "text", "label": "Beziehung zum Kind", "help": "z. B. Großmutter, Nachbarin", "maxLength": 60 },
+        { "kind": "field", "id": "telefon", "type": "phone", "label": "Telefon", "required": true }
+      ]
+    }
+  },
+  "sections": [
+    {
+      "id": "schueler",
+      "title": "1. Personalien Schülerin / Schüler",
+      "items": [
+        { "kind": "field", "id": "nachname", "type": "text", "label": "Name", "required": true, "maxLength": 80 },
+        { "kind": "field", "id": "vorname", "type": "text", "label": "Vorname", "required": true, "maxLength": 80 },
+        { "kind": "field", "id": "rufname", "type": "text", "label": "Rufname (optional)", "maxLength": 80 },
+        {
+          "kind": "field",
+          "id": "geschlecht",
+          "type": "select",
+          "label": "Geschlecht",
+          "required": true,
+          "options": [
+            { "key": "w", "value": "weiblich" },
+            { "key": "m", "value": "männlich" },
+            { "key": "d", "value": "divers" },
+            { "key": "x", "value": "ohne Angabe" }
+          ]
+        },
+        { "kind": "group", "id": "adresse", "group": "adresse", "label": "Wohnadresse" },
+        { "kind": "field", "id": "geburtsdatum", "type": "date", "label": "Geburtsdatum", "required": true, "min": "2010-01-01", "max": "2020-12-31" },
+        { "kind": "field", "id": "geburtsort", "type": "text", "label": "Geburtsort", "required": true, "maxLength": 80 },
+        { "kind": "field", "id": "geburtsland", "type": "searchselect", "label": "Geburtsland", "required": true, "optionsSource": "laender.json" },
+        {
+          "kind": "field",
+          "id": "zuzugsdatum",
+          "type": "date",
+          "label": "Seit wann lebt Ihr Kind in Deutschland?",
+          "visibleIf": { "field": "geburtsland", "notEquals": "DE" },
+          "help": "Datum des Zuzugs, ungefähr genügt."
+        },
+        { "kind": "field", "id": "herkunftssprache", "type": "searchselect", "label": "Herkunftssprache (in der Familie gesprochen)", "required": true, "optionsSource": "sprachen.json" },
+        { "kind": "field", "id": "staatsangehoerigkeit", "type": "searchselect", "label": "Nationalität", "required": true, "optionsSource": "staatsangehoerigkeiten.json" },
+        {
+          "kind": "field",
+          "id": "religion",
+          "type": "select",
+          "label": "Religionsbekenntnis",
+          "required": true,
+          "options": [
+            { "key": "rk", "value": "römisch-katholisch" },
+            { "key": "ev", "value": "evangelisch" },
+            { "key": "orth", "value": "orthodox" },
+            { "key": "isl", "value": "islamisch" },
+            { "key": "alevit", "value": "alevitisch" },
+            { "key": "jued", "value": "jüdisch" },
+            { "key": "sonst", "value": "andere Religion" },
+            { "key": "keine", "value": "ohne Bekenntnis" }
+          ]
+        },
+        {
+          "kind": "field",
+          "id": "religionsunterricht",
+          "type": "select",
+          "label": "Mein Kind soll an folgendem verpflichtenden regulären Unterricht teilnehmen",
+          "required": true,
+          "help": "Ein Wechsel ist nur zum Ende eines Schuljahres möglich.",
+          "options": [
+            { "key": "kr", "value": "Katholische Religionslehre" },
+            { "key": "er", "value": "Evangelische Religionslehre" },
+            { "key": "ppz", "value": "Praktische Philosophie" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "schullaufbahn",
+      "title": "2. Bisherige Schullaufbahn",
+      "items": [
+        { "kind": "field", "id": "einschulungJahr", "type": "year", "label": "Wann wurde Ihr Kind eingeschult? (Jahr)", "required": true, "min": 2015, "max": 2026 },
+        { "kind": "group", "id": "einschulungSchule", "group": "schule", "label": "Grundschule bei der Einschulung" },
+        { "kind": "field", "id": "wiederholung", "type": "boolean", "label": "Hat Ihr Kind ein Schuljahr wiederholt?", "required": true },
+        {
+          "kind": "field",
+          "id": "wiederholteKlassen",
+          "type": "multiselect",
+          "label": "Welche Klasse wurde wiederholt?",
+          "visibleIf": { "field": "wiederholung", "equals": true },
+          "requiredIf": { "field": "wiederholung", "equals": true },
+          "options": [
+            { "key": "1", "value": "Klasse 1" },
+            { "key": "2", "value": "Klasse 2" },
+            { "key": "3", "value": "Klasse 3" },
+            { "key": "4", "value": "Klasse 4" }
+          ]
+        },
+        { "kind": "field", "id": "schulwechsel", "type": "boolean", "label": "Hat Ihr Kind die Grundschule gewechselt?", "required": true },
+        {
+          "kind": "group",
+          "id": "weitereSchulen",
+          "group": "schulbesuch",
+          "label": "Weitere Grundschulen (zuletzt besuchte zuerst)",
+          "visibleIf": { "field": "schulwechsel", "equals": true },
+          "repeat": { "minItems": 1, "maxItems": 4, "itemLabel": "Grundschule" }
+        }
+      ]
+    },
+    {
+      "id": "foerderung",
+      "title": "3. Förderbedarf",
+      "items": [
+        {
+          "kind": "field",
+          "id": "foerderbedarf",
+          "type": "boolean",
+          "label": "Besteht bei Ihrem Kind sonderpädagogischer Förderbedarf?",
+          "required": true,
+          "help": "z. B. Hören, Sehen, Lernen, Sprache, körperlich-motorische oder emotional-soziale Entwicklung"
+        },
+        {
+          "kind": "field",
+          "id": "foerderschwerpunkte",
+          "type": "multiselect",
+          "label": "Förderschwerpunkt(e)",
+          "visibleIf": { "field": "foerderbedarf", "equals": true },
+          "requiredIf": { "field": "foerderbedarf", "equals": true },
+          "maxItems": 2,
+          "options": [
+            { "key": "HK", "value": "Hören und Kommunikation" },
+            { "key": "SE", "value": "Sehen" },
+            { "key": "LE", "value": "Lernen" },
+            { "key": "SQ", "value": "Sprache" },
+            { "key": "KM", "value": "Körperliche und motorische Entwicklung" },
+            { "key": "ES", "value": "Emotionale und soziale Entwicklung" },
+            { "key": "GG", "value": "Geistige Entwicklung" }
+          ]
+        },
+        {
+          "kind": "field",
+          "id": "hilfsmittel",
+          "type": "text",
+          "label": "Sind besondere Hilfsmittel erforderlich (Schulbegleitung etc.)? Wenn ja, welche?",
+          "visibleIf": { "field": "foerderbedarf", "equals": true },
+          "maxLength": 500
+        },
+        {
+          "kind": "field",
+          "id": "oepnv",
+          "type": "boolean",
+          "label": "Kann Ihr Kind öffentliche Verkehrsmittel nutzen?",
+          "visibleIf": { "field": "foerderbedarf", "equals": true },
+          "requiredIf": { "field": "foerderbedarf", "equals": true }
+        },
+        { "kind": "field", "id": "schwerbehinderung", "type": "boolean", "label": "Besteht eine Schwerbehinderung?", "required": true },
+        { "kind": "field", "id": "lrs", "type": "boolean", "label": "Besteht eine attestierte Lese-Rechtschreib-Schwäche (LRS)?", "required": true },
+        { "kind": "field", "id": "autismus", "type": "boolean", "label": "Besteht eine attestierte Autismus-Spektrum-Störung?", "required": true }
+      ]
+    },
+    {
+      "id": "eltern",
+      "title": "4. Personalien Eltern / Erziehungsberechtigte",
+      "items": [
+        { "kind": "group", "id": "erziehungsberechtigter1", "group": "erziehungsberechtigter", "label": "1. Erziehungsberechtigte Person" },
+        { "kind": "field", "id": "zweiterErziehungsberechtigter", "type": "boolean", "label": "Möchten Sie eine zweite erziehungsberechtigte Person angeben?", "required": true },
+        {
+          "kind": "group",
+          "id": "erziehungsberechtigter2",
+          "group": "erziehungsberechtigter",
+          "label": "2. Erziehungsberechtigte Person",
+          "visibleIf": { "field": "zweiterErziehungsberechtigter", "equals": true },
+          "copyFrom": ["erziehungsberechtigter1"]
+        },
+        { "kind": "field", "id": "sorgerechtGemeinsam", "type": "boolean", "label": "Sind beide Elternteile erziehungsberechtigt?", "required": true }
+      ]
+    },
+    {
+      "id": "erreichbarkeit",
+      "title": "5. Erreichbarkeit im Notfall",
+      "description": "Erkrankt Ihr Kind während der Schulzeit, muss es abgeholt werden und darf nicht allein nach Hause gehen. Bitte geben Sie zusätzlich zu den Telefonnummern der Erziehungsberechtigten weitere Personen an, die im Notfall erreichbar sind. Die Nummern werden vertraulich behandelt.",
+      "items": [
+        {
+          "kind": "group",
+          "id": "notfallkontakte",
+          "group": "notfallkontakt",
+          "label": "Weitere Notfallkontakte",
+          "repeat": { "minItems": 0, "maxItems": 4, "itemLabel": "Notfallkontakt" }
+        }
+      ]
+    },
+    {
+      "id": "klassenwunsch",
+      "title": "6. Wünsche zur Klassenzusammensetzung",
+      "description": "Wir bemühen uns, Wünsche zu berücksichtigen, können dies aber nicht garantieren.",
+      "items": [
+        { "kind": "field", "id": "mitschuelerWunsch", "type": "text", "label": "Mit welcher Mitschülerin / welchem Mitschüler möchte Ihr Kind in eine Klasse? (nur EIN Name)", "maxLength": 100 },
+        { "kind": "field", "id": "mitschuelerNichtWunsch", "type": "text", "label": "Mit wem soll Ihr Kind auf keinen Fall in eine Klasse?", "maxLength": 200 }
+      ]
+    },
+    {
+      "id": "einverstaendnis",
+      "title": "7. Einverständniserklärungen",
+      "items": [
+        {
+          "kind": "field",
+          "id": "zustimmungBilder",
+          "type": "boolean",
+          "label": "Sind Sie einverstanden, dass Bilder Ihres Kindes aus dem Schulleben veröffentlicht werden (z. B. Homepage, Jahrbuch, Presse)?",
+          "required": true,
+          "help": "Die Einwilligung kann jederzeit widerrufen werden."
+        },
+        {
+          "kind": "field",
+          "id": "zustimmungUnterrichtsausfall",
+          "type": "boolean",
+          "label": "Darf Ihr Kind bei kurzfristigem Unterrichtsausfall vorzeitig nach Hause entlassen werden?",
+          "required": true
+        },
+        {
+          "kind": "field",
+          "id": "zustimmungZecke",
+          "type": "boolean",
+          "label": "Sind Sie einverstanden, dass eine Zecke bei Ihrem Kind in der Schule entfernt wird?",
+          "required": true,
+          "help": "Je früher eine Zecke entfernt wird, desto geringer ist das Risiko einer Erkrankung. Dafür benötigen wir Ihr Einverständnis."
+        }
+      ]
+    },
+    {
+      "id": "kenntnisnahmen",
+      "title": "8. Kenntnisnahmen",
+      "description": "Die vollständigen Informationsschreiben liegen im Sekretariat aus und stehen auf unserer Homepage. Der ausgedruckte Anmeldebogen wird beim Anmeldegespräch von den Erziehungsberechtigten unterschrieben.",
+      "items": [
+        {
+          "kind": "field",
+          "id": "kenntnisVeraenderungen",
+          "type": "boolean",
+          "mustAccept": true,
+          "label": "Wir verpflichten uns, alle für die Schule wichtigen Änderungen (Adresse, Telefonnummern, Sorgerecht usw.) umgehend mitzuteilen.",
+          "help": "Formular „Veränderungsmitteilung“ auf der Homepage."
+        },
+        {
+          "kind": "field",
+          "id": "kenntnisKlassenfahrt",
+          "type": "boolean",
+          "mustAccept": true,
+          "label": "Wir haben zur Kenntnis genommen, dass die Klassenfahrt der 5. Klassen eine verpflichtende Schulveranstaltung ist, und zahlen die Kosten fristgerecht.",
+          "help": "Termin und Kosten (Platzhalter: ca. 180 €) werden mit der Elterninformation bekanntgegeben. Anträge auf Bildung und Teilhabe sind möglich."
+        },
+        {
+          "kind": "field",
+          "id": "kenntnisDatenschutz",
+          "type": "boolean",
+          "mustAccept": true,
+          "label": "Wir haben die Informationen zur Verarbeitung personenbezogener Daten (Art. 13 DS-GVO) zur Kenntnis genommen."
+        },
+        {
+          "kind": "field",
+          "id": "kenntnisKrankmeldung",
+          "type": "boolean",
+          "mustAccept": true,
+          "label": "Wir haben die Hinweise zu Krankmeldungen und Beurlaubungen zur Kenntnis genommen.",
+          "help": "Krankmeldung am selben Tag bis 8:00 Uhr telefonisch oder per App; schriftliche Entschuldigung nach der Genesung; vor und nach den Ferien ärztliches Attest; Beurlaubungen rechtzeitig schriftlich beantragen."
+        },
+        {
+          "kind": "field",
+          "id": "kenntnisInfektionsschutz",
+          "type": "boolean",
+          "mustAccept": true,
+          "label": "Wir haben die Belehrung für Eltern und Sorgeberechtigte gemäß § 34 Abs. 5 Infektionsschutzgesetz erhalten und zur Kenntnis genommen."
+        }
+      ]
+    }
+  ]
+}

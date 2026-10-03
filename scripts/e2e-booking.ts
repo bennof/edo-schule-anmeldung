@@ -160,25 +160,34 @@ try {
         const [a] = booked;
         assert(a.datetime === `${slotDay}T08:00` && a.nameCustomer === 'Eva Testfamilie' && a.emailCustomer === 'eva@example.org', 'data');
         assert(a.requestTime && Date.now() - Date.parse(a.requestTime) < 120000, `requestTime ${a.requestTime}`);
+        assert(a.applicationId, 'no application linked (F5)');
     });
 
     await step('two families pick the last 08:00 slot: one wins, the other is told', async () => {
-        const other = await browser.newPage();
-        await openProcedure();
+        // separate browser contexts = two devices without a stored booking
+        const first = await (await browser.newContext()).newPage();
+        const other = await (await browser.newContext()).newPage();
+        await openProcedure(first);
         await openProcedure(other);
-        for (const p of [pub, other]) {
+        for (const p of [first, other]) {
             await p.getByRole('button', { name: '08:00 Uhr' }).click();
             await p.getByLabel('Name (sorgeberechtigte Person)', { exact: true }).fill('Familie Parallel');
             await p.getByLabel('E-Mail-Adresse', { exact: true }).fill('parallel@example.org');
             await p.getByRole('checkbox').check();
         }
-        await pub.getByRole('button', { name: 'Termin verbindlich buchen' }).click();
-        await pub.getByRole('heading', { name: 'Ihr Termin ist gebucht' }).waitFor({ timeout: 20000 });
+        await first.getByRole('button', { name: 'Termin verbindlich buchen' }).click();
+        await first.getByRole('heading', { name: 'Ihr Termin ist gebucht' }).waitFor({ timeout: 20000 });
         await other.getByRole('button', { name: 'Termin verbindlich buchen' }).click();
         await other.getByText('Dieser Termin wurde gerade vergeben').waitFor({ timeout: 20000 });
         const times = await other.locator('.times button').allTextContents();
         assert(!times.includes('08:00 Uhr'), `08:00 still offered: ${times}`);
-        await other.close();
+        await first.context().close();
+        await other.context().close();
+    });
+
+    await step('the first device resumes its booking after reload', async () => {
+        await pub.goto(URLS.public);
+        await pub.getByRole('heading', { name: 'Willkommen zurück' }).waitFor({ timeout: 20000 });
     });
 
     await step('secretariat sees the bookings', async () => {
@@ -198,6 +207,8 @@ try {
     stopSecretariat();
     stopPublic();
     server.kill();
+    const apps = await site.listItems('applications', `fields/ProcedureId eq '${procedure.id}'`).catch(() => []);
+    if (apps.length) await site.deleteItems('applications', apps.map((a) => a.id)).catch(() => {});
     const list = await appointments.listForProcedure(procedure.id).catch(() => []);
     if (list.length) await site.deleteItems('appointments', list.map((a) => a.id)).catch(() => {});
     await procedures.delete(procedure.id).catch(() => {});

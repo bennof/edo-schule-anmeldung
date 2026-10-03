@@ -4,7 +4,7 @@
     import type { Application, FormDefinition, Procedure } from '@anmeldung/domain';
     import { FormRenderer } from '@anmeldung/form-ui';
     import { normalizeData, type FormData, type FormJson } from '@anmeldung/forms';
-    import { applications, errorText, forms, procedures } from '../services.ts';
+    import { applications, errorText, forms, loadOptions, procedures } from '../services.ts';
 
     let list: Application[] = $state([]);
     let procedureList: Procedure[] = $state([]);
@@ -86,11 +86,12 @@
             </button>
             <h2>Anmeldung {current.app.id} · {procedureTitle(current.app.procedureId)}</h2>
             <span class="state">Status: {current.app.state}</span>
+            {#if current.app.submittedAt}<span class="muted">abgeschickt {new Date(current.app.submittedAt).toLocaleString('de-DE')}</span>{/if}
             <button onclick={save} disabled={busy || !dirty}>Speichern</button>
             {#if dirty}<span class="muted">Ungespeicherte Änderungen</span>{:else if message}<span>{message}</span>{/if}
         </header>
         {#key current.app.id}
-            <FormRenderer form={current.form} {data} mode="secretariat" />
+            <FormRenderer form={current.form} {data} mode="secretariat" {loadOptions} />
         {/key}
     </section>
 {:else}

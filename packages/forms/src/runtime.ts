@@ -117,7 +117,11 @@ export function isVisible(item: { visibleIf?: Condition }, scope: Scope): boolea
 }
 
 export function isRequired(field: FieldItem, scope: Scope): boolean {
-    return field.required === true || (field.requiredIf !== undefined && evaluateCondition(field.requiredIf, scope));
+    return (
+        field.required === true ||
+        field.mustAccept === true ||
+        (field.requiredIf !== undefined && evaluateCondition(field.requiredIf, scope))
+    );
 }
 
 // --- validation ---
@@ -200,7 +204,9 @@ export function validateField(field: FieldItem, value: unknown, scope: Scope): F
             return undefined;
         }
         case 'boolean':
-            return typeof value === 'boolean' ? undefined : invalid('Ungültiger Wert');
+            if (typeof value !== 'boolean') return invalid('Ungültiger Wert');
+            if (field.mustAccept && value !== true) return { code: 'required', message: 'Bitte bestätigen' };
+            return undefined;
         case 'select':
         case 'searchselect':
             if (typeof value !== 'string') return invalid('Ungültiger Wert');

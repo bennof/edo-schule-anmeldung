@@ -1,43 +1,60 @@
-<!-- Public registration flow: appointment -> contact data -> booking -> form
-     (backlog G2-G4). Submission of the form follows in Sprint 4. -->
+<!-- Public registration flow (backlog G2-G5): appointment -> contact data ->
+     booking -> form -> submission. A stored session resumes at the form. -->
 <script lang="ts">
     import { FormRenderer } from '@anmeldung/form-ui';
-    import { initialData, type FormData, type FormJson } from '@anmeldung/forms';
-    import { api, ApiError, formatDay, type Booking, type PublicProcedure, type Slot } from './api.ts';
+    import { normalizeData, validateForm, withoutHidden, type FormData, type FormJson } from '@anmeldung/forms';
+    import { api, ApiError, formatDay, loadOptions, type PublicProcedure, type Slot } from './api.ts';
+    import { session, type Session } from './session.ts';
     import SlotPicker from './SlotPicker.svelte';
+    import { untrack } from 'svelte';
 
     interface Props {
         procedure: PublicProcedure;
         /** from the public config entry `consentText` */
         consentText?: string;
+        /** continue a booking made earlier on this device */
+        resume?: Session;
     }
 
-    let { procedure, consentText }: Props = $props();
+    let { procedure, consentText, resume }: Props = $props();
+    // the session only sets the starting point; the component is keyed per procedure
+    const resumed = untrack(() => resume);
     const FALLBACK_CONSENT = 'Ich bin einverstanden, dass meine Angaben zur Terminvergabe gespeichert werden.';
 
-    type Step = 'slots' | 'contact' | 'booked' | 'form';
-    let step: Step = $state('slots');
+    type Step = 'slots' | 'contact' | 'booked' | 'form' | 'submitted';
+    let step: Step = $state(resumed ? 'booked' : 'slots');
+    let current: Session | undefined = $state(resumed);
     let slots: Slot[] = $state([]);
-    let loading = $state(true);
+    let loading = $state(!resumed);
     let selected: Slot | undefined = $state();
     let name = $state('');
     let email = $state('');
     let consent = $state(false);
     let error = $state('');
     let busy = $state(false);
-    let booking: Booking | undefined = $state();
     let form: FormJson | undefined = $state();
     let data: FormData = $state({});
+    let submitAttempted = $state(false);
 
     const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const contactValid = $derived(name.trim().length >= 2 && EMAIL.test(email.trim()) && consent);
+    const formErrors = $derived(form ? validateForm(form, data) : []);
+
+    // keep a local draft while the form is filled in
+    $effect(() => {
+        if (step !== 'form' || !current) return;
+        const json = JSON.stringify(data);
+        const id = current.applicationId;
+        const timer = setTimeout(() => session.saveDraft(id, JSON.parse(json)), 400);
+        return () => clearTimeout(timer);
+    });
 
     async function loadSlots(): Promise<void> {
         loading = true;
         try {
             slots = await api.slots(procedure.id);
         } catch (e) {
-            error = e instanceof Error ? e.message : String(e);
+            error = message(e);
         } finally {
             loading = false;
         }
@@ -55,17 +72,22 @@
         busy = true;
         error = '';
         try {
-            booking = await api.book(selected.id, name.trim(), email.trim());
+            const booking = await api.book(selected.id, name.trim(), email.trim());
+            if (booking.applicationId && booking.token) {
+                current = { applicationId: booking.applicationId, token: booking.token, procedureId: booking.procedureId, datetime: booking.datetime };
+                session.save(current);
+            } else {
+                error = 'Ihr Termin ist gebucht, das Formular konnte aber nicht vorbereitet werden. Bitte wenden Sie sich an das Sekretariat.';
+            }
+            selected = { id: booking.id, datetime: booking.datetime };
             step = 'booked';
         } catch (err) {
-            if (err instanceof ApiError && err.code === 'limit') {
-                error = err.message;
-            } else if (err instanceof ApiError && err.code === 'taken') {
+            if (err instanceof ApiError && err.code === 'taken') {
                 error = 'Dieser Termin wurde gerade vergeben. Bitte wählen Sie einen anderen Termin.';
                 step = 'slots';
                 await loadSlots();
             } else {
-                error = err instanceof Error ? err.message : String(err);
+                error = message(err);
             }
         } finally {
             busy = false;
@@ -73,21 +95,62 @@
     }
 
     async function openForm(): Promise<void> {
+        if (!current) return;
         busy = true;
+        error = '';
         try {
-            form = (await api.form(procedure.id)).form;
-            data = initialData(form);
+            const [{ form: definition }] = await Promise.all([
+                api.applicationForm(current.applicationId, current.token),
+                api.start(current.applicationId, current.token),
+            ]);
+            form = definition;
+            data = normalizeData(definition, session.loadDraft(current.applicationId) ?? {});
             step = 'form';
         } catch (e) {
-            error = e instanceof Error ? e.message : String(e);
+            if (e instanceof ApiError && e.code === 'already_submitted') {
+                session.clear();
+                step = 'submitted';
+            } else {
+                error = message(e);
+            }
         } finally {
             busy = false;
         }
     }
 
-    const when = (s: { datetime: string }) => `${formatDay(s.datetime.slice(0, 10))}, ${s.datetime.slice(11)} Uhr`;
+    async function submit(e: SubmitEvent): Promise<void> {
+        e.preventDefault();
+        if (!form || !current) return;
+        submitAttempted = true;
+        error = '';
+        if (formErrors.length) {
+            document.querySelector(`[data-path="${CSS.escape(formErrors[0].path)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+        busy = true;
+        try {
+            await api.submit(current.applicationId, current.token, withoutHidden(form, $state.snapshot(data)));
+            session.clear();
+            step = 'submitted';
+        } catch (err) {
+            if (err instanceof ApiError && err.code === 'already_submitted') {
+                session.clear();
+                step = 'submitted';
+            } else {
+                error = message(err);
+            }
+        } finally {
+            busy = false;
+        }
+    }
 
-    loadSlots();
+    function message(e: unknown): string {
+        return e instanceof Error ? e.message : String(e);
+    }
+
+    const when = (datetime: string) => `${formatDay(datetime.slice(0, 10))}, ${datetime.slice(11)} Uhr`;
+
+    if (!resumed) loadSlots();
 </script>
 
 {#if error}<p class="error" role="alert">{error}</p>{/if}
@@ -96,7 +159,7 @@
     {#if loading}<p>Termine werden geladen …</p>{:else}<SlotPicker {slots} onselect={choose} />{/if}
 {:else if step === 'contact' && selected}
     <h2>Termin buchen</h2>
-    <p class="chosen">Gewählter Termin: <strong>{when(selected)}</strong></p>
+    <p class="chosen">Gewählter Termin: <strong>{when(selected.datetime)}</strong></p>
     <form class="contact" onsubmit={book} novalidate>
         <label>Name (sorgeberechtigte Person) <input bind:value={name} autocomplete="name" required /></label>
         <label>E-Mail-Adresse <input type="email" bind:value={email} autocomplete="email" required /></label>
@@ -109,16 +172,32 @@
             <button type="button" class="secondary" onclick={() => (step = 'slots')} disabled={busy}>Anderen Termin wählen</button>
         </p>
     </form>
-{:else if step === 'booked' && booking}
-    <h2>Ihr Termin ist gebucht</h2>
-    <p class="chosen"><strong>{when(booking)}</strong></p>
-    <p>Bitte füllen Sie jetzt das Anmeldeformular aus.</p>
-    <button onclick={openForm} disabled={busy}>Weiter zum Anmeldeformular</button>
-{:else if step === 'form' && form && booking}
+{:else if step === 'booked'}
+    <h2>{resumed ? 'Willkommen zurück' : 'Ihr Termin ist gebucht'}</h2>
+    {#if current}
+        <p class="chosen"><strong>{when(current.datetime)}</strong></p>
+        <p>Bitte füllen Sie jetzt das Anmeldeformular aus. Ihre Eingaben werden auf diesem Gerät zwischengespeichert.</p>
+        <button onclick={openForm} disabled={busy}>{resumed ? 'Anmeldeformular fortsetzen' : 'Weiter zum Anmeldeformular'}</button>
+    {:else if selected}
+        <p class="chosen"><strong>{when(selected.datetime)}</strong></p>
+    {/if}
+{:else if step === 'form' && form && current}
     <h2>{form.title}</h2>
-    <p class="chosen">Ihr Termin: {when(booking)}</p>
-    <p class="notice">Testversion: Das Absenden des Formulars ist noch nicht möglich.</p>
-    <FormRenderer {form} {data} />
+    <p class="chosen">Ihr Termin: {when(current.datetime)}</p>
+    <form onsubmit={submit} novalidate>
+        <FormRenderer {form} {data} showAllErrors={submitAttempted} {loadOptions} />
+        {#if submitAttempted && formErrors.length}
+            <p class="error" role="alert">Bitte prüfen Sie die markierten Angaben ({formErrors.length}).</p>
+        {/if}
+        <p><button type="submit" disabled={busy}>Anmeldung absenden</button></p>
+    </form>
+{:else if step === 'submitted'}
+    <h2>Vielen Dank – Ihre Anmeldung ist eingegangen</h2>
+    {#if current}<p class="chosen">Ihr Termin: <strong>{when(current.datetime)}</strong></p>{/if}
+    <p>
+        Beim Anmeldegespräch wird der ausgedruckte Anmeldebogen von den Erziehungsberechtigten unterschrieben. Bitte bringen
+        Sie die im Einladungsschreiben genannten Unterlagen mit.
+    </p>
 {/if}
 
 <style>
@@ -138,10 +217,5 @@
     }
     .chosen {
         font-size: 1.1rem;
-    }
-    .notice {
-        background: #fff3cd;
-        padding: 0.5rem 0.75rem;
-        border-radius: 4px;
     }
 </style>

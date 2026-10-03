@@ -95,6 +95,10 @@
         "label": { "$ref": "#/$defs/text" },
         "help": { "type": "string" },
         "required": { "type": "boolean" },
+        "mustAccept": {
+          "description": "Boolean only: the box must be ticked (e.g. an acknowledgement); shown as a single checkbox.",
+          "const": true
+        },
         "requiredIf": { "$ref": "#/$defs/condition" },
         "visibleIf": { "$ref": "#/$defs/condition" },
         "minLength": { "type": "integer", "minimum": 0 },
@@ -154,6 +158,10 @@
             },
             "else": { "not": { "anyOf": [{ "required": ["min"] }, { "required": ["max"] }] } }
           }
+        },
+        {
+          "if": { "properties": { "type": { "const": "boolean" } } },
+          "else": { "not": { "required": ["mustAccept"] } }
         },
         {
           "if": { "properties": { "type": { "const": "multiselect" } } },

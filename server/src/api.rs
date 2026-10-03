@@ -2,7 +2,9 @@
 //! config entries, active procedures, their forms, free slots (time only).
 //! Personal data is written to SharePoint and never stored or logged here.
 
-use crate::sharepoint::{APPOINTMENTS, CONFIG, FORMS, Item, PROCEDURES, Site, Update};
+use crate::formdata;
+use crate::sharepoint::{APPLICATIONS, APPOINTMENTS, CONFIG, FORMS, Item, PROCEDURES, Site, Update};
+use crate::token;
 use chrono::{Local, SecondsFormat, Utc};
 use serde_json::{Map, Value, json};
 
@@ -30,6 +32,15 @@ impl Reply {
     }
 }
 
+pub struct ApiRequest {
+    pub method: String,
+    pub path: String,
+    pub body: Vec<u8>,
+    pub client_ip: String,
+    /// token from `Authorization: Bearer ...`
+    pub bearer: Option<String>,
+}
+
 /// Logo key in the Assets library; further public assets come from optionsSource.
 const LOGO_KEY: &str = "logo";
 /// Used when the config entry is missing (see DEFAULT_CONFIG in schema.ts).
@@ -52,28 +63,27 @@ impl Api {
         Api { site }
     }
 
-    pub fn handle(&self, method: &str, path: &str, body: &[u8], client_ip: &str) -> Reply {
+    pub fn handle(&self, req: &ApiRequest) -> Reply {
+        let (method, path) = (req.method.as_str(), req.path.as_str());
         let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
         let result = match (method, parts.as_slice()) {
             ("GET", ["api", "health"]) => Ok(Reply::json(200, json!({ "status": "ok" }))),
             ("GET", ["api", "config"]) => self.config(),
             ("GET", ["api", "procedures", id, "form"]) if is_item_id(id) => self.form(id),
-            ("GET", ["api", "procedures", id, "appointments"]) if is_item_id(id) => {
-                self.appointments(id)
-            }
+            ("GET", ["api", "procedures", id, "appointments"]) if is_item_id(id) => self.appointments(id),
             ("POST", ["api", "appointments", id, "booking"]) if is_item_id(id) => {
-                self.book(id, body, client_ip)
+                self.book(id, &req.body, &req.client_ip)
             }
+            ("GET", ["api", "applications", id]) if is_item_id(id) => self.application(id, req),
+            ("GET", ["api", "applications", id, "form"]) if is_item_id(id) => self.application_form(id, req),
+            ("POST", ["api", "applications", id, "start"]) if is_item_id(id) => self.start(id, req),
+            ("POST", ["api", "applications", id, "submit"]) if is_item_id(id) => self.submit(id, req),
             ("GET", ["api", "assets", key]) if is_asset_key(key) => self.asset(key),
             _ => Ok(Reply::not_found()),
         };
         result.unwrap_or_else(|e| {
             eprintln!("upstream error on {method} {path}: {e}");
-            Reply::error(
-                502,
-                "upstream",
-                "Der Dienst ist vorübergehend nicht erreichbar",
-            )
+            Reply::error(502, "upstream", "Der Dienst ist vorübergehend nicht erreichbar")
         })
     }
 
@@ -84,12 +94,7 @@ impl Api {
             .list_items(CONFIG, None)?
             .iter()
             .filter(|i| i.bool("IsPublic"))
-            .filter_map(|i| {
-                Some((
-                    i.text("Title")?.to_string(),
-                    json!(i.text("Value").unwrap_or("")),
-                ))
-            })
+            .filter_map(|i| Some((i.text("Title")?.to_string(), json!(i.text("Value").unwrap_or("")))))
             .collect();
         let procedures: Vec<Value> = self
             .active_procedures()?
@@ -104,9 +109,10 @@ impl Api {
                 })
             })
             .collect();
+        let has_logo = self.site.asset_exists(LOGO_KEY)?;
         Ok(Reply::json(
             200,
-            json!({ "config": config, "procedures": procedures }),
+            json!({ "config": config, "procedures": procedures, "hasLogo": has_logo }),
         ))
     }
 
@@ -125,21 +131,16 @@ impl Api {
         if self.active_procedure(procedure_id)?.is_none() {
             return Ok(Reply::not_found());
         }
-        let filter =
-            format!("fields/ProcedureId eq '{procedure_id}' and fields/State eq 'available'");
+        let filter = format!("fields/ProcedureId eq '{procedure_id}' and fields/State eq 'available'");
         let items = self.site.list_items(APPOINTMENTS, Some(&filter))?;
-        Ok(Reply::json(
-            200,
-            Value::Array(public_slots(&items, &now_local())),
-        ))
+        Ok(Reply::json(200, Value::Array(public_slots(&items, &now_local()))))
     }
 
     /// F4: books a slot. The eTag check makes concurrent bookings of the
     /// same slot fail for all but one request.
     fn book(&self, appointment_id: &str, body: &[u8], client_ip: &str) -> Result<Reply, String> {
         let input: Value = serde_json::from_slice(body).unwrap_or(Value::Null);
-        let (name, email) = match validate_booking(input["name"].as_str(), input["email"].as_str())
-        {
+        let (name, email) = match validate_booking(input["name"].as_str(), input["email"].as_str()) {
             Ok(v) => v,
             Err(message) => return Ok(Reply::error(400, "invalid_input", &message)),
         };
@@ -170,13 +171,150 @@ impl Api {
         });
         match self
             .site
-            .update_fields(APPOINTMENTS, appointment_id, &fields, &item.etag)?
+            .update_fields(APPOINTMENTS, appointment_id, &fields, Some(&item.etag))?
         {
-            Update::Done => Ok(Reply::json(
-                200,
-                json!({ "id": appointment_id, "procedureId": procedure_id, "datetime": datetime }),
-            )),
-            Update::Conflict => Ok(taken()),
+            Update::Done => {}
+            Update::Conflict => return Ok(taken()),
+            Update::NotFound => return Ok(Reply::not_found()),
+        }
+        // F5: the application belongs to the booking from the start
+        let (application_id, access_token) = match self.create_application(&procedure_id, appointment_id) {
+            Ok(created) => (Some(created.0), Some(created.1)),
+            Err(e) => {
+                eprintln!("booking {appointment_id}: application not created: {e}");
+                (None, None)
+            }
+        };
+        Ok(Reply::json(
+            200,
+            json!({
+                "id": appointment_id,
+                "procedureId": procedure_id,
+                "datetime": datetime,
+                "applicationId": application_id,
+                "token": access_token,
+            }),
+        ))
+    }
+
+    /// Creates the application for a booked appointment and links both.
+    /// Returns the application id and the family's access token.
+    fn create_application(&self, procedure_id: &str, appointment_id: &str) -> Result<(String, String), String> {
+        let procedure = self
+            .active_procedure(procedure_id)?
+            .ok_or("procedure no longer active")?;
+        let access_token = token::generate()?;
+        let item = self.site.create_item(
+            APPLICATIONS,
+            &json!({
+                "ProcedureId": procedure_id,
+                "FormId": procedure.form_id,
+                "State": "created",
+                "Data": "{}",
+                "AccessTokenHash": token::hash(&access_token),
+            }),
+        )?;
+        let link = json!({ "ApplicationId": item.id });
+        match self.site.update_fields(APPOINTMENTS, appointment_id, &link, None)? {
+            Update::Done => Ok((item.id, access_token)),
+            _ => Err("appointment vanished while linking".into()),
+        }
+    }
+
+    /// The application if the bearer token matches; None otherwise (no
+    /// difference between unknown id and wrong token).
+    fn authorized_application(&self, id: &str, req: &ApiRequest) -> Result<Option<Item>, String> {
+        let Some(bearer) = req.bearer.as_deref() else {
+            return Ok(None);
+        };
+        Ok(self
+            .site
+            .get_item(APPLICATIONS, id)?
+            .filter(|a| a.text("AccessTokenHash").is_some_and(|h| token::verify(bearer, h))))
+    }
+
+    /// State of the family's application and its appointment (to resume).
+    fn application(&self, id: &str, req: &ApiRequest) -> Result<Reply, String> {
+        let Some(app) = self.authorized_application(id, req)? else {
+            return Ok(Reply::not_found());
+        };
+        let appointment = self
+            .site
+            .list_items(APPOINTMENTS, Some(&format!("fields/ApplicationId eq '{id}'")))?
+            .into_iter()
+            .find(|a| a.text("State") == Some("booked"));
+        Ok(Reply::json(
+            200,
+            json!({
+                "id": id,
+                "procedureId": app.text("ProcedureId"),
+                "state": app.text("State"),
+                "appointment": appointment.map(|a| json!({ "id": a.id, "datetime": a.text("SlotDatetime") })),
+            }),
+        ))
+    }
+
+    /// The form definition the application was created with.
+    fn application_form(&self, id: &str, req: &ApiRequest) -> Result<Reply, String> {
+        let Some(app) = self.authorized_application(id, req)? else {
+            return Ok(Reply::not_found());
+        };
+        let form_id = app.text("FormId").unwrap_or_default().to_string();
+        let Some(form) = self.form_json(&form_id)? else {
+            return Ok(Reply::not_found());
+        };
+        Ok(Reply::json(200, json!({ "id": form_id, "form": form })))
+    }
+
+    /// created -> form_in_progress when the family opens the form.
+    fn start(&self, id: &str, req: &ApiRequest) -> Result<Reply, String> {
+        let Some(app) = self.authorized_application(id, req)? else {
+            return Ok(Reply::not_found());
+        };
+        match app.text("State") {
+            Some("created") => {
+                let fields = json!({ "State": "form_in_progress" });
+                if let Update::Conflict = self.site.update_fields(APPLICATIONS, id, &fields, Some(&app.etag))? {
+                    return Ok(Reply::error(
+                        409,
+                        "conflict",
+                        "Die Anmeldung wurde zwischenzeitlich geändert",
+                    ));
+                }
+                Ok(Reply::json(200, json!({ "state": "form_in_progress" })))
+            }
+            Some("form_in_progress") => Ok(Reply::json(200, json!({ "state": "form_in_progress" }))),
+            _ => Ok(already_submitted()),
+        }
+    }
+
+    /// F6: stores the form data once and sets the state to submitted.
+    fn submit(&self, id: &str, req: &ApiRequest) -> Result<Reply, String> {
+        let Some(app) = self.authorized_application(id, req)? else {
+            return Ok(Reply::not_found());
+        };
+        if !matches!(app.text("State"), Some("created" | "form_in_progress")) {
+            return Ok(already_submitted());
+        }
+        let input: Value = serde_json::from_slice(&req.body).unwrap_or(Value::Null);
+        let Some(form) = self.form_json(app.text("FormId").unwrap_or_default())? else {
+            return Ok(Reply::not_found());
+        };
+        if let Err(problem) = formdata::check(&form, &input["data"]) {
+            return Ok(Reply::error(
+                400,
+                "invalid_data",
+                &format!("Ungültige Formulardaten ({problem})"),
+            ));
+        }
+        let fields = json!({
+            "Data": input["data"].to_string(),
+            "State": "submitted",
+            "SubmittedAt": Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
+        });
+        match self.site.update_fields(APPLICATIONS, id, &fields, Some(&app.etag))? {
+            Update::Done => Ok(Reply::json(200, json!({ "state": "submitted" }))),
+            Update::Conflict => Ok(already_submitted()),
             Update::NotFound => Ok(Reply::not_found()),
         }
     }
@@ -216,9 +354,7 @@ impl Api {
         }
         Ok(match self.site.get_asset(key)? {
             Some((content_type, body)) => {
-                let content_type = sniff_image(&body)
-                    .map(str::to_string)
-                    .unwrap_or(content_type);
+                let content_type = sniff_image(&body).map(str::to_string).unwrap_or(content_type);
                 Reply {
                     status: 200,
                     content_type,
@@ -247,11 +383,15 @@ impl Api {
     }
 
     fn form_json(&self, form_id: &str) -> Result<Option<Value>, String> {
-        Ok(self.site.get_item(FORMS, form_id)?.and_then(|f| {
-            f.text("FormJson")
-                .and_then(|j| serde_json::from_str(j).ok())
-        }))
+        Ok(self
+            .site
+            .get_item(FORMS, form_id)?
+            .and_then(|f| f.text("FormJson").and_then(|j| serde_json::from_str(j).ok())))
     }
+}
+
+fn already_submitted() -> Reply {
+    Reply::error(409, "already_submitted", "Die Anmeldung wurde bereits abgeschickt")
 }
 
 fn taken() -> Reply {
@@ -284,10 +424,7 @@ pub fn is_item_id(s: &str) -> bool {
 }
 
 pub fn is_asset_key(s: &str) -> bool {
-    !s.is_empty()
-        && !s.starts_with('.')
-        && s.bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
+    !s.is_empty() && !s.starts_with('.') && s.bytes().all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
 }
 
 /// Future available slots, sorted by time; only id and time are exposed.
@@ -305,23 +442,16 @@ pub fn public_slots(items: &[Item], now: &str) -> Vec<Value> {
         .collect()
 }
 
-pub fn validate_booking(
-    name: Option<&str>,
-    email: Option<&str>,
-) -> Result<(String, String), String> {
+pub fn validate_booking(name: Option<&str>, email: Option<&str>) -> Result<(String, String), String> {
     let name = name.unwrap_or("").trim();
     let email = email.unwrap_or("").trim();
-    if name.chars().count() < 2 || name.chars().count() > 100 || name.chars().any(char::is_control)
-    {
+    if name.chars().count() < 2 || name.chars().count() > 100 || name.chars().any(char::is_control) {
         return Err("Bitte einen Namen mit 2 bis 100 Zeichen angeben".into());
     }
     let valid_email = email.len() <= 254
         && !email.chars().any(|c| c.is_whitespace() || c.is_control())
         && email.split_once('@').is_some_and(|(local, domain)| {
-            !local.is_empty()
-                && domain.contains('.')
-                && !domain.starts_with('.')
-                && !domain.ends_with('.')
+            !local.is_empty() && domain.contains('.') && !domain.starts_with('.') && !domain.ends_with('.')
         });
     if !valid_email {
         return Err("Bitte eine gültige E-Mail-Adresse angeben".into());
@@ -337,21 +467,7 @@ pub fn sniff_image(body: &[u8]) -> Option<&'static str> {
         [0x89, b'P', b'N', b'G', ..] => Some("image/png"),
         [0xff, 0xd8, ..] => Some("image/jpeg"),
         [b'G', b'I', b'F', b'8', ..] => Some("image/gif"),
-        [
-            b'R',
-            b'I',
-            b'F',
-            b'F',
-            _,
-            _,
-            _,
-            _,
-            b'W',
-            b'E',
-            b'B',
-            b'P',
-            ..,
-        ] => Some("image/webp"),
+        [b'R', b'I', b'F', b'F', _, _, _, _, b'W', b'E', b'B', b'P', ..] => Some("image/webp"),
         _ if text.trim_start().starts_with("<svg")
             || text.trim_start().starts_with("<?xml") && text.contains("<svg") =>
         {
@@ -436,10 +552,7 @@ mod tests {
 
     #[test]
     fn sniffs_images() {
-        assert_eq!(
-            sniff_image(&[0x89, b'P', b'N', b'G', 13, 10]),
-            Some("image/png")
-        );
+        assert_eq!(sniff_image(&[0x89, b'P', b'N', b'G', 13, 10]), Some("image/png"));
         assert_eq!(sniff_image(&[0xff, 0xd8, 0xff]), Some("image/jpeg"));
         assert_eq!(
             sniff_image(b"  <svg xmlns='http://www.w3.org/2000/svg'/>"),

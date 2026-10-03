@@ -1,0 +1,730 @@
+[
+ {
+  "key": "AB",
+  "value": "Abchasisch"
+ },
+ {
+  "key": "AA",
+  "value": "Afar"
+ },
+ {
+  "key": "AF",
+  "value": "Afrikaans"
+ },
+ {
+  "key": "AK",
+  "value": "Akan"
+ },
+ {
+  "key": "SQ",
+  "value": "Albanisch"
+ },
+ {
+  "key": "AM",
+  "value": "Amharisch"
+ },
+ {
+  "key": "AR",
+  "value": "Arabisch"
+ },
+ {
+  "key": "AN",
+  "value": "Aragonesisch"
+ },
+ {
+  "key": "HY",
+  "value": "Armenisch"
+ },
+ {
+  "key": "AZ",
+  "value": "Aserbaidschanisch"
+ },
+ {
+  "key": "AS",
+  "value": "Assamesisch"
+ },
+ {
+  "key": "AE",
+  "value": "Avestisch"
+ },
+ {
+  "key": "AV",
+  "value": "Awarisch"
+ },
+ {
+  "key": "AY",
+  "value": "Aymara"
+ },
+ {
+  "key": "BM",
+  "value": "Bambara"
+ },
+ {
+  "key": "BA",
+  "value": "Baschkirisch"
+ },
+ {
+  "key": "EU",
+  "value": "Baskisch"
+ },
+ {
+  "key": "BE",
+  "value": "Belarussisch"
+ },
+ {
+  "key": "BN",
+  "value": "Bengalisch"
+ },
+ {
+  "key": "BH",
+  "value": "Bhodschpuri"
+ },
+ {
+  "key": "MY",
+  "value": "Birmanisch"
+ },
+ {
+  "key": "BI",
+  "value": "Bislama"
+ },
+ {
+  "key": "BS",
+  "value": "Bosnisch"
+ },
+ {
+  "key": "BR",
+  "value": "Bretonisch"
+ },
+ {
+  "key": "BG",
+  "value": "Bulgarisch"
+ },
+ {
+  "key": "CH",
+  "value": "Chamorro"
+ },
+ {
+  "key": "ZH",
+  "value": "Chinesisch"
+ },
+ {
+  "key": "CR",
+  "value": "Cree"
+ },
+ {
+  "key": "DA",
+  "value": "Dänisch"
+ },
+ {
+  "key": "DE",
+  "value": "Deutsch"
+ },
+ {
+  "key": "DV",
+  "value": "Dhivehi"
+ },
+ {
+  "key": "DZ",
+  "value": "Dzongkha"
+ },
+ {
+  "key": "EN",
+  "value": "Englisch"
+ },
+ {
+  "key": "EO",
+  "value": "Esperanto"
+ },
+ {
+  "key": "ET",
+  "value": "Estnisch"
+ },
+ {
+  "key": "EE",
+  "value": "Ewe"
+ },
+ {
+  "key": "FO",
+  "value": "Färöisch"
+ },
+ {
+  "key": "FJ",
+  "value": "Fidschi"
+ },
+ {
+  "key": "FI",
+  "value": "Finnisch"
+ },
+ {
+  "key": "FR",
+  "value": "Französisch"
+ },
+ {
+  "key": "FF",
+  "value": "Ful"
+ },
+ {
+  "key": "GL",
+  "value": "Galicisch"
+ },
+ {
+  "key": "GD",
+  "value": "Gälisch (Schottland)"
+ },
+ {
+  "key": "LG",
+  "value": "Ganda"
+ },
+ {
+  "key": "KA",
+  "value": "Georgisch"
+ },
+ {
+  "key": "EL",
+  "value": "Griechisch"
+ },
+ {
+  "key": "KL",
+  "value": "Grönländisch"
+ },
+ {
+  "key": "GN",
+  "value": "Guaraní"
+ },
+ {
+  "key": "GU",
+  "value": "Gujarati"
+ },
+ {
+  "key": "HT",
+  "value": "Haiti-Kreolisch"
+ },
+ {
+  "key": "HA",
+  "value": "Haussa"
+ },
+ {
+  "key": "HE",
+  "value": "Hebräisch"
+ },
+ {
+  "key": "HZ",
+  "value": "Herero"
+ },
+ {
+  "key": "HI",
+  "value": "Hindi"
+ },
+ {
+  "key": "HO",
+  "value": "Hiri-Motu"
+ },
+ {
+  "key": "IO",
+  "value": "Ido"
+ },
+ {
+  "key": "IG",
+  "value": "Igbo"
+ },
+ {
+  "key": "ID",
+  "value": "Indonesisch"
+ },
+ {
+  "key": "IA",
+  "value": "Interlingua"
+ },
+ {
+  "key": "IE",
+  "value": "Interlingue"
+ },
+ {
+  "key": "IU",
+  "value": "Inuktitut"
+ },
+ {
+  "key": "IK",
+  "value": "Inupiak"
+ },
+ {
+  "key": "GA",
+  "value": "Irisch"
+ },
+ {
+  "key": "IS",
+  "value": "Isländisch"
+ },
+ {
+  "key": "IT",
+  "value": "Italienisch"
+ },
+ {
+  "key": "JA",
+  "value": "Japanisch"
+ },
+ {
+  "key": "JV",
+  "value": "Javanisch"
+ },
+ {
+  "key": "YI",
+  "value": "Jiddisch"
+ },
+ {
+  "key": "KN",
+  "value": "Kannada"
+ },
+ {
+  "key": "KR",
+  "value": "Kanuri"
+ },
+ {
+  "key": "KK",
+  "value": "Kasachisch"
+ },
+ {
+  "key": "KS",
+  "value": "Kaschmiri"
+ },
+ {
+  "key": "CA",
+  "value": "Katalanisch"
+ },
+ {
+  "key": "KM",
+  "value": "Khmer"
+ },
+ {
+  "key": "KI",
+  "value": "Kikuyu"
+ },
+ {
+  "key": "RW",
+  "value": "Kinyarwanda"
+ },
+ {
+  "key": "CU",
+  "value": "Kirchenslawisch"
+ },
+ {
+  "key": "KY",
+  "value": "Kirgisisch"
+ },
+ {
+  "key": "KV",
+  "value": "Komi"
+ },
+ {
+  "key": "KG",
+  "value": "Kongolesisch"
+ },
+ {
+  "key": "KO",
+  "value": "Koreanisch"
+ },
+ {
+  "key": "KW",
+  "value": "Kornisch"
+ },
+ {
+  "key": "CO",
+  "value": "Korsisch"
+ },
+ {
+  "key": "HR",
+  "value": "Kroatisch"
+ },
+ {
+  "key": "KU",
+  "value": "Kurdisch"
+ },
+ {
+  "key": "KJ",
+  "value": "Kwanyama"
+ },
+ {
+  "key": "LO",
+  "value": "Laotisch"
+ },
+ {
+  "key": "LA",
+  "value": "Latein"
+ },
+ {
+  "key": "LV",
+  "value": "Lettisch"
+ },
+ {
+  "key": "LI",
+  "value": "Limburgisch"
+ },
+ {
+  "key": "LN",
+  "value": "Lingala"
+ },
+ {
+  "key": "LT",
+  "value": "Litauisch"
+ },
+ {
+  "key": "LU",
+  "value": "Luba-Katanga"
+ },
+ {
+  "key": "LB",
+  "value": "Luxemburgisch"
+ },
+ {
+  "key": "MG",
+  "value": "Malagasy"
+ },
+ {
+  "key": "MS",
+  "value": "Malaiisch"
+ },
+ {
+  "key": "ML",
+  "value": "Malayalam"
+ },
+ {
+  "key": "MT",
+  "value": "Maltesisch"
+ },
+ {
+  "key": "GV",
+  "value": "Manx"
+ },
+ {
+  "key": "MI",
+  "value": "Māori"
+ },
+ {
+  "key": "MR",
+  "value": "Marathi"
+ },
+ {
+  "key": "MH",
+  "value": "Marschallesisch"
+ },
+ {
+  "key": "MK",
+  "value": "Mazedonisch"
+ },
+ {
+  "key": "MN",
+  "value": "Mongolisch"
+ },
+ {
+  "key": "NA",
+  "value": "Nauruisch"
+ },
+ {
+  "key": "NV",
+  "value": "Navajo"
+ },
+ {
+  "key": "NG",
+  "value": "Ndonga"
+ },
+ {
+  "key": "NE",
+  "value": "Nepalesisch"
+ },
+ {
+  "key": "NL",
+  "value": "Niederländisch"
+ },
+ {
+  "key": "ND",
+  "value": "Nord-Ndebele"
+ },
+ {
+  "key": "SE",
+  "value": "Nordsamisch"
+ },
+ {
+  "key": "NO",
+  "value": "Norwegisch"
+ },
+ {
+  "key": "NB",
+  "value": "Norwegisch (Bokmål)"
+ },
+ {
+  "key": "NN",
+  "value": "Norwegisch (Nynorsk)"
+ },
+ {
+  "key": "NY",
+  "value": "Nyanja"
+ },
+ {
+  "key": "OJ",
+  "value": "Ojibwa"
+ },
+ {
+  "key": "OC",
+  "value": "Okzitanisch"
+ },
+ {
+  "key": "OR",
+  "value": "Oriya"
+ },
+ {
+  "key": "OM",
+  "value": "Oromo"
+ },
+ {
+  "key": "OS",
+  "value": "Ossetisch"
+ },
+ {
+  "key": "PI",
+  "value": "Pali"
+ },
+ {
+  "key": "PS",
+  "value": "Paschtu"
+ },
+ {
+  "key": "FA",
+  "value": "Persisch"
+ },
+ {
+  "key": "PL",
+  "value": "Polnisch"
+ },
+ {
+  "key": "PT",
+  "value": "Portugiesisch"
+ },
+ {
+  "key": "PA",
+  "value": "Punjabi"
+ },
+ {
+  "key": "QU",
+  "value": "Quechua"
+ },
+ {
+  "key": "RM",
+  "value": "Rätoromanisch"
+ },
+ {
+  "key": "RO",
+  "value": "Rumänisch"
+ },
+ {
+  "key": "RN",
+  "value": "Rundi"
+ },
+ {
+  "key": "RU",
+  "value": "Russisch"
+ },
+ {
+  "key": "SM",
+  "value": "Samoanisch"
+ },
+ {
+  "key": "SG",
+  "value": "Sango"
+ },
+ {
+  "key": "SA",
+  "value": "Sanskrit"
+ },
+ {
+  "key": "SC",
+  "value": "Sardisch"
+ },
+ {
+  "key": "SV",
+  "value": "Schwedisch"
+ },
+ {
+  "key": "SR",
+  "value": "Serbisch"
+ },
+ {
+  "key": "SN",
+  "value": "Shona"
+ },
+ {
+  "key": "SD",
+  "value": "Sindhi"
+ },
+ {
+  "key": "SI",
+  "value": "Singhalesisch"
+ },
+ {
+  "key": "SK",
+  "value": "Slowakisch"
+ },
+ {
+  "key": "SL",
+  "value": "Slowenisch"
+ },
+ {
+  "key": "SO",
+  "value": "Somali"
+ },
+ {
+  "key": "ES",
+  "value": "Spanisch"
+ },
+ {
+  "key": "SW",
+  "value": "Suaheli"
+ },
+ {
+  "key": "NR",
+  "value": "Süd-Ndebele"
+ },
+ {
+  "key": "ST",
+  "value": "Süd-Sotho"
+ },
+ {
+  "key": "SU",
+  "value": "Sundanesisch"
+ },
+ {
+  "key": "SS",
+  "value": "Swazi"
+ },
+ {
+  "key": "TG",
+  "value": "Tadschikisch"
+ },
+ {
+  "key": "TY",
+  "value": "Tahitisch"
+ },
+ {
+  "key": "TA",
+  "value": "Tamil"
+ },
+ {
+  "key": "TT",
+  "value": "Tatarisch"
+ },
+ {
+  "key": "TE",
+  "value": "Telugu"
+ },
+ {
+  "key": "TH",
+  "value": "Thailändisch"
+ },
+ {
+  "key": "BO",
+  "value": "Tibetisch"
+ },
+ {
+  "key": "TI",
+  "value": "Tigrinya"
+ },
+ {
+  "key": "TO",
+  "value": "Tongaisch"
+ },
+ {
+  "key": "CS",
+  "value": "Tschechisch"
+ },
+ {
+  "key": "CE",
+  "value": "Tschetschenisch"
+ },
+ {
+  "key": "CV",
+  "value": "Tschuwaschisch"
+ },
+ {
+  "key": "TS",
+  "value": "Tsonga"
+ },
+ {
+  "key": "TN",
+  "value": "Tswana"
+ },
+ {
+  "key": "TR",
+  "value": "Türkisch"
+ },
+ {
+  "key": "TK",
+  "value": "Turkmenisch"
+ },
+ {
+  "key": "UG",
+  "value": "Uigurisch"
+ },
+ {
+  "key": "UK",
+  "value": "Ukrainisch"
+ },
+ {
+  "key": "HU",
+  "value": "Ungarisch"
+ },
+ {
+  "key": "UR",
+  "value": "Urdu"
+ },
+ {
+  "key": "UZ",
+  "value": "Usbekisch"
+ },
+ {
+  "key": "VE",
+  "value": "Venda"
+ },
+ {
+  "key": "VI",
+  "value": "Vietnamesisch"
+ },
+ {
+  "key": "VO",
+  "value": "Volapük"
+ },
+ {
+  "key": "CY",
+  "value": "Walisisch"
+ },
+ {
+  "key": "WA",
+  "value": "Wallonisch"
+ },
+ {
+  "key": "FY",
+  "value": "Westfriesisch"
+ },
+ {
+  "key": "WO",
+  "value": "Wolof"
+ },
+ {
+  "key": "XH",
+  "value": "Xhosa"
+ },
+ {
+  "key": "II",
+  "value": "Yi"
+ },
+ {
+  "key": "YO",
+  "value": "Yoruba"
+ },
+ {
+  "key": "ZA",
+  "value": "Zhuang"
+ },
+ {
+  "key": "ZU",
+  "value": "Zulu"
+ }
+]

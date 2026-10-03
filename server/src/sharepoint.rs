@@ -11,6 +11,7 @@ pub const ASSETS: &str = "Assets";
 pub const APPOINTMENTS: &str = "Appointments";
 pub const FORMS: &str = "Forms";
 pub const PROCEDURES: &str = "Procedures";
+pub const APPLICATIONS: &str = "Applications";
 
 pub struct Item {
     pub id: String,
@@ -20,17 +21,11 @@ pub struct Item {
 
 impl Item {
     pub fn text(&self, field: &str) -> Option<&str> {
-        self.fields
-            .get(field)
-            .and_then(Value::as_str)
-            .filter(|s| !s.is_empty())
+        self.fields.get(field).and_then(Value::as_str).filter(|s| !s.is_empty())
     }
 
     pub fn bool(&self, field: &str) -> bool {
-        self.fields
-            .get(field)
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
+        self.fields.get(field).and_then(Value::as_bool).unwrap_or(false)
     }
 }
 
@@ -101,13 +96,7 @@ impl Site {
                 return Err(res.error_text());
             }
             let page = res.json()?;
-            items.extend(
-                page["value"]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .filter_map(to_item),
-            );
+            items.extend(page["value"].as_array().into_iter().flatten().filter_map(to_item));
             next = page["@odata.nextLink"]
                 .as_str()
                 .and_then(|l| l.strip_prefix("https://graph.microsoft.com/v1.0"))
@@ -131,27 +120,40 @@ impl Site {
         }
     }
 
-    /// Updates fields only if the item still has the given eTag.
-    pub fn update_fields(
-        &self,
-        list: &str,
-        id: &str,
-        fields: &Value,
-        etag: &str,
-    ) -> Result<Update, String> {
-        let path = format!(
-            "{}/lists/{}/items/{}/fields",
-            self.base(),
-            self.list_id(list)?,
-            id
-        );
-        let res = self
-            .graph
-            .request("PATCH", &path, Some(fields), Some(etag))?;
+    /// Updates fields; with an eTag only if the item was not changed since.
+    pub fn update_fields(&self, list: &str, id: &str, fields: &Value, etag: Option<&str>) -> Result<Update, String> {
+        let path = format!("{}/lists/{}/items/{}/fields", self.base(), self.list_id(list)?, id);
+        let res = self.graph.request("PATCH", &path, Some(fields), etag)?;
         match res.status {
             412 | 409 => Ok(Update::Conflict),
             404 => Ok(Update::NotFound),
             _ if res.ok() => Ok(Update::Done),
+            _ => Err(res.error_text()),
+        }
+    }
+
+    pub fn create_item(&self, list: &str, fields: &Value) -> Result<Item, String> {
+        let path = format!("{}/lists/{}/items", self.base(), self.list_id(list)?);
+        let res = self
+            .graph
+            .request("POST", &path, Some(&serde_json::json!({ "fields": fields })), None)?;
+        if !res.ok() {
+            return Err(res.error_text());
+        }
+        to_item(&res.json()?).ok_or_else(|| "unexpected create response".to_string())
+    }
+
+    pub fn asset_exists(&self, key: &str) -> Result<bool, String> {
+        let path = format!(
+            "{}/lists/{}/drive/root:/{}?$select=id",
+            self.base(),
+            self.list_id(ASSETS)?,
+            key
+        );
+        let res = self.graph.request("GET", &path, None, None)?;
+        match res.status {
+            404 => Ok(false),
+            _ if res.ok() => Ok(true),
             _ => Err(res.error_text()),
         }
     }
@@ -191,9 +193,7 @@ fn to_item(v: &Value) -> Option<Item> {
 pub fn encode(s: &str) -> String {
     s.bytes()
         .map(|b| match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
-                (b as char).to_string()
-            }
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => (b as char).to_string(),
             _ => format!("%{b:02X}"),
         })
         .collect()

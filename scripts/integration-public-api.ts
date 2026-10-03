@@ -3,7 +3,8 @@
 // identity. Everything created here is removed at the end.
 // Usage: node scripts/integration-public-api.ts
 import { execSync, spawn } from 'node:child_process';
-import type { Appointment, FormDefinition, Procedure } from '../packages/domain/src/index.ts';
+import { isDeepStrictEqual } from 'node:util';
+import type { Application, FormDefinition, Procedure } from '../packages/domain/src/index.ts';
 import testForm from '../packages/forms/examples/test-form.json' with { type: 'json' };
 import { AppointmentService, ConfigStore, GraphClient, Repository, SharePointSite } from '../packages/sharepoint/src/index.ts';
 import { appTokenProvider, clientCredentialsToken, readEnv } from './env.ts';
@@ -11,6 +12,7 @@ import { appTokenProvider, clientCredentialsToken, readEnv } from './env.ts';
 const env = readEnv();
 const site = new SharePointSite(new GraphClient(appTokenProvider(env)), env.SHAREPOINT_ID);
 const forms = new Repository<FormDefinition>(site, 'forms');
+const applications = new Repository<Application & { accessTokenHash?: string }>(site, 'applications');
 const procedures = new Repository<Procedure>(site, 'procedures');
 const appointments = new AppointmentService(site);
 const config = new ConfigStore(site);
@@ -116,6 +118,61 @@ try {
         assert(stored.state === 'booked' && stored.nameCustomer?.startsWith('Person') && stored.requestTime, 'stored booking');
     });
 
+    let appId = '';
+    let appToken = '';
+    const authed = (path: string, token: string, init: RequestInit = {}) =>
+        fetch(`${API}/applications/${path}`, { ...init, headers: { ...init.headers, Authorization: `Bearer ${token}` } }).then(async (r) => ({
+            status: r.status,
+            body: await r.json(),
+        }));
+
+    await step('F5 booking creates a linked application; only the token hash is stored', async () => {
+        const booked = (await appointments.repo.get(slot2.id))!;
+        assert(booked.applicationId, 'appointment not linked');
+        const app = (await applications.get(booked.applicationId))!;
+        assert(app.state === 'created' && app.procedureId === active.id && app.formId === form.id, `application ${JSON.stringify(app)}`);
+        assert(app.accessTokenHash && /^[0-9a-f]{64}$/.test(app.accessTokenHash), 'hash missing');
+        appId = app.id;
+    });
+
+    await step('F5 booking reply carries application id and token', async () => {
+        const r = await book(slotB.id, 'Familie Token', 'token@example.org');
+        assert(r.status === 200 && r.body.applicationId && /^[0-9a-f]{64}$/.test(r.body.token), `reply ${JSON.stringify(Object.keys(r.body))}`);
+        const stored = (await applications.get(r.body.applicationId))!;
+        assert(stored.accessTokenHash !== r.body.token, 'token stored in clear');
+        assert((await appointments.repo.get(slotB.id))!.applicationId === r.body.applicationId, 'link differs');
+        appId = r.body.applicationId;
+        appToken = r.body.token;
+    });
+
+    await step('application endpoints reject wrong or missing tokens with 404', async () => {
+        assert((await authed(appId, 'f'.repeat(64))).status === 404, 'wrong token');
+        assert((await fetch(`${API}/applications/${appId}`)).status === 404, 'no token');
+        assert((await authed(`${appId}/submit`, 'x', { method: 'POST', body: '{}' })).status === 404, 'submit wrong token');
+    });
+
+    await step('F6 start, reject invalid data, submit once', async () => {
+        const status = await authed(appId, appToken);
+        assert(status.status === 200 && status.body.state === 'created' && status.body.appointment.id === slotB.id, `status ${JSON.stringify(status.body)}`);
+        const formReply = await authed(`${appId}/form`, appToken);
+        assert(formReply.body.form.title === testForm.title, 'form');
+        assert((await authed(`${appId}/start`, appToken, { method: 'POST' })).body.state === 'form_in_progress', 'start');
+        assert((await applications.get(appId))!.state === 'form_in_progress', 'state not stored');
+
+        const post = (data: unknown) =>
+            authed(`${appId}/submit`, appToken, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data }) });
+        const invalid = await post({ nachname: 'X', hacker: true });
+        assert(invalid.status === 400 && invalid.body.error === 'invalid_data', `invalid ${invalid.status}`);
+        const data = { nachname: 'Muster', geburtsdatum: '2015-04-01', schulen: [{ von: 2021 }], sorgeberechtigter1: { nachname: 'M', vorname: 'E' } };
+        const ok = await post(data);
+        assert(ok.status === 200 && ok.body.state === 'submitted', `submit ${ok.status} ${JSON.stringify(ok.body)}`);
+        const stored = (await applications.get(appId))!;
+        assert(stored.state === 'submitted' && isDeepStrictEqual(stored.data, data) && stored.submittedAt, 'stored data');
+        const again = await post(data);
+        assert(again.status === 409 && again.body.error === 'already_submitted', `second submit ${again.status}`);
+        assert((await authed(`${appId}/start`, appToken, { method: 'POST' })).status === 409, 'start after submit');
+    });
+
     await step('F4 booked, draft, past and inactive slots cannot be booked', async () => {
         assert((await book(slot2.id)).status === 409, 'booked slot');
         assert((await book(draftSlot.id)).status === 409, 'draft slot');
@@ -124,13 +181,15 @@ try {
     });
 
     await step('parallel slot at the same time stays bookable', async () => {
+        // slotB (08:00, B) was booked above; slotA (08:00, A) is still free
+        await config.set('maxBookingsPerIp', '3', false);
         const r = await book(slotA.id);
         assert(r.status === 200, `status ${r.status}`);
         const left = (await get(`/procedures/${active.id}/appointments`)).body.map((s: { id: string }) => s.id);
-        assert(JSON.stringify(left) === JSON.stringify([slotB.id, slotLimit.id]), `left ${left}`);
+        assert(JSON.stringify(left) === JSON.stringify([slotLimit.id]), `left ${left}`);
     });
 
-    await step('IP filter: third booking from the same address is refused (limit 2)', async () => {
+    await step('IP filter: fourth booking from the same address is refused (limit 3)', async () => {
         const stored = (await appointments.repo.get(slotA.id))!;
         assert(stored.requestIp === '127.0.0.1', `requestIp ${stored.requestIp}`);
         const r = await book(slotLimit.id, 'Dritte Buchung', 'drei@example.org');
@@ -165,11 +224,13 @@ try {
     });
 
     await step('server log contains no personal data', async () => {
-        assert(!/Person \d|example\.org|Dritte/.test(serverLog), 'personal data in log');
+        assert(!/Person \d|example\.org|Dritte|Muster|[0-9a-f]{64}/.test(serverLog), 'personal data or token in log');
     });
 } finally {
     server.kill();
     await site.deleteItems('appointments', drafts.map((d) => d.id)).catch(() => {});
+    const created = await applications.list(applications.filter('procedureId', active.id)).catch(() => []);
+    if (created.length) await site.deleteItems('applications', created.map((a) => a.id)).catch(() => {});
     await procedures.delete(active.id).catch(() => {});
     await procedures.delete(inactive.id).catch(() => {});
     await forms.delete(form.id).catch(() => {});

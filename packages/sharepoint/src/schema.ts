@@ -3,7 +3,7 @@
 import { APPLICATION_STATES, APPOINTMENT_STATES } from '@anmeldung/domain';
 
 /** Bump when lists or columns are added. Stored in Config as `schemaVersion`. */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export type ColumnType = 'text' | 'note' | 'json' | 'boolean' | 'choice';
 
@@ -64,6 +64,9 @@ export const LISTS = {
             { name: 'State', prop: 'state', type: 'choice', indexed: true, choices: APPLICATION_STATES },
             { name: 'SecretariatComment', prop: 'secretariatComment', type: 'note' },
             { name: 'InterviewerComment', prop: 'interviewerComment', type: 'note' },
+            { name: 'SubmittedAt', prop: 'submittedAt', type: 'text' },
+            // SHA-256 of the family's access token (public form); never the token itself
+            { name: 'AccessTokenHash', prop: 'accessTokenHash', type: 'text' },
         ],
     },
     forms: {

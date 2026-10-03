@@ -92,6 +92,11 @@
             oninput={(e) => setNumber(e.currentTarget.value)}
             onblur={touch}
         />
+    {:else if field.type === 'boolean' && field.mustAccept}
+        <label class="accept">
+            <input type="checkbox" checked={value === true} onchange={(e) => set(e.currentTarget.checked || undefined)} onblur={touch} />
+            Bestätigt
+        </label>
     {:else if field.type === 'boolean'}
         <div class="choices" role="radiogroup" aria-labelledby={`${id}-label`}>
             <label><input type="radio" name={id} checked={value === true} onchange={() => set(true)} onblur={touch} /> Ja</label>
@@ -158,8 +163,14 @@
     .invalid select {
         border-color: #b00020;
     }
+    .accept {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
     .help {
         color: #555;
+        white-space: pre-line;
         font-size: 0.85rem;
         margin: 0;
     }

@@ -65,6 +65,7 @@ export function checkFormDefinition(form: FormJson): string[] {
             if (item.kind === 'field') {
                 checkCondition(item.requiredIf, items, at);
                 if (item.required && item.requiredIf) errors.push(`${at}: both required and requiredIf`);
+                if (item.mustAccept && (item.required || item.requiredIf)) errors.push(`${at}: mustAccept implies required`);
                 if (item.minLength !== undefined && item.maxLength !== undefined && item.minLength > item.maxLength)
                     errors.push(`${at}: minLength > maxLength`);
                 if (item.minItems !== undefined && item.maxItems !== undefined && item.minItems > item.maxItems)

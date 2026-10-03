@@ -1,0 +1,1006 @@
+[
+ {
+  "key": "AF",
+  "value": "Afghanistan"
+ },
+ {
+  "key": "EG",
+  "value": "Ägypten"
+ },
+ {
+  "key": "AX",
+  "value": "Ålandinseln"
+ },
+ {
+  "key": "AL",
+  "value": "Albanien"
+ },
+ {
+  "key": "DZ",
+  "value": "Algerien"
+ },
+ {
+  "key": "AS",
+  "value": "Amerikanisch-Samoa"
+ },
+ {
+  "key": "VI",
+  "value": "Amerikanische Jungferninseln"
+ },
+ {
+  "key": "UM",
+  "value": "Amerikanische Überseeinseln"
+ },
+ {
+  "key": "AD",
+  "value": "Andorra"
+ },
+ {
+  "key": "AO",
+  "value": "Angola"
+ },
+ {
+  "key": "AI",
+  "value": "Anguilla"
+ },
+ {
+  "key": "AQ",
+  "value": "Antarktis"
+ },
+ {
+  "key": "AG",
+  "value": "Antigua und Barbuda"
+ },
+ {
+  "key": "GQ",
+  "value": "Äquatorialguinea"
+ },
+ {
+  "key": "AR",
+  "value": "Argentinien"
+ },
+ {
+  "key": "AM",
+  "value": "Armenien"
+ },
+ {
+  "key": "AW",
+  "value": "Aruba"
+ },
+ {
+  "key": "AZ",
+  "value": "Aserbaidschan"
+ },
+ {
+  "key": "ET",
+  "value": "Äthiopien"
+ },
+ {
+  "key": "AU",
+  "value": "Australien"
+ },
+ {
+  "key": "BS",
+  "value": "Bahamas"
+ },
+ {
+  "key": "BH",
+  "value": "Bahrain"
+ },
+ {
+  "key": "BD",
+  "value": "Bangladesch"
+ },
+ {
+  "key": "BB",
+  "value": "Barbados"
+ },
+ {
+  "key": "BY",
+  "value": "Belarus"
+ },
+ {
+  "key": "BE",
+  "value": "Belgien"
+ },
+ {
+  "key": "BZ",
+  "value": "Belize"
+ },
+ {
+  "key": "BJ",
+  "value": "Benin"
+ },
+ {
+  "key": "BM",
+  "value": "Bermuda"
+ },
+ {
+  "key": "BT",
+  "value": "Bhutan"
+ },
+ {
+  "key": "BO",
+  "value": "Bolivien"
+ },
+ {
+  "key": "BA",
+  "value": "Bosnien und Herzegowina"
+ },
+ {
+  "key": "BW",
+  "value": "Botsuana"
+ },
+ {
+  "key": "BV",
+  "value": "Bouvetinsel"
+ },
+ {
+  "key": "BR",
+  "value": "Brasilien"
+ },
+ {
+  "key": "VG",
+  "value": "Britische Jungferninseln"
+ },
+ {
+  "key": "IO",
+  "value": "Britisches Territorium im Indischen Ozean"
+ },
+ {
+  "key": "BN",
+  "value": "Brunei Darussalam"
+ },
+ {
+  "key": "BG",
+  "value": "Bulgarien"
+ },
+ {
+  "key": "BF",
+  "value": "Burkina Faso"
+ },
+ {
+  "key": "BI",
+  "value": "Burundi"
+ },
+ {
+  "key": "CV",
+  "value": "Cabo Verde"
+ },
+ {
+  "key": "CL",
+  "value": "Chile"
+ },
+ {
+  "key": "CN",
+  "value": "China"
+ },
+ {
+  "key": "CK",
+  "value": "Cookinseln"
+ },
+ {
+  "key": "CR",
+  "value": "Costa Rica"
+ },
+ {
+  "key": "CI",
+  "value": "Côte d’Ivoire"
+ },
+ {
+  "key": "CW",
+  "value": "Curaçao"
+ },
+ {
+  "key": "DK",
+  "value": "Dänemark"
+ },
+ {
+  "key": "DE",
+  "value": "Deutschland"
+ },
+ {
+  "key": "DM",
+  "value": "Dominica"
+ },
+ {
+  "key": "DO",
+  "value": "Dominikanische Republik"
+ },
+ {
+  "key": "DJ",
+  "value": "Dschibuti"
+ },
+ {
+  "key": "EC",
+  "value": "Ecuador"
+ },
+ {
+  "key": "SV",
+  "value": "El Salvador"
+ },
+ {
+  "key": "ER",
+  "value": "Eritrea"
+ },
+ {
+  "key": "EE",
+  "value": "Estland"
+ },
+ {
+  "key": "SZ",
+  "value": "Eswatini"
+ },
+ {
+  "key": "FK",
+  "value": "Falklandinseln"
+ },
+ {
+  "key": "FO",
+  "value": "Färöer"
+ },
+ {
+  "key": "FJ",
+  "value": "Fidschi"
+ },
+ {
+  "key": "FI",
+  "value": "Finnland"
+ },
+ {
+  "key": "FR",
+  "value": "Frankreich"
+ },
+ {
+  "key": "GF",
+  "value": "Französisch-Guayana"
+ },
+ {
+  "key": "PF",
+  "value": "Französisch-Polynesien"
+ },
+ {
+  "key": "TF",
+  "value": "Französische Süd- und Antarktisgebiete"
+ },
+ {
+  "key": "GA",
+  "value": "Gabun"
+ },
+ {
+  "key": "GM",
+  "value": "Gambia"
+ },
+ {
+  "key": "GE",
+  "value": "Georgien"
+ },
+ {
+  "key": "GH",
+  "value": "Ghana"
+ },
+ {
+  "key": "GI",
+  "value": "Gibraltar"
+ },
+ {
+  "key": "GD",
+  "value": "Grenada"
+ },
+ {
+  "key": "GR",
+  "value": "Griechenland"
+ },
+ {
+  "key": "GL",
+  "value": "Grönland"
+ },
+ {
+  "key": "GP",
+  "value": "Guadeloupe"
+ },
+ {
+  "key": "GU",
+  "value": "Guam"
+ },
+ {
+  "key": "GT",
+  "value": "Guatemala"
+ },
+ {
+  "key": "GG",
+  "value": "Guernsey"
+ },
+ {
+  "key": "GN",
+  "value": "Guinea"
+ },
+ {
+  "key": "GW",
+  "value": "Guinea-Bissau"
+ },
+ {
+  "key": "GY",
+  "value": "Guyana"
+ },
+ {
+  "key": "HT",
+  "value": "Haiti"
+ },
+ {
+  "key": "HM",
+  "value": "Heard und McDonaldinseln"
+ },
+ {
+  "key": "HN",
+  "value": "Honduras"
+ },
+ {
+  "key": "IN",
+  "value": "Indien"
+ },
+ {
+  "key": "ID",
+  "value": "Indonesien"
+ },
+ {
+  "key": "IQ",
+  "value": "Irak"
+ },
+ {
+  "key": "IR",
+  "value": "Iran"
+ },
+ {
+  "key": "IE",
+  "value": "Irland"
+ },
+ {
+  "key": "IS",
+  "value": "Island"
+ },
+ {
+  "key": "IM",
+  "value": "Isle of Man"
+ },
+ {
+  "key": "IL",
+  "value": "Israel"
+ },
+ {
+  "key": "IT",
+  "value": "Italien"
+ },
+ {
+  "key": "JM",
+  "value": "Jamaika"
+ },
+ {
+  "key": "JP",
+  "value": "Japan"
+ },
+ {
+  "key": "YE",
+  "value": "Jemen"
+ },
+ {
+  "key": "JE",
+  "value": "Jersey"
+ },
+ {
+  "key": "JO",
+  "value": "Jordanien"
+ },
+ {
+  "key": "KY",
+  "value": "Kaimaninseln"
+ },
+ {
+  "key": "KH",
+  "value": "Kambodscha"
+ },
+ {
+  "key": "CM",
+  "value": "Kamerun"
+ },
+ {
+  "key": "CA",
+  "value": "Kanada"
+ },
+ {
+  "key": "BQ",
+  "value": "Karibische Niederlande"
+ },
+ {
+  "key": "KZ",
+  "value": "Kasachstan"
+ },
+ {
+  "key": "QA",
+  "value": "Katar"
+ },
+ {
+  "key": "KE",
+  "value": "Kenia"
+ },
+ {
+  "key": "KG",
+  "value": "Kirgisistan"
+ },
+ {
+  "key": "KI",
+  "value": "Kiribati"
+ },
+ {
+  "key": "CC",
+  "value": "Kokosinseln"
+ },
+ {
+  "key": "CO",
+  "value": "Kolumbien"
+ },
+ {
+  "key": "KM",
+  "value": "Komoren"
+ },
+ {
+  "key": "CG",
+  "value": "Kongo-Brazzaville"
+ },
+ {
+  "key": "CD",
+  "value": "Kongo-Kinshasa"
+ },
+ {
+  "key": "XK",
+  "value": "Kosovo"
+ },
+ {
+  "key": "HR",
+  "value": "Kroatien"
+ },
+ {
+  "key": "CU",
+  "value": "Kuba"
+ },
+ {
+  "key": "KW",
+  "value": "Kuwait"
+ },
+ {
+  "key": "LA",
+  "value": "Laos"
+ },
+ {
+  "key": "LS",
+  "value": "Lesotho"
+ },
+ {
+  "key": "LV",
+  "value": "Lettland"
+ },
+ {
+  "key": "LB",
+  "value": "Libanon"
+ },
+ {
+  "key": "LR",
+  "value": "Liberia"
+ },
+ {
+  "key": "LY",
+  "value": "Libyen"
+ },
+ {
+  "key": "LI",
+  "value": "Liechtenstein"
+ },
+ {
+  "key": "LT",
+  "value": "Litauen"
+ },
+ {
+  "key": "LU",
+  "value": "Luxemburg"
+ },
+ {
+  "key": "MG",
+  "value": "Madagaskar"
+ },
+ {
+  "key": "MW",
+  "value": "Malawi"
+ },
+ {
+  "key": "MY",
+  "value": "Malaysia"
+ },
+ {
+  "key": "MV",
+  "value": "Malediven"
+ },
+ {
+  "key": "ML",
+  "value": "Mali"
+ },
+ {
+  "key": "MT",
+  "value": "Malta"
+ },
+ {
+  "key": "MA",
+  "value": "Marokko"
+ },
+ {
+  "key": "MH",
+  "value": "Marshallinseln"
+ },
+ {
+  "key": "MQ",
+  "value": "Martinique"
+ },
+ {
+  "key": "MR",
+  "value": "Mauretanien"
+ },
+ {
+  "key": "MU",
+  "value": "Mauritius"
+ },
+ {
+  "key": "YT",
+  "value": "Mayotte"
+ },
+ {
+  "key": "MX",
+  "value": "Mexiko"
+ },
+ {
+  "key": "FM",
+  "value": "Mikronesien"
+ },
+ {
+  "key": "MC",
+  "value": "Monaco"
+ },
+ {
+  "key": "MN",
+  "value": "Mongolei"
+ },
+ {
+  "key": "ME",
+  "value": "Montenegro"
+ },
+ {
+  "key": "MS",
+  "value": "Montserrat"
+ },
+ {
+  "key": "MZ",
+  "value": "Mosambik"
+ },
+ {
+  "key": "MM",
+  "value": "Myanmar"
+ },
+ {
+  "key": "NA",
+  "value": "Namibia"
+ },
+ {
+  "key": "NR",
+  "value": "Nauru"
+ },
+ {
+  "key": "NP",
+  "value": "Nepal"
+ },
+ {
+  "key": "NC",
+  "value": "Neukaledonien"
+ },
+ {
+  "key": "NZ",
+  "value": "Neuseeland"
+ },
+ {
+  "key": "NI",
+  "value": "Nicaragua"
+ },
+ {
+  "key": "NL",
+  "value": "Niederlande"
+ },
+ {
+  "key": "NE",
+  "value": "Niger"
+ },
+ {
+  "key": "NG",
+  "value": "Nigeria"
+ },
+ {
+  "key": "NU",
+  "value": "Niue"
+ },
+ {
+  "key": "KP",
+  "value": "Nordkorea"
+ },
+ {
+  "key": "MP",
+  "value": "Nördliche Marianen"
+ },
+ {
+  "key": "MK",
+  "value": "Nordmazedonien"
+ },
+ {
+  "key": "NF",
+  "value": "Norfolkinsel"
+ },
+ {
+  "key": "NO",
+  "value": "Norwegen"
+ },
+ {
+  "key": "OM",
+  "value": "Oman"
+ },
+ {
+  "key": "AT",
+  "value": "Österreich"
+ },
+ {
+  "key": "PK",
+  "value": "Pakistan"
+ },
+ {
+  "key": "PS",
+  "value": "Palästinensische Autonomiegebiete"
+ },
+ {
+  "key": "PW",
+  "value": "Palau"
+ },
+ {
+  "key": "PA",
+  "value": "Panama"
+ },
+ {
+  "key": "PG",
+  "value": "Papua-Neuguinea"
+ },
+ {
+  "key": "PY",
+  "value": "Paraguay"
+ },
+ {
+  "key": "PE",
+  "value": "Peru"
+ },
+ {
+  "key": "PH",
+  "value": "Philippinen"
+ },
+ {
+  "key": "PN",
+  "value": "Pitcairninseln"
+ },
+ {
+  "key": "PL",
+  "value": "Polen"
+ },
+ {
+  "key": "PT",
+  "value": "Portugal"
+ },
+ {
+  "key": "PR",
+  "value": "Puerto Rico"
+ },
+ {
+  "key": "MD",
+  "value": "Republik Moldau"
+ },
+ {
+  "key": "RE",
+  "value": "Réunion"
+ },
+ {
+  "key": "RW",
+  "value": "Ruanda"
+ },
+ {
+  "key": "RO",
+  "value": "Rumänien"
+ },
+ {
+  "key": "RU",
+  "value": "Russland"
+ },
+ {
+  "key": "SB",
+  "value": "Salomonen"
+ },
+ {
+  "key": "ZM",
+  "value": "Sambia"
+ },
+ {
+  "key": "WS",
+  "value": "Samoa"
+ },
+ {
+  "key": "SM",
+  "value": "San Marino"
+ },
+ {
+  "key": "ST",
+  "value": "São Tomé und Príncipe"
+ },
+ {
+  "key": "CQ",
+  "value": "Sark"
+ },
+ {
+  "key": "SA",
+  "value": "Saudi-Arabien"
+ },
+ {
+  "key": "SE",
+  "value": "Schweden"
+ },
+ {
+  "key": "CH",
+  "value": "Schweiz"
+ },
+ {
+  "key": "SN",
+  "value": "Senegal"
+ },
+ {
+  "key": "RS",
+  "value": "Serbien"
+ },
+ {
+  "key": "SC",
+  "value": "Seychellen"
+ },
+ {
+  "key": "SL",
+  "value": "Sierra Leone"
+ },
+ {
+  "key": "ZW",
+  "value": "Simbabwe"
+ },
+ {
+  "key": "SG",
+  "value": "Singapur"
+ },
+ {
+  "key": "SX",
+  "value": "Sint Maarten"
+ },
+ {
+  "key": "SK",
+  "value": "Slowakei"
+ },
+ {
+  "key": "SI",
+  "value": "Slowenien"
+ },
+ {
+  "key": "SO",
+  "value": "Somalia"
+ },
+ {
+  "key": "HK",
+  "value": "Sonderverwaltungsregion Hongkong"
+ },
+ {
+  "key": "MO",
+  "value": "Sonderverwaltungsregion Macau"
+ },
+ {
+  "key": "ES",
+  "value": "Spanien"
+ },
+ {
+  "key": "SJ",
+  "value": "Spitzbergen und Jan Mayen"
+ },
+ {
+  "key": "LK",
+  "value": "Sri Lanka"
+ },
+ {
+  "key": "BL",
+  "value": "St. Barthélemy"
+ },
+ {
+  "key": "SH",
+  "value": "St. Helena"
+ },
+ {
+  "key": "KN",
+  "value": "St. Kitts und Nevis"
+ },
+ {
+  "key": "LC",
+  "value": "St. Lucia"
+ },
+ {
+  "key": "MF",
+  "value": "St. Martin"
+ },
+ {
+  "key": "PM",
+  "value": "St. Pierre und Miquelon"
+ },
+ {
+  "key": "VC",
+  "value": "St. Vincent und die Grenadinen"
+ },
+ {
+  "key": "ZA",
+  "value": "Südafrika"
+ },
+ {
+  "key": "SD",
+  "value": "Sudan"
+ },
+ {
+  "key": "GS",
+  "value": "Südgeorgien und die Südlichen Sandwichinseln"
+ },
+ {
+  "key": "KR",
+  "value": "Südkorea"
+ },
+ {
+  "key": "SS",
+  "value": "Südsudan"
+ },
+ {
+  "key": "SR",
+  "value": "Suriname"
+ },
+ {
+  "key": "SY",
+  "value": "Syrien"
+ },
+ {
+  "key": "TJ",
+  "value": "Tadschikistan"
+ },
+ {
+  "key": "TW",
+  "value": "Taiwan"
+ },
+ {
+  "key": "TZ",
+  "value": "Tansania"
+ },
+ {
+  "key": "TH",
+  "value": "Thailand"
+ },
+ {
+  "key": "TL",
+  "value": "Timor-Leste"
+ },
+ {
+  "key": "TG",
+  "value": "Togo"
+ },
+ {
+  "key": "TK",
+  "value": "Tokelau"
+ },
+ {
+  "key": "TO",
+  "value": "Tonga"
+ },
+ {
+  "key": "TT",
+  "value": "Trinidad und Tobago"
+ },
+ {
+  "key": "TD",
+  "value": "Tschad"
+ },
+ {
+  "key": "CZ",
+  "value": "Tschechien"
+ },
+ {
+  "key": "TN",
+  "value": "Tunesien"
+ },
+ {
+  "key": "TR",
+  "value": "Türkei"
+ },
+ {
+  "key": "TM",
+  "value": "Turkmenistan"
+ },
+ {
+  "key": "TC",
+  "value": "Turks- und Caicosinseln"
+ },
+ {
+  "key": "TV",
+  "value": "Tuvalu"
+ },
+ {
+  "key": "UG",
+  "value": "Uganda"
+ },
+ {
+  "key": "UA",
+  "value": "Ukraine"
+ },
+ {
+  "key": "HU",
+  "value": "Ungarn"
+ },
+ {
+  "key": "UY",
+  "value": "Uruguay"
+ },
+ {
+  "key": "UZ",
+  "value": "Usbekistan"
+ },
+ {
+  "key": "VU",
+  "value": "Vanuatu"
+ },
+ {
+  "key": "VA",
+  "value": "Vatikanstadt"
+ },
+ {
+  "key": "VE",
+  "value": "Venezuela"
+ },
+ {
+  "key": "AE",
+  "value": "Vereinigte Arabische Emirate"
+ },
+ {
+  "key": "US",
+  "value": "Vereinigte Staaten"
+ },
+ {
+  "key": "GB",
+  "value": "Vereinigtes Königreich"
+ },
+ {
+  "key": "VN",
+  "value": "Vietnam"
+ },
+ {
+  "key": "WF",
+  "value": "Wallis und Futuna"
+ },
+ {
+  "key": "CX",
+  "value": "Weihnachtsinsel"
+ },
+ {
+  "key": "EH",
+  "value": "Westsahara"
+ },
+ {
+  "key": "CF",
+  "value": "Zentralafrikanische Republik"
+ },
+ {
+  "key": "CY",
+  "value": "Zypern"
+ }
+]

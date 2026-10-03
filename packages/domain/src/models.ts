@@ -38,6 +38,8 @@ export interface Application {
     state: ApplicationState;
     secretariatComment?: string;
     interviewerComment?: string;
+    /** ISO 8601, set on public submission */
+    submittedAt?: string;
 }
 
 export interface FormDefinition {

@@ -2,6 +2,7 @@
     import { api, LOGO_URL, type PublicConfig, type PublicProcedure } from './api.ts';
     import Preview from './Preview.svelte';
     import Registration from './Registration.svelte';
+    import { session, type Session } from './session.ts';
 
     let route = $state(location.hash);
     window.addEventListener('hashchange', () => (route = location.hash));
@@ -10,9 +11,31 @@
     let error = $state('');
     let logoVisible = $state(true);
     let chosen: PublicProcedure | undefined = $state();
+    let resume: Session | undefined = $state();
+    let alreadySubmitted = $state(false);
 
     const schoolName = $derived(config?.config.schoolName ?? '');
-    const procedure = $derived(chosen ?? (config?.procedures.length === 1 ? config.procedures[0] : undefined));
+    const procedure = $derived(
+        chosen ??
+            config?.procedures.find((p) => p.id === resume?.procedureId) ??
+            (config?.procedures.length === 1 ? config.procedures[0] : undefined),
+    );
+
+    /** A booking from an earlier visit on this device continues at the form. */
+    async function checkSession(): Promise<void> {
+        const stored = session.load();
+        if (!stored) return;
+        try {
+            const status = await api.application(stored.applicationId, stored.token);
+            if (status.state === 'created' || status.state === 'form_in_progress') resume = stored;
+            else {
+                alreadySubmitted = true;
+                session.clear();
+            }
+        } catch {
+            session.clear();
+        }
+    }
 
     $effect(() => {
         document.title = schoolName ? `Anmeldung – ${schoolName}` : 'Anmeldung';
@@ -20,8 +43,8 @@
 
     $effect(() => {
         if (route === '#vorschau' || config) return;
-        api.config()
-            .then((c) => (config = c))
+        Promise.all([api.config(), checkSession()])
+            .then(([c]) => (config = c))
             .catch((e) => (error = e instanceof Error ? e.message : String(e)));
     });
 </script>
@@ -31,7 +54,7 @@
         <Preview />
     {:else}
         <header>
-            {#if logoVisible}<img src={LOGO_URL} alt="" onerror={() => (logoVisible = false)} />{/if}
+            {#if config?.hasLogo && logoVisible}<img src={LOGO_URL} alt="" onerror={() => (logoVisible = false)} />{/if}
             <div>
                 {#if schoolName}<p class="school">{schoolName}</p>{/if}
                 <h1>{procedure?.title ?? 'Anmeldung'}</h1>
@@ -42,6 +65,8 @@
             <p class="error" role="alert">{error}</p>
         {:else if !config}
             <p>Wird geladen …</p>
+        {:else if alreadySubmitted}
+            <p>Ihre Anmeldung wurde bereits abgeschickt. Vielen Dank!</p>
         {:else if !config.procedures.length}
             <p>Zurzeit ist keine Anmeldung möglich.</p>
         {:else if !procedure}
@@ -54,7 +79,9 @@
             {/each}
         {:else}
             {#if procedure.description}<p class="description">{procedure.description}</p>{/if}
-            {#key procedure.id}<Registration {procedure} consentText={config.config.consentText} />{/key}
+            {#key procedure.id}
+                <Registration {procedure} consentText={config.config.consentText} resume={resume?.procedureId === procedure.id ? resume : undefined} />
+            {/key}
         {/if}
     {/if}
 </main>

@@ -7,13 +7,14 @@ School registration MVP. See `backlog.md` (scope, architecture) and `info.md` (a
 ```
 packages/domain       shared domain models and state machines (TypeScript)
 packages/sharepoint   Graph/SharePoint adapter, schema provisioning, config store
-packages/forms        form JSON schema, types, checks, framework-free form runtime
+packages/forms        form JSON schema, runtime, school form (examples/), generated catalogs
 packages/form-ui      Svelte form renderer (public and secretariat mode)
 apps/public           public SPA (Svelte), dev port 5174, proxies /api to the server
 apps/secretariat      secretariat SPA (Svelte, Microsoft 365 login), dev port 5173
 server                public Rust server (tiny_http, ureq), port 8080, daemon identity
 scripts               Node test tooling (integration test against SharePoint)
 docs/sprint-reviews   sprint reviews
+docs/reference        the school's previous registration form (Word)
 ```
 
 TypeScript packages are consumed as source (no build step). Scripts run with

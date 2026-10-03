@@ -12,7 +12,7 @@ function load(sub: string): [string, unknown][] {
 }
 
 describe('valid definitions', () => {
-    it.each([...load('valid'), ...load('../examples')])('%s passes schema and semantic checks', (_name, form) => {
+    it.each([...load('valid'), ...load('../examples').filter(([name]) => !name.includes('.mergefields.'))])('%s passes schema and semantic checks', (_name, form) => {
         expect(validateFormDefinition(form)).toEqual([]);
     });
 });
