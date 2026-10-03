@@ -7,7 +7,8 @@ School registration MVP. See `backlog.md` (scope, architecture) and `info.md` (a
 ```
 packages/domain       shared domain models and state machines (TypeScript)
 packages/sharepoint   Graph/SharePoint adapter, schema provisioning, config store
-packages/forms        form JSON schema (schema/form.schema.json), types, semantic checks
+packages/forms        form JSON schema, types, checks, framework-free form runtime
+packages/form-ui      Svelte form renderer (public and secretariat mode)
 apps/public           public SPA (Svelte), dev port 5174, proxies /api to the server
 apps/secretariat      secretariat SPA (Svelte, Microsoft 365 login), dev port 5173
 server                public Rust server (tiny_http), port 8080
@@ -30,7 +31,8 @@ pnpm build                 # build both SPAs
 pnpm dev:public            # http://localhost:5174
 pnpm dev:secretariat       # http://localhost:5173
 pnpm test:integration      # against the SharePoint test site, needs .env
-pnpm test:e2e              # secretariat login with the M365 test user (headless Chromium)
+pnpm test:e2e              # browser tests (headless Chromium); secretariat tests sign in
+                           # with the M365 test user and clean up their SharePoint data
 
 cd server && cargo test && cargo run
 ```

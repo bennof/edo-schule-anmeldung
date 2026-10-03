@@ -1,0 +1,14 @@
+{
+  "name": "@anmeldung/form-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "svelte": "./src/index.ts",
+  "scripts": {
+    "check": "svelte-check --tsconfig ./tsconfig.json"
+  },
+  "dependencies": {
+    "@anmeldung/forms": "workspace:*"
+  }
+}

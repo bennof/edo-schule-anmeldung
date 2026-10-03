@@ -1,0 +1,298 @@
+{
+  "formatVersion": 1,
+  "title": "Testformular Anmeldung Klasse 5",
+  "groups": {
+    "adresse": {
+      "items": [
+        {
+          "kind": "field",
+          "id": "strasse",
+          "type": "text",
+          "label": "Straße und Hausnummer",
+          "required": true
+        },
+        {
+          "kind": "field",
+          "id": "plz",
+          "type": "text",
+          "label": "PLZ",
+          "required": true,
+          "pattern": "^\\d{5}$"
+        },
+        {
+          "kind": "field",
+          "id": "ort",
+          "type": "text",
+          "label": "Ort",
+          "required": true
+        }
+      ]
+    },
+    "sorgeberechtigter": {
+      "description": "Wiederverwendbare Gruppe für Sorgeberechtigte",
+      "items": [
+        {
+          "kind": "field",
+          "id": "nachname",
+          "type": "text",
+          "label": "Nachname",
+          "required": true,
+          "maxLength": 80
+        },
+        {
+          "kind": "field",
+          "id": "vorname",
+          "type": "text",
+          "label": "Vorname",
+          "required": true
+        },
+        {
+          "kind": "field",
+          "id": "email",
+          "type": "email",
+          "label": "E-Mail"
+        },
+        {
+          "kind": "field",
+          "id": "telefon",
+          "type": "phone",
+          "label": "Telefon"
+        },
+        {
+          "kind": "field",
+          "id": "andereAdresse",
+          "type": "boolean",
+          "label": "Abweichende Adresse"
+        },
+        {
+          "kind": "group",
+          "id": "adresse",
+          "group": "adresse",
+          "label": "Adresse",
+          "visibleIf": {
+            "field": "andereAdresse",
+            "equals": true
+          }
+        }
+      ]
+    },
+    "schule": {
+      "items": [
+        {
+          "kind": "field",
+          "id": "schule",
+          "type": "searchselect",
+          "label": "Schule",
+          "options": [
+            {
+              "key": "gs-nord",
+              "value": "Grundschule Nord"
+            },
+            {
+              "key": "gs-sued",
+              "value": "Grundschule Süd"
+            },
+            {
+              "key": "gs-am-park",
+              "value": "Grundschule am Park"
+            },
+            {
+              "key": "gs-lindenweg",
+              "value": "Grundschule Lindenweg"
+            },
+            {
+              "key": "kgs-st-maria",
+              "value": "Katholische Grundschule St. Maria"
+            },
+            {
+              "key": "ggs-sonnenblume",
+              "value": "Gemeinschaftsgrundschule Sonnenblume"
+            },
+            {
+              "key": "andere",
+              "value": "Andere Schule"
+            }
+          ]
+        },
+        {
+          "kind": "field",
+          "id": "von",
+          "type": "year",
+          "label": "Von",
+          "min": 2010,
+          "max": 2030
+        },
+        {
+          "kind": "field",
+          "id": "bis",
+          "type": "year",
+          "label": "Bis"
+        }
+      ]
+    }
+  },
+  "sections": [
+    {
+      "id": "kind",
+      "title": "Angaben zum Kind",
+      "items": [
+        {
+          "kind": "field",
+          "id": "nachname",
+          "type": "text",
+          "label": "Nachname",
+          "required": true
+        },
+        {
+          "kind": "field",
+          "id": "geburtsdatum",
+          "type": "date",
+          "label": "Geburtsdatum",
+          "required": true,
+          "min": "2010-01-01"
+        },
+        {
+          "kind": "field",
+          "id": "geschwister",
+          "type": "integer",
+          "label": "Anzahl Geschwister",
+          "min": 0,
+          "max": 20
+        },
+        {
+          "kind": "field",
+          "id": "geschlecht",
+          "type": "select",
+          "label": "Geschlecht",
+          "options": [
+            {
+              "key": "m",
+              "value": "männlich"
+            },
+            {
+              "key": "w",
+              "value": "weiblich"
+            },
+            {
+              "key": "d",
+              "value": "divers"
+            }
+          ]
+        },
+        {
+          "kind": "field",
+          "id": "sprachen",
+          "type": "multiselect",
+          "label": "Fremdsprachen",
+          "maxItems": 2,
+          "options": [
+            {
+              "key": "en",
+              "value": "Englisch"
+            },
+            {
+              "key": "fr",
+              "value": "Französisch"
+            },
+            {
+              "key": "es",
+              "value": "Spanisch"
+            }
+          ]
+        },
+        {
+          "kind": "group",
+          "id": "adresse",
+          "group": "adresse",
+          "label": "Wohnadresse"
+        }
+      ]
+    },
+    {
+      "id": "eltern",
+      "title": "Sorgeberechtigte",
+      "items": [
+        {
+          "kind": "group",
+          "id": "sorgeberechtigter1",
+          "group": "sorgeberechtigter",
+          "label": "1. Sorgeberechtigte Person"
+        },
+        {
+          "kind": "field",
+          "id": "zweiterSorgeberechtigter",
+          "type": "boolean",
+          "label": "Weitere sorgeberechtigte Person"
+        },
+        {
+          "kind": "group",
+          "id": "sorgeberechtigter2",
+          "group": "sorgeberechtigter",
+          "label": "2. Sorgeberechtigte Person",
+          "visibleIf": {
+            "field": "zweiterSorgeberechtigter",
+            "equals": true
+          },
+          "copyFrom": [
+            "sorgeberechtigter1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "schullaufbahn",
+      "title": "Bisherige Schullaufbahn",
+      "items": [
+        {
+          "kind": "group",
+          "id": "schulen",
+          "group": "schule",
+          "label": "Besuchte Schulen",
+          "repeat": {
+            "minItems": 1,
+            "maxItems": 6,
+            "itemLabel": "Schule"
+          }
+        },
+        {
+          "kind": "field",
+          "id": "foerderbedarf",
+          "type": "select",
+          "label": "Sonderpädagogischer Förderbedarf",
+          "options": [
+            {
+              "key": "nein",
+              "value": "Nein"
+            },
+            {
+              "key": "ja",
+              "value": "Ja"
+            }
+          ]
+        },
+        {
+          "kind": "field",
+          "id": "foerderschwerpunkt",
+          "type": "text",
+          "label": "Förderschwerpunkt",
+          "visibleIf": {
+            "field": "foerderbedarf",
+            "equals": "ja"
+          },
+          "requiredIf": {
+            "all": [
+              {
+                "field": "foerderbedarf",
+                "equals": "ja"
+              },
+              {
+                "field": "/sorgeberechtigter1/nachname",
+                "filled": true
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

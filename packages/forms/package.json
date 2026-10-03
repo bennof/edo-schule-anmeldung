@@ -5,13 +5,15 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema.json": "./schema/form.schema.json"
+    "./schema.json": "./schema/form.schema.json",
+    "./validate": "./src/validate-definition.ts",
+    "./examples/test-form.json": "./examples/test-form.json"
   },
   "scripts": {
     "check": "tsc -p .",
     "test": "vitest run"
   },
-  "devDependencies": {
+  "dependencies": {
     "ajv": "^8.17.1"
   }
 }

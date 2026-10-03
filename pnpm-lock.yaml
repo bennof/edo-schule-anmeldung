@@ -38,12 +38,24 @@ importers:
       '@anmeldung/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@anmeldung/form-ui':
+        specifier: workspace:*
+        version: link:../../packages/form-ui
+      '@anmeldung/forms':
+        specifier: workspace:*
+        version: link:../../packages/forms
 
   apps/secretariat:
     dependencies:
       '@anmeldung/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@anmeldung/form-ui':
+        specifier: workspace:*
+        version: link:../../packages/form-ui
+      '@anmeldung/forms':
+        specifier: workspace:*
+        version: link:../../packages/forms
       '@anmeldung/sharepoint':
         specifier: workspace:*
         version: link:../../packages/sharepoint
@@ -53,8 +65,14 @@ importers:
 
   packages/domain: {}
 
+  packages/form-ui:
+    dependencies:
+      '@anmeldung/forms':
+        specifier: workspace:*
+        version: link:../forms
+
   packages/forms:
-    devDependencies:
+    dependencies:
       ajv:
         specifier: ^8.17.1
         version: 8.20.0

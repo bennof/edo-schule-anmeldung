@@ -1,0 +1,105 @@
+<script lang="ts">
+    import {
+        canAddRepeat,
+        canRemoveRepeat,
+        copyGroupData,
+        emptyGroupData,
+        groupItems,
+        joinPath,
+        type FormData,
+        type GroupItem,
+        type Item,
+    } from '@anmeldung/forms';
+    import { getFormContext, visibleError } from './context.ts';
+    import Items from './Items.svelte';
+
+    interface Props {
+        group: GroupItem;
+        /** items of the enclosing scope, to resolve copy sources */
+        siblings: Item[];
+        local: FormData;
+        root: FormData;
+        path: string;
+        hiddenPublic: boolean;
+    }
+
+    let { group, siblings, local, root, path, hiddenPublic }: Props = $props();
+    const ctx = getFormContext();
+
+    const inner = $derived(groupItems(ctx.form, group));
+    const sources = $derived(
+        (group.copyFrom ?? []).flatMap((id) => siblings.filter((s): s is GroupItem => s.kind === 'group' && s.id === id)),
+    );
+    const list = $derived((Array.isArray(local[group.id]) ? local[group.id] : []) as FormData[]);
+    const error = $derived(visibleError(ctx, path));
+
+    function copyFrom(source: GroupItem): void {
+        local[group.id] = copyGroupData(local[source.id]);
+    }
+
+    function add(): void {
+        if (!Array.isArray(local[group.id])) local[group.id] = [];
+        (local[group.id] as FormData[]).push(emptyGroupData(ctx.form, group));
+    }
+
+    function remove(index: number): void {
+        (local[group.id] as FormData[]).splice(index, 1);
+    }
+</script>
+
+<fieldset class="group" class:hidden-public={hiddenPublic} data-path={path}>
+    <legend>{group.label}</legend>
+    {#if hiddenPublic}<p class="hidden-note">Im Online-Formular ausgeblendet</p>{/if}
+
+    {#if group.repeat}
+        {#each list as entry, i (entry)}
+            <fieldset class="entry" data-path={joinPath(path, i)}>
+                <legend>{group.repeat.itemLabel ?? group.label} {i + 1}</legend>
+                <Items items={inner} local={entry} {root} base={joinPath(path, i)} />
+                {#if canRemoveRepeat(group, list)}
+                    <button type="button" class="secondary" onclick={() => remove(i)}>Eintrag entfernen</button>
+                {/if}
+            </fieldset>
+        {/each}
+        {#if canAddRepeat(group, list)}
+            <button type="button" onclick={add}>{group.repeat.itemLabel ?? 'Eintrag'} hinzufügen</button>
+        {/if}
+        {#if error}<p class="error" role="alert">{error}</p>{/if}
+    {:else}
+        {#each sources as source (source.id)}
+            <button type="button" class="secondary copy" onclick={() => copyFrom(source)}>
+                Angaben von „{source.label}“ übernehmen
+            </button>
+        {/each}
+        {#if local[group.id]}
+            <Items items={inner} local={local[group.id] as FormData} {root} base={path} />
+        {/if}
+    {/if}
+</fieldset>
+
+<style>
+    fieldset {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 0.5rem 1rem 1rem;
+        display: grid;
+        gap: 0.75rem;
+    }
+    legend {
+        font-weight: 600;
+        padding: 0 0.3rem;
+    }
+    .entry {
+        background: #f8f8f8;
+    }
+    .hidden-public {
+        border-style: dashed;
+    }
+    button {
+        justify-self: start;
+    }
+    .error {
+        color: #b00020;
+        margin: 0;
+    }
+</style>

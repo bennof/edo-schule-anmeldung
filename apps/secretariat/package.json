@@ -11,6 +11,8 @@
   "dependencies": {
     "@anmeldung/domain": "workspace:*",
     "@anmeldung/sharepoint": "workspace:*",
-    "@azure/msal-browser": "^4.0.0"
+    "@azure/msal-browser": "^4.0.0",
+    "@anmeldung/forms": "workspace:*",
+    "@anmeldung/form-ui": "workspace:*"
   }
 }

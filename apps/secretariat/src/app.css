@@ -1,0 +1,50 @@
+body {
+    font-family: system-ui, sans-serif;
+    margin: 0;
+}
+table {
+    border-collapse: collapse;
+    margin: 1rem 0;
+    width: 100%;
+}
+th,
+td {
+    text-align: left;
+    padding: 0.3rem 0.5rem;
+    border-bottom: 1px solid #eee;
+    vertical-align: top;
+}
+button,
+label.button {
+    font: inherit;
+    padding: 0.35rem 0.8rem;
+    border: 1px solid #2456a6;
+    background: #2456a6;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+}
+button.secondary {
+    background: white;
+    color: #2456a6;
+}
+button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+input,
+select,
+textarea {
+    font: inherit;
+}
+.actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.muted {
+    color: #666;
+}
+.error {
+    color: #b00020;
+}

@@ -45,10 +45,16 @@ export interface FormDefinition {
     dateLastUpdate: string;
 }
 
+/** Descriptive data of a procedure, stored as JSON (`info`). */
+export interface ProcedureInfo {
+    title: string;
+    description?: string;
+}
+
 export interface Procedure {
     id: string;
     formId: string;
-    info: unknown;
+    info: ProcedureInfo;
     /** YYYY-MM-DD */
     startDate: string;
     /** YYYY-MM-DD */

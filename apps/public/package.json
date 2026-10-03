@@ -9,6 +9,8 @@
     "check": "svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
-    "@anmeldung/domain": "workspace:*"
+    "@anmeldung/domain": "workspace:*",
+    "@anmeldung/forms": "workspace:*",
+    "@anmeldung/form-ui": "workspace:*"
   }
 }
