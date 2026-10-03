@@ -1,6 +1,6 @@
 # Sprint 1 – Fundament
 
-**Status:** Code fertig, Integration mit SharePoint **blockiert** (siehe Probleme).
+**Status:** Abgeschlossen. Einzige Lücke: J1 ist mangels Testbenutzer nicht interaktiv geprüft.
 
 ## Ergebnis
 
@@ -8,21 +8,21 @@
 |---|---|
 | A1 Repository/Workspace | ✅ pnpm-Workspace, beide SPAs und Rust-Server bauen und starten |
 | A2 Domain-Modell | ✅ `packages/domain`: Modelle und State-Machines inkl. Übergangsprüfung |
-| B1 SharePoint-Adapter | ✅ Code + Unit-Tests (Fake-Graph), ⛔ nicht gegen echte Site getestet |
-| B2 Schema-Provisionierung | ✅ Code + Unit-Tests (idempotent, nicht destruktiv, Schema-Version), ⛔ nicht live getestet |
-| B3 Config-System | ✅ Code + Unit-Tests, ⛔ nicht live getestet |
+| B1 SharePoint-Adapter | ✅ Unit-Tests und live gegen die Test-Site getestet |
+| B2 Schema-Provisionierung | ✅ live: leere Site initialisiert, zweiter Lauf ändert nichts, Spalten und Indizes korrekt |
+| B3 Config-System | ✅ Unit-Tests und live getestet |
 | C1 Form-JSON-Schema | ✅ JSON-Schema, 2 gültige und 16 ungültige Testdefinitionen |
-| J1 Microsoft-365-Login | ✅ Code (MSAL), ⛔ nicht getestet (kein Testbenutzer, App-Secret ungültig) |
+| J1 Microsoft-365-Login | ✅ Code (MSAL), ⛔ nicht interaktiv getestet (kein Testbenutzer) |
 
-Tests: 33 Unit-Tests (TS) und 2 Rust-Tests grün; Typprüfung ohne Fehler; Secrets nachweislich nicht im Browser-Bundle.
+Tests: 33 Unit-Tests (TS), 2 Rust-Tests und 7 Integrationsschritte gegen SharePoint grün; Typprüfung ohne Fehler; Secrets nachweislich nicht im Browser-Bundle.
 
 ## Probleme
 
-1. **`APP_CLIENT_SECRET` wird abgelehnt** (`AADSTS7000215 invalid_client`). Der Wert hat 41 Zeichen, üblich sind 40; vermutlich falsch kopiert oder abgelaufen. Ohne ihn läuft `pnpm test:integration` nicht. Das Skript ist fertig und testet Provisionierung (2×), Config, Appointment-CRUD mit Filter und If-Match, JSON-Round-Trip und Assets.
-2. **Kein Testbenutzer in `.env`.** `info.md` erwähnt ihn, die Datei enthält aber keine Benutzer-Zugangsdaten. J1 ist daher nur gebaut, nicht geprüft.
-3. Offen bis zum Live-Test: ob die App-Registrierung Listen anlegen darf (z. B. `Sites.Manage.All` oder `Sites.Selected` mit Rolle `manage`).
+1. ~~`APP_CLIENT_SECRET` ungültig~~: behoben, neues Secret funktioniert. `pnpm test:integration` läuft vollständig durch (Provisionierung 2×, Config, Appointment-CRUD mit Filter und If-Match, JSON-Round-Trip, Assets). Das Skript räumt seine Testdaten selbst auf.
+2. **Kein Testbenutzer in `.env`.** J1 (interaktiver Login und Zugriffsprüfung) ist gebaut, aber noch nicht im Browser geprüft.
 
-Der Daemon funktioniert (Token mit `Sites.Selected`, Lesen der Site OK).
+Die App-Registrierung darf Listen anlegen. Der Daemon bekommt einen Token mit `Sites.Selected` und kann die Site lesen.
+`scripts/inspect-schema.ts` zeigt die angelegten Spalten und Indizes.
 
 ## Entscheidungen (bitte prüfen)
 
@@ -35,4 +35,4 @@ Der Daemon funktioniert (Token mit `Sites.Selected`, Lesen der Site OK).
 
 ## Nächster Schritt
 
-Secret korrigieren → `pnpm test:integration` → Sekretariats-Login mit echtem Benutzer prüfen. Danach Sprint 2.
+Sekretariats-Login mit einem echten Benutzer prüfen (sobald Testbenutzer verfügbar), dann Sprint 2.
