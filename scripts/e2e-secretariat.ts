@@ -35,7 +35,7 @@ try {
     await step('import test form', async () => {
         await nav('Formulare');
         await page.getByRole('button', { name: 'Testformular anlegen' }).click();
-        const msg = await page.getByText(/Formular „.*“ angelegt \(ID \d+\)/).textContent({ timeout: 20000 });
+        const msg = await page.getByText(/Formular „.*“ als Version \d+ angelegt \(ID \d+\)/).textContent({ timeout: 20000 });
         created.form = /ID (\d+)/.exec(msg ?? '')![1];
         await page.getByRole('cell', { name: created.form, exact: true }).waitFor();
     });

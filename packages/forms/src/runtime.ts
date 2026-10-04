@@ -1,7 +1,7 @@
 // Framework-independent form runtime (backlog C2): initial data, conditions,
 // visibility, validation, repeatable groups and copying between groups.
 // Data layout is described in types.ts.
-import type { Condition, FieldItem, FormJson, GroupItem, Item, Scalar } from './types.ts';
+import type { Condition, FieldItem, FileContentType, FileRef, FormJson, GroupItem, Item, Scalar } from './types.ts';
 
 export type FormData = Record<string, unknown>;
 
@@ -212,6 +212,15 @@ export function validateField(field: FieldItem, value: unknown, scope: Scope): F
             if (typeof value !== 'string') return invalid('Ungültiger Wert');
             if (field.options && !field.options.some((o) => o.key === value)) return invalid('Ungültige Auswahl');
             return undefined;
+        case 'file': {
+            const refs = field.multiple ? value : [value];
+            if (!Array.isArray(refs) || !refs.every(isFileRef)) return invalid('Ungültige Datei');
+            if (field.maxFiles !== undefined && refs.length > field.maxFiles)
+                return { code: 'maxItems', message: `Höchstens ${field.maxFiles} Dateien` };
+            if (field.accept && refs.some((r) => !field.accept!.includes(r.contentType as FileContentType)))
+                return invalid('Dateityp nicht erlaubt');
+            return undefined;
+        }
         case 'multiselect': {
             if (!Array.isArray(value) || value.some((v) => typeof v !== 'string')) return invalid('Ungültiger Wert');
             if (field.options && value.some((v) => !field.options!.some((o) => o.key === v)))
@@ -298,4 +307,34 @@ export function optionSources(form: unknown): string[] {
     };
     walk(form);
     return [...keys];
+}
+
+export function isFileRef(value: unknown): value is FileRef {
+    const v = value as FileRef;
+    return (
+        typeof v === 'object' &&
+        v !== null &&
+        typeof v.id === 'string' &&
+        typeof v.name === 'string' &&
+        typeof v.contentType === 'string' &&
+        typeof v.size === 'number'
+    );
+}
+
+/** File references in form data, optionally only those of a role (e.g. the photo). */
+export function fileRefs(form: FormJson, data: FormData, role?: 'photo'): FileRef[] {
+    const refs: FileRef[] = [];
+    const walk = (items: Item[], scope: unknown): void => {
+        if (!scope || typeof scope !== 'object' || Array.isArray(scope)) return;
+        for (const item of items) {
+            const value = (scope as FormData)[item.id];
+            if (item.kind === 'group') {
+                for (const entry of Array.isArray(value) ? value : [value]) walk(groupItems(form, item), entry);
+            } else if (item.type === 'file' && (!role || item.role === role)) {
+                refs.push(...(Array.isArray(value) ? value : [value]).filter(isFileRef));
+            }
+        }
+    };
+    walk(rootItems(form), data);
+    return refs;
 }

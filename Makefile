@@ -20,7 +20,7 @@ DIST    := dist
 SVWS_DIR     := docker/svws
 SVWS_COMPOSE := $(COMPOSE) --project-directory $(SVWS_DIR) -f $(SVWS_DIR)/compose.yml --env-file $(SVWS_DIR)/.env
 
-E2E_TESTS := e2e-login e2e-forms e2e-secretariat e2e-booking e2e-registration e2e-day e2e-config
+E2E_TESTS := e2e-login e2e-forms e2e-secretariat e2e-booking e2e-registration e2e-day e2e-config e2e-designer-uploads
 
 ##@ Overview
 

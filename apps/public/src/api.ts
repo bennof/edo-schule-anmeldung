@@ -1,5 +1,5 @@
 // Client for the public Rust server (/api, proxied by Vite in development).
-import type { FormJson, Option } from '@anmeldung/forms';
+import type { FileRef, FormJson, Option } from '@anmeldung/forms';
 
 export interface PublicProcedure {
     id: string;
@@ -76,6 +76,18 @@ export const api = {
     applicationForm: (id: string, token: string) =>
         call<{ id: string; form: FormJson }>(`/applications/${id}/form`, { headers: bearer(token) }),
     start: (id: string, token: string) => call<{ state: string }>(`/applications/${id}/start`, { method: 'POST', headers: bearer(token) }),
+    upload: (id: string, token: string, file: Blob, name: string) =>
+        call<FileRef>(`/applications/${id}/uploads?name=${encodeURIComponent(name)}`, {
+            method: 'POST',
+            headers: { ...bearer(token), 'Content-Type': file.type },
+            body: file,
+        }),
+    openUpload: async (id: string, token: string, ref: FileRef): Promise<Blob | undefined> => {
+        const res = await fetch(`/api/applications/${id}/uploads/${ref.id.split('/')[1]}`, { headers: bearer(token) });
+        return res.ok ? res.blob() : undefined;
+    },
+    deleteUpload: (id: string, token: string, ref: FileRef) =>
+        call<unknown>(`/applications/${id}/uploads/${ref.id.split('/')[1]}`, { method: 'DELETE', headers: bearer(token) }),
     submit: (id: string, token: string, data: unknown) =>
         call<{ state: string }>(`/applications/${id}/submit`, {
             method: 'POST',

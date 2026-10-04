@@ -8,6 +8,7 @@ mod mail;
 mod settings;
 mod sharepoint;
 mod token;
+mod uploads;
 
 use std::io::Read;
 use std::sync::Arc;
@@ -53,7 +54,16 @@ fn main() {
 
 fn handle(api: &api::Api, mut request: Request, trust_proxy: bool) {
     let method = request.method().as_str().to_uppercase();
-    let path = request.url().split('?').next().unwrap_or("").to_string();
+    let (path, query) = match request.url().split_once('?') {
+        Some((p, q)) => (p.to_string(), q.to_string()),
+        None => (request.url().to_string(), String::new()),
+    };
+    // uploads may be larger than ordinary JSON requests
+    let max_body = if method == "POST" && path.ends_with("/uploads") {
+        uploads::MAX_SIZE as u64 + 1
+    } else {
+        MAX_BODY
+    };
     let header = |name: &'static str| {
         request
             .headers()
@@ -63,12 +73,13 @@ fn handle(api: &api::Api, mut request: Request, trust_proxy: bool) {
     };
     let forwarded = header("X-Forwarded-For");
     let bearer = header("Authorization").and_then(|v| v.strip_prefix("Bearer ").map(|t| t.trim().to_string()));
+    let content_type = header("Content-Type");
     let ip = client_ip(request.remote_addr().map(|a| a.ip()), forwarded.as_deref(), trust_proxy);
 
     let mut body = Vec::new();
-    let too_large = request.body_length().is_some_and(|l| l as u64 > MAX_BODY)
-        || request.as_reader().take(MAX_BODY + 1).read_to_end(&mut body).is_err()
-        || body.len() as u64 > MAX_BODY;
+    let too_large = request.body_length().is_some_and(|l| l as u64 > max_body)
+        || request.as_reader().take(max_body + 1).read_to_end(&mut body).is_err()
+        || body.len() as u64 > max_body;
 
     let reply = if too_large {
         api::Reply {
@@ -83,6 +94,8 @@ fn handle(api: &api::Api, mut request: Request, trust_proxy: bool) {
             body,
             client_ip: ip,
             bearer,
+            query,
+            content_type,
         })
     };
     // log method, path and status only, never bodies (personal data)

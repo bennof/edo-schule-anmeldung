@@ -255,6 +255,7 @@ try {
     server.stop();
     if (created.procedure) {
         const apps = await site.listItems('applications', `fields/ProcedureId eq '${created.procedure}'`).catch(() => []);
+        for (const a of apps) await site.deleteUploads(a.id).catch(() => {});
         if (apps.length) await site.deleteItems('applications', apps.map((a) => a.id)).catch(() => {});
         const list = await appointments.listForProcedure(created.procedure).catch(() => []);
         if (list.length) await site.deleteItems('appointments', list.map((a) => a.id)).catch(() => {});

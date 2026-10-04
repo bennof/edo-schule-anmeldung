@@ -13,7 +13,7 @@
 import { GraphClient, LISTS, SharePointSite, type ListKey } from '../packages/sharepoint/src/index.ts';
 import { appTokenProvider, readEnv } from './env.ts';
 
-/** Minimal grants: read public data, write appointments and applications. */
+/** Minimal grants: read public data, write appointments, applications and uploads. */
 const LIST_ROLES: Record<Exclude<ListKey, never>, 'read' | 'write'> = {
     config: 'read',
     assets: 'read',
@@ -21,6 +21,7 @@ const LIST_ROLES: Record<Exclude<ListKey, never>, 'read' | 'write'> = {
     procedures: 'read',
     appointments: 'write',
     applications: 'write',
+    uploads: 'write',
 };
 
 interface Permission {

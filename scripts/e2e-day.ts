@@ -168,6 +168,7 @@ try {
     stopSecretariat();
     server.stop();
     const apps = await site.listItems('applications', `fields/ProcedureId eq '${procedure.id}'`).catch(() => []);
+    for (const a of apps) await site.deleteUploads(a.id).catch(() => {});
     if (apps.length) await site.deleteItems('applications', apps.map((a) => a.id)).catch(() => {});
     await site.deleteItems('appointments', slots.map((s) => s.id)).catch(() => {});
     await procedures.delete(procedure.id).catch(() => {});

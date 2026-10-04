@@ -6,7 +6,7 @@
 <script lang="ts">
     import { isVisible, validateForm, type FormData, type FormJson, type Option } from '@anmeldung/forms';
     import { SvelteSet } from 'svelte/reactivity';
-    import { setFormContext, type RenderMode } from './context.ts';
+    import { setFormContext, type FileHandler, type RenderMode } from './context.ts';
     import Items from './Items.svelte';
 
     interface Props {
@@ -16,9 +16,11 @@
         /** show all validation messages, e.g. after a submit attempt */
         showAllErrors?: boolean;
         loadOptions?: (source: string) => Promise<Option[]>;
+        /** storage for file fields; without it uploads are disabled (e.g. previews) */
+        files?: FileHandler;
     }
 
-    let { form, data, mode = 'public', showAllErrors = false, loadOptions }: Props = $props();
+    let { form, data, mode = 'public', showAllErrors = false, loadOptions, files }: Props = $props();
 
     const errors = $derived(new Map(validateForm(form, data).map((e) => [e.path, e.message])));
     const touched = new SvelteSet<string>();
@@ -39,6 +41,9 @@
         touched,
         get loadOptions() {
             return loadOptions;
+        },
+        get files() {
+            return files;
         },
     });
 </script>

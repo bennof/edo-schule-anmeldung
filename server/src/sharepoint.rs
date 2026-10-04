@@ -12,6 +12,7 @@ pub const APPOINTMENTS: &str = "Appointments";
 pub const FORMS: &str = "Forms";
 pub const PROCEDURES: &str = "Procedures";
 pub const APPLICATIONS: &str = "Applications";
+pub const UPLOADS: &str = "Uploads";
 
 pub struct Item {
     pub id: String,
@@ -154,6 +155,66 @@ impl Site {
         if res.ok() { Ok(()) } else { Err(res.error_text()) }
     }
 
+    /// Stores a file in a document library (`path` like `12/ab34.jpg`).
+    pub fn put_file(&self, library: &str, path: &str, bytes: &[u8], content_type: &str) -> Result<(), String> {
+        let url = format!(
+            "{}/lists/{}/drive/root:/{}:/content",
+            self.base(),
+            self.list_id(library)?,
+            path
+        );
+        let res = self.graph.put_bytes(&url, bytes, content_type)?;
+        if res.ok() { Ok(()) } else { Err(res.error_text()) }
+    }
+
+    /// File content and content type; None if it does not exist.
+    pub fn get_file(&self, library: &str, path: &str) -> Result<Option<(String, Vec<u8>)>, String> {
+        let url = format!(
+            "{}/lists/{}/drive/root:/{}:/content",
+            self.base(),
+            self.list_id(library)?,
+            path
+        );
+        let res = self.graph.request("GET", &url, None, None)?;
+        match res.status {
+            404 => Ok(None),
+            _ if res.ok() => {
+                let ct = res
+                    .content_type
+                    .clone()
+                    .unwrap_or_else(|| "application/octet-stream".to_string());
+                Ok(Some((ct, res.body)))
+            }
+            _ => Err(res.error_text()),
+        }
+    }
+
+    pub fn delete_file(&self, library: &str, path: &str) -> Result<(), String> {
+        let url = format!("{}/lists/{}/drive/root:/{}:", self.base(), self.list_id(library)?, path);
+        let res = self.graph.request("DELETE", &url, None, None)?;
+        if res.ok() || res.status == 404 {
+            Ok(())
+        } else {
+            Err(res.error_text())
+        }
+    }
+
+    /// Number of files in a folder of a library (0 if the folder does not exist).
+    pub fn count_files(&self, library: &str, folder: &str) -> Result<usize, String> {
+        let url = format!(
+            "{}/lists/{}/drive/root:/{}:/children?$select=id",
+            self.base(),
+            self.list_id(library)?,
+            folder
+        );
+        let res = self.graph.request("GET", &url, None, None)?;
+        match res.status {
+            404 => Ok(0),
+            _ if res.ok() => Ok(res.json()?["value"].as_array().map_or(0, Vec::len)),
+            _ => Err(res.error_text()),
+        }
+    }
+
     pub fn asset_exists(&self, key: &str) -> Result<bool, String> {
         let path = format!(
             "{}/lists/{}/drive/root:/{}?$select=id",
@@ -171,24 +232,7 @@ impl Site {
 
     /// Asset content and content type; None if the key does not exist.
     pub fn get_asset(&self, key: &str) -> Result<Option<(String, Vec<u8>)>, String> {
-        let path = format!(
-            "{}/lists/{}/drive/root:/{}:/content",
-            self.base(),
-            self.list_id(ASSETS)?,
-            key
-        );
-        let res = self.graph.request("GET", &path, None, None)?;
-        match res.status {
-            404 => Ok(None),
-            _ if res.ok() => {
-                let ct = res
-                    .content_type
-                    .clone()
-                    .unwrap_or_else(|| "application/octet-stream".to_string());
-                Ok(Some((ct, res.body)))
-            }
-            _ => Err(res.error_text()),
-        }
+        self.get_file(ASSETS, key)
     }
 }
 

@@ -4,6 +4,7 @@ import type { Condition, FormJson, Item } from './types.ts';
 
 export function checkFormDefinition(form: FormJson): string[] {
     const errors: string[] = [];
+    const photoFields: string[] = [];
     const groups = form.groups ?? {};
 
     // group cycles
@@ -66,6 +67,12 @@ export function checkFormDefinition(form: FormJson): string[] {
                 checkCondition(item.requiredIf, items, at);
                 if (item.required && item.requiredIf) errors.push(`${at}: both required and requiredIf`);
                 if (item.mustAccept && (item.required || item.requiredIf)) errors.push(`${at}: mustAccept implies required`);
+                if (item.maxFiles !== undefined && !item.multiple) errors.push(`${at}: maxFiles needs multiple`);
+                if (item.role === 'photo') {
+                    photoFields.push(at);
+                    if (item.multiple) errors.push(`${at}: the photo field cannot take several files`);
+                    if (item.accept?.includes('application/pdf')) errors.push(`${at}: the photo must be an image`);
+                }
                 if (item.minLength !== undefined && item.maxLength !== undefined && item.minLength > item.maxLength)
                     errors.push(`${at}: minLength > maxLength`);
                 if (item.minItems !== undefined && item.maxItems !== undefined && item.minItems > item.maxItems)
@@ -105,5 +112,6 @@ export function checkFormDefinition(form: FormJson): string[] {
     for (const s of form.sections) checkCondition(s.visibleIf, rootItems, `/${s.id}`);
     checkScope(rootItems, '');
     for (const [name, def] of Object.entries(groups)) checkScope(def.items, `group:${name}`);
+    if (photoFields.length > 1) errors.push(`only one photo field allowed: ${photoFields.join(', ')}`);
     return errors;
 }

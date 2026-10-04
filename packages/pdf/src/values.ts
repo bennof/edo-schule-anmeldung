@@ -52,6 +52,8 @@ export function displayText(field: FieldItem, value: unknown, options: OptionLis
             return label(value);
         case 'multiselect':
             return Array.isArray(value) ? value.map(label).join(', ') : '';
+        case 'file':
+            return (Array.isArray(value) ? value : [value]).map((r) => (r as { name?: string })?.name ?? '').join(', ');
         default:
             return String(value);
     }

@@ -1,4 +1,4 @@
-export { fillRegistrationPdf, templateFieldNames, type FillInput } from './fill.ts';
+export { fillRegistrationPdf, photoFieldPath, templateFieldNames, type FillInput } from './fill.ts';
 export { displayText, isChecked, pdfValues, type OptionLists, type PdfValues } from './values.ts';
 
 /** Asset key of the registration form template. */

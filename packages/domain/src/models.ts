@@ -52,6 +52,19 @@ export interface FormDefinition {
     formJson: unknown;
     /** ISO 8601 */
     dateLastUpdate: string;
+    /** stable key of the form across versions (D3) */
+    formKey?: string;
+    /** 1, 2, 3 … as text */
+    version?: string;
+}
+
+/** Reference to an uploaded file, stored in the form data instead of the file. */
+export interface UploadRef {
+    /** `<applicationId>/<uuid>.<ext>` in the Uploads library */
+    id: string;
+    name: string;
+    contentType: string;
+    size: number;
 }
 
 /** Descriptive data of a procedure, stored as JSON (`info`). */

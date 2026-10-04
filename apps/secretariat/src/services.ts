@@ -2,7 +2,7 @@
 // never talk to Graph directly.
 import type { Application, FormDefinition, Procedure } from '@anmeldung/domain';
 import type { Option } from '@anmeldung/forms';
-import { ApplicationService, AppointmentService, ConfigStore, GraphClient, Repository, SharePointSite } from '@anmeldung/sharepoint';
+import { ApplicationService, AppointmentService, ConfigStore, FormService, GraphClient, Repository, SharePointSite } from '@anmeldung/sharepoint';
 import { getToken } from './auth.ts';
 import { clientConfig } from './config.ts';
 import { createSvwsAdapter } from '@anmeldung/svws';
@@ -17,6 +17,7 @@ export const forms = new Repository<FormDefinition>(site, 'forms');
 export const applications = new Repository<Application>(site, 'applications');
 export const appointments = new AppointmentService(site);
 export const applicationService = new ApplicationService(site);
+export const formService = new FormService(site);
 
 const optionCache = new Map<string, Promise<Option[]>>();
 

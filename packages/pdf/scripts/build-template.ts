@@ -225,9 +225,18 @@ const yn = (path: string, w: number, label?: string): Cell => ({ kind: 'yesno', 
 const ch = (path: string, w: number, label?: string): Cell => ({ kind: 'checks', path, w, label });
 
 l.heading('1. Personalien Schülerin / Schüler');
-l.row([t('nachname', 0.3), t('vorname', 0.3), t('rufname', 0.2), t('geburtsdatum', 0.2)]);
-l.row([ch('geschlecht', 0.4), t('geburtsort', 0.3), t('geburtsland', 0.3)]);
-l.row([t('adresse.strasse', 0.4), t('adresse.plz', 0.12), t('adresse.ort', 0.28), t('adresse.ortsteil', 0.2)]);
+// photo box (field = data path of the photo field) right of the first rows
+{
+    const width = 0.13 * W;
+    const height = 3 * ROW - 4;
+    const x = M + W - width;
+    l.page.drawText('Passfoto', { x, y: l.y - LABEL, size: LABEL, font, color: GRAY });
+    const photo = acro.createButton('passfoto');
+    photo.addToPage('', l.page, { x, y: l.y - LABEL - 2 - height + LABEL + 2, width, height: height - LABEL - 2, borderWidth: 0.5, borderColor: BORDER, font });
+}
+l.row([t('nachname', 0.26), t('vorname', 0.26), t('rufname', 0.16), t('geburtsdatum', 0.18)]);
+l.row([ch('geschlecht', 0.38), t('geburtsort', 0.24), t('geburtsland', 0.24)]);
+l.row([t('adresse.strasse', 0.34), t('adresse.plz', 0.1), t('adresse.ort', 0.24), t('adresse.ortsteil', 0.18)]);
 l.row([t('staatsangehoerigkeit', 0.3), t('herkunftssprache', 0.3, 'Herkunftssprache'), t('zuzugsdatum', 0.2, 'In Deutschland seit'), t('religion', 0.2)]);
 l.row([ch('religionsunterricht', 1, 'Teilnahme am verpflichtenden Unterricht (Wechsel nur zum Schuljahresende)')]);
 

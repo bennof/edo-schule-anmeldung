@@ -137,34 +137,26 @@ export class SharePointSite {
         await this.graph.request('DELETE', `${this.base}/lists/${id}/items/${itemId}`);
     }
 
-    // --- asset library (key -> blob) ---
+    // --- document libraries: Assets (key -> blob) and Uploads (per application) ---
 
-    private async assetPath(key: string): Promise<string> {
-        if (!isAssetKey(key)) throw new Error(`Invalid asset key "${key}"`);
-        const listId = await this.listId('assets');
-        return `${this.base}/lists/${listId}/drive/root:/${key}:`;
+    private async libraryPath(key: 'assets' | 'uploads', path: string): Promise<string> {
+        const segments = path.split('/');
+        const valid = key === 'assets' ? segments.length === 1 : segments.length === 2;
+        if (!valid || !segments.every(isAssetKey)) throw new Error(`Invalid ${key} path "${path}"`);
+        const listId = await this.listId(key);
+        return `${this.base}/lists/${listId}/drive/root:/${path}:`;
     }
 
-    async listAssets(): Promise<AssetInfo[]> {
-        const listId = await this.listId('assets');
-        const items = await this.graph.collect<{ name: string; size: number; lastModifiedDateTime: string; file?: { mimeType: string } }>(
-            `${this.base}/lists/${listId}/drive/root/children?$select=name,size,lastModifiedDateTime,file`,
-        );
-        return items
-            .filter((i) => i.file)
-            .map((i) => ({ key: i.name, size: i.size, contentType: i.file!.mimeType, lastModified: i.lastModifiedDateTime }));
-    }
-
-    async putAsset(key: string, data: Blob): Promise<void> {
-        await this.graph.request('PUT', `${await this.assetPath(key)}/content`, {
+    private async putFile(key: 'assets' | 'uploads', path: string, data: Blob): Promise<void> {
+        await this.graph.request('PUT', `${await this.libraryPath(key, path)}/content`, {
             raw: data,
             headers: { 'Content-Type': data.type || 'application/octet-stream' },
         });
     }
 
-    async getAsset(key: string): Promise<Blob | undefined> {
+    private async getFile(key: 'assets' | 'uploads', path: string): Promise<Blob | undefined> {
         try {
-            const res = await this.graph.request('GET', `${await this.assetPath(key)}/content`);
+            const res = await this.graph.request('GET', `${await this.libraryPath(key, path)}/content`);
             return await res.blob();
         } catch (e) {
             if (e instanceof GraphError && e.status === 404) return undefined;
@@ -172,8 +164,74 @@ export class SharePointSite {
         }
     }
 
-    async deleteAsset(key: string): Promise<void> {
-        await this.graph.request('DELETE', await this.assetPath(key));
+    private async deleteFile(key: 'assets' | 'uploads', path: string): Promise<void> {
+        try {
+            await this.graph.request('DELETE', await this.libraryPath(key, path));
+        } catch (e) {
+            if (!(e instanceof GraphError && e.status === 404)) throw e;
+        }
+    }
+
+    async listAssets(): Promise<AssetInfo[]> {
+        const listId = await this.listId('assets');
+        return this.listFolder(`${this.base}/lists/${listId}/drive/root/children`);
+    }
+
+    putAsset(key: string, data: Blob): Promise<void> {
+        return this.putFile('assets', key, data);
+    }
+
+    getAsset(key: string): Promise<Blob | undefined> {
+        return this.getFile('assets', key);
+    }
+
+    deleteAsset(key: string): Promise<void> {
+        return this.deleteFile('assets', key);
+    }
+
+    /** Files of one application; keys are `<applicationId>/<file>` (upload ids). */
+    async listUploads(applicationId: string): Promise<AssetInfo[]> {
+        if (!isAssetKey(applicationId)) throw new Error(`Invalid application id "${applicationId}"`);
+        const listId = await this.listId('uploads');
+        try {
+            const files = await this.listFolder(`${this.base}/lists/${listId}/drive/root:/${applicationId}:/children`);
+            return files.map((f) => ({ ...f, key: `${applicationId}/${f.key}` }));
+        } catch (e) {
+            if (e instanceof GraphError && e.status === 404) return [];
+            throw e;
+        }
+    }
+
+    putUpload(id: string, data: Blob): Promise<void> {
+        return this.putFile('uploads', id, data);
+    }
+
+    getUpload(id: string): Promise<Blob | undefined> {
+        return this.getFile('uploads', id);
+    }
+
+    deleteUpload(id: string): Promise<void> {
+        return this.deleteFile('uploads', id);
+    }
+
+    /** Removes all files of an application (its folder in the Uploads library). */
+    async deleteUploads(applicationId: string): Promise<void> {
+        if (!isAssetKey(applicationId)) throw new Error(`Invalid application id "${applicationId}"`);
+        const listId = await this.listId('uploads');
+        try {
+            await this.graph.request('DELETE', `${this.base}/lists/${listId}/drive/root:/${applicationId}:`);
+        } catch (e) {
+            if (!(e instanceof GraphError && e.status === 404)) throw e;
+        }
+    }
+
+    private async listFolder(path: string): Promise<AssetInfo[]> {
+        const items = await this.graph.collect<{ name: string; size: number; lastModifiedDateTime: string; file?: { mimeType: string } }>(
+            `${path}?$select=name,size,lastModifiedDateTime,file`,
+        );
+        return items
+            .filter((i) => i.file)
+            .map((i) => ({ key: i.name, size: i.size, contentType: i.file!.mimeType, lastModified: i.lastModifiedDateTime }));
     }
 }
 

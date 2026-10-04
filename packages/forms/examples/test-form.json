@@ -293,6 +293,35 @@
           }
         }
       ]
+    },
+    {
+      "id": "unterlagen",
+      "title": "Unterlagen",
+      "items": [
+        {
+          "kind": "field",
+          "id": "passfoto",
+          "type": "file",
+          "label": "Passfoto",
+          "role": "photo",
+          "accept": [
+            "image/jpeg",
+            "image/png"
+          ],
+          "help": "Wird automatisch verkleinert."
+        },
+        {
+          "kind": "field",
+          "id": "zeugnis",
+          "type": "file",
+          "label": "Halbjahreszeugnis Klasse 4",
+          "accept": [
+            "application/pdf",
+            "image/jpeg",
+            "image/png"
+          ]
+        }
+      ]
     }
   ]
 }

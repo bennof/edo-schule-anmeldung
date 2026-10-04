@@ -206,6 +206,7 @@ try {
     stopPublic();
     server.stop();
     const apps = await site.listItems('applications', `fields/ProcedureId eq '${procedure.id}'`).catch(() => []);
+    for (const a of apps) await site.deleteUploads(a.id).catch(() => {});
     if (apps.length) await site.deleteItems('applications', apps.map((a) => a.id)).catch(() => {});
     const list = await appointments.listForProcedure(procedure.id).catch(() => []);
     if (list.length) await site.deleteItems('appointments', list.map((a) => a.id)).catch(() => {});

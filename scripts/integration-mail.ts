@@ -71,6 +71,7 @@ try {
     server.stop();
     stopPublic();
     const apps = await site.listItems('applications', `fields/ProcedureId eq '${procedure.id}'`).catch(() => []);
+    for (const a of apps) await site.deleteUploads(a.id).catch(() => {});
     if (apps.length) await site.deleteItems('applications', apps.map((a) => a.id)).catch(() => {});
     await appointments.repo.delete(slot.id).catch(() => {});
     await procedures.delete(procedure.id).catch(() => {});

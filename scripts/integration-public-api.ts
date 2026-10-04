@@ -146,6 +146,49 @@ try {
         assert((await authed(`${appId}/submit`, 'x', { method: 'POST', body: '{}' })).status === 404, 'submit wrong token');
     });
 
+    const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+    const upload = (bytes: Buffer, type: string, name: string, token = appToken) =>
+        fetch(`${API}/applications/${appId}/uploads?name=${encodeURIComponent(name)}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': type },
+            body: new Uint8Array(bytes),
+        }).then(async (r) => ({ status: r.status, body: await r.json() }));
+    let photoRef: { id: string; name: string; contentType: string; size: number } | undefined;
+
+    await step('uploads: store a file and return its reference', async () => {
+        const r = await upload(PNG, 'image/png', 'Passfoto Mia.png');
+        assert(r.status === 201, `status ${r.status} ${JSON.stringify(r.body)}`);
+        assert(r.body.id.startsWith(`${appId}/`) && r.body.name === 'Passfoto Mia.png' && r.body.size === PNG.length, JSON.stringify(r.body));
+        photoRef = r.body;
+        const stored = await site.getUpload(r.body.id);
+        assert(stored && Buffer.from(await stored.arrayBuffer()).equals(PNG), 'stored bytes differ');
+        const own = await fetch(`${API}/applications/${r.body.id}`.replace(`/applications/${appId}/`, `/applications/${appId}/uploads/`), {
+            headers: { Authorization: `Bearer ${appToken}` },
+        });
+        assert(own.ok && Buffer.from(await own.arrayBuffer()).equals(PNG), `own file ${own.status}`);
+    });
+
+    await step('uploads: wrong type, fake signature, oversize, wrong token are refused', async () => {
+        assert((await upload(Buffer.from('<html>'), 'text/html', 'x.html')).status === 415, 'html');
+        assert((await upload(Buffer.from('<html>'), 'image/png', 'x.png')).status === 415, 'fake png');
+        const big = Buffer.concat([PNG, Buffer.alloc(4 * 1024 * 1024)]);
+        const tooBig = await fetch(`${API}/applications/${appId}/uploads?name=big.png`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${appToken}`, 'Content-Type': 'image/png' },
+            body: new Uint8Array(big),
+        });
+        assert(tooBig.status === 413, `oversize ${tooBig.status}`);
+        assert((await upload(PNG, 'image/png', 'x.png', 'f'.repeat(64))).status === 404, 'wrong token');
+    });
+
+    await step('uploads: delete own file', async () => {
+        const extra = await upload(PNG, 'image/png', 'weg.png');
+        const file = extra.body.id.split('/')[1];
+        const del = await fetch(`${API}/applications/${appId}/uploads/${file}`, { method: 'DELETE', headers: { Authorization: `Bearer ${appToken}` } });
+        assert(del.ok, `delete ${del.status}`);
+        assert((await site.getUpload(extra.body.id)) === undefined, 'file still there');
+    });
+
     await step('F6 start, reject invalid data, submit once', async () => {
         const status = await authed(appId, appToken);
         assert(status.status === 200 && status.body.state === 'created' && status.body.appointment.id === slotB.id, `status ${JSON.stringify(status.body)}`);
@@ -158,7 +201,15 @@ try {
             authed(`${appId}/submit`, appToken, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data }) });
         const invalid = await post({ nachname: 'X', hacker: true });
         assert(invalid.status === 400 && invalid.body.error === 'invalid_data', `invalid ${invalid.status}`);
-        const data = { nachname: 'Muster', geburtsdatum: '2015-04-01', schulen: [{ von: 2021 }], sorgeberechtigter1: { nachname: 'M', vorname: 'E' } };
+        const foreign = await post({ passfoto: { ...photoRef!, id: `999/${photoRef!.id.split('/')[1]}` } });
+        assert(foreign.status === 400, `foreign file reference accepted: ${foreign.status}`);
+        const data = {
+            nachname: 'Muster',
+            geburtsdatum: '2015-04-01',
+            schulen: [{ von: 2021 }],
+            sorgeberechtigter1: { nachname: 'M', vorname: 'E' },
+            passfoto: photoRef,
+        };
         const ok = await post(data);
         assert(ok.status === 200 && ok.body.state === 'submitted', `submit ${ok.status} ${JSON.stringify(ok.body)}`);
         const stored = (await applications.get(appId))!;
@@ -166,6 +217,10 @@ try {
         const again = await post(data);
         assert(again.status === 409 && again.body.error === 'already_submitted', `second submit ${again.status}`);
         assert((await authed(`${appId}/start`, appToken, { method: 'POST' })).status === 409, 'start after submit');
+        assert((await upload(PNG, 'image/png', 'spaet.png')).status === 409, 'upload after submit');
+        const file = photoRef!.id.split('/')[1];
+        const del = await fetch(`${API}/applications/${appId}/uploads/${file}`, { method: 'DELETE', headers: { Authorization: `Bearer ${appToken}` } });
+        assert(del.status === 409, `delete after submit ${del.status}`);
     });
 
     await step('F4 booked, draft, past and inactive slots cannot be booked', async () => {
@@ -225,6 +280,7 @@ try {
     server.stop();
     await site.deleteItems('appointments', drafts.map((d) => d.id)).catch(() => {});
     const created = await applications.list(applications.filter('procedureId', active.id)).catch(() => []);
+    for (const a of created) await site.deleteUploads(a.id).catch(() => {});
     if (created.length) await site.deleteItems('applications', created.map((a) => a.id)).catch(() => {});
     await procedures.delete(active.id).catch(() => {});
     await procedures.delete(inactive.id).catch(() => {});

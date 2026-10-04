@@ -1,0 +1,15 @@
+{
+  "formatVersion": 1,
+  "title": "Uploads",
+  "sections": [
+    {
+      "id": "unterlagen",
+      "title": "Unterlagen",
+      "items": [
+        { "kind": "field", "id": "passfoto", "type": "file", "label": "Passfoto", "role": "photo", "accept": ["image/jpeg", "image/png"] },
+        { "kind": "field", "id": "zeugnis", "type": "file", "label": "Zeugnis", "required": true, "accept": ["application/pdf", "image/jpeg"] },
+        { "kind": "field", "id": "weitere", "type": "file", "label": "Weitere", "multiple": true, "maxFiles": 3 }
+      ]
+    }
+  ]
+}

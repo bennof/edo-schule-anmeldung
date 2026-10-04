@@ -3,7 +3,7 @@
 import { APPLICATION_STATES, APPOINTMENT_STATES } from '@anmeldung/domain';
 
 /** Bump when lists or columns are added. Stored in Config as `schemaVersion`. */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export type ColumnType = 'text' | 'note' | 'json' | 'boolean' | 'choice';
 
@@ -76,10 +76,20 @@ export const LISTS = {
     forms: {
         name: 'Forms',
         template: 'genericList',
+        // saved versions are never changed (D3); a change is a new item with
+        // the same FormKey and the next Version
         columns: [
             { name: 'FormJson', prop: 'formJson', type: 'json' },
             { name: 'DateLastUpdate', prop: 'dateLastUpdate', type: 'text' },
+            { name: 'FormKey', prop: 'formKey', type: 'text', indexed: true },
+            { name: 'FormVersion', prop: 'version', type: 'text' },
         ],
+    },
+    uploads: {
+        // files of applications (photo, documents), one folder per application
+        name: 'Uploads',
+        template: 'documentLibrary',
+        columns: [],
     },
     procedures: {
         name: 'Procedures',

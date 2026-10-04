@@ -1,8 +1,8 @@
 <!-- Public registration flow (backlog G2-G5): appointment -> contact data ->
      booking -> form -> submission. A stored session resumes at the form. -->
 <script lang="ts">
-    import { FormRenderer } from '@anmeldung/form-ui';
-    import { normalizeData, optionSources, validateForm, withoutHidden, type FormData, type FormJson } from '@anmeldung/forms';
+    import { FormRenderer, type FileHandler } from '@anmeldung/form-ui';
+    import { fileRefs, normalizeData, optionSources, validateForm, withoutHidden, type FormData, type FormJson } from '@anmeldung/forms';
     import fontUrl from '@anmeldung/pdf/fonts/DejaVuSans.ttf?url';
     import { api, ApiError, formatDay, loadOptions, type PublicProcedure, type Slot } from './api.ts';
     import { session, type Session } from './session.ts';
@@ -42,6 +42,15 @@
     let pdfError = $state('');
 
     const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    /** uploads go through the public server with the family's token */
+    const files: FileHandler = {
+        upload: (file, name) => api.upload(current!.applicationId, current!.token, file, name),
+        open: (ref) => api.openUpload(current!.applicationId, current!.token, ref),
+        remove: async (ref) => {
+            await api.deleteUpload(current!.applicationId, current!.token, ref);
+        },
+    };
     const contactValid = $derived(name.trim().length >= 2 && EMAIL.test(email.trim()) && consent);
     const formErrors = $derived(form ? validateForm(form, data) : []);
 
@@ -173,7 +182,12 @@
             }
             const sources = optionSources(submitted.form);
             const lists = await Promise.all(sources.map((s) => loadOptions(s)));
+            const [photoRef] = fileRefs(submitted.form, submitted.data, 'photo');
+            const photo = photoRef
+                ? await api.openUpload(submitted.session.applicationId, submitted.session.token, photoRef).then((b) => b?.arrayBuffer())
+                : undefined;
             const bytes = await fillRegistrationPdf({
+                photo,
                 template,
                 font,
                 form: submitted.form,
@@ -243,7 +257,7 @@
     <p class="chosen">Ihr Termin: {when(current.datetime)}</p>
     {@render keepOption()}
     <form onsubmit={submit} novalidate>
-        <FormRenderer {form} {data} showAllErrors={submitAttempted} {loadOptions} />
+        <FormRenderer {form} {data} showAllErrors={submitAttempted} {loadOptions} {files} />
         {#if submitAttempted && formErrors.length}
             <p class="error" role="alert">Bitte prüfen Sie die markierten Angaben ({formErrors.length}).</p>
         {/if}

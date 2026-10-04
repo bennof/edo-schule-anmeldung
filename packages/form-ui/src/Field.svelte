@@ -1,6 +1,7 @@
 <script lang="ts">
     import { formatDate, isRequired, type FieldItem, type FormData, type Option } from '@anmeldung/forms';
     import { getFormContext, visibleError } from './context.ts';
+    import FileField from './FileField.svelte';
     import SearchSelect from './SearchSelect.svelte';
 
     interface Props {
@@ -50,7 +51,7 @@
 </script>
 
 <div class="field" class:invalid={!!error} class:hidden-public={hiddenPublic} data-path={path}>
-    {#if field.type === 'boolean' || field.type === 'multiselect'}
+    {#if field.type === 'boolean' || field.type === 'multiselect' || field.type === 'file'}
         <span class="label" id={`${id}-label`}>{field.label}{#if required}<span class="req" aria-hidden="true"> *</span>{/if}</span>
     {:else}
         <label class="label" for={id}>{field.label}{#if required}<span class="req" aria-hidden="true"> *</span>{/if}</label>
@@ -123,6 +124,8 @@
                 </label>
             {/each}
         </div>
+    {:else if field.type === 'file'}
+        <FileField {field} {id} {value} onchange={(next) => set(next)} onblur={touch} />
     {:else if field.type === 'searchselect'}
         <SearchSelect {id} {options} value={value as string | undefined} onchange={(key) => set(key)} onblur={touch} />
     {/if}

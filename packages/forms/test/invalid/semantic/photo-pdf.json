@@ -1,0 +1,3 @@
+{ "formatVersion": 1, "title": "T", "sections": [{ "id": "a", "title": "A", "items": [
+  { "kind": "field", "id": "foto", "type": "file", "label": "A", "role": "photo", "accept": ["application/pdf"] }
+] }] }

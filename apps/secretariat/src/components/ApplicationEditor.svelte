@@ -3,8 +3,8 @@
      state transitions. -->
 <script lang="ts">
     import type { Application, ApplicationState, Appointment } from '@anmeldung/domain';
-    import { FormRenderer } from '@anmeldung/form-ui';
-    import { normalizeData, optionSources, withoutHidden, type FormData, type FormJson } from '@anmeldung/forms';
+    import { FormRenderer, type FileHandler } from '@anmeldung/form-ui';
+    import { fileRefs, normalizeData, optionSources, withoutHidden, type FormData, type FormJson } from '@anmeldung/forms';
     import fontUrl from '@anmeldung/pdf/fonts/DejaVuSans.ttf?url';
     import { ConflictError } from '@anmeldung/sharepoint';
     import { APPLICATION_STATE_LABEL, formatDateTime } from '../labels.ts';
@@ -52,6 +52,30 @@
     let busy = $state(false);
 
     const snapshot = () => JSON.stringify({ data, secretariatComment, interviewerComment });
+
+    /** the secretariat stores files directly in the Uploads library */
+    const files: FileHandler = {
+        async upload(file, name) {
+            const ext = { 'application/pdf': 'pdf', 'image/png': 'png' }[file.type] ?? 'jpg';
+            const random = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+            const id = `${applicationId}/${random}.${ext}`;
+            await site.putUpload(id, file);
+            return { id, name, contentType: file.type, size: file.size };
+        },
+        open: (ref) => site.getUpload(ref.id),
+        remove: (ref) => site.deleteUpload(ref.id),
+    };
+
+    let photoUrl: string | undefined = $state();
+    const photoRef = $derived(form ? fileRefs(form, data, 'photo')[0] : undefined);
+    $effect(() => {
+        const ref = photoRef;
+        photoUrl = undefined;
+        if (!ref) return;
+        site.getUpload(ref.id).then((blob) => {
+            if (blob && photoRef?.id === ref.id) photoUrl = URL.createObjectURL(blob);
+        });
+    });
 
     async function load(): Promise<void> {
         error = '';
@@ -143,7 +167,9 @@
             }
             const sources = optionSources(form);
             const lists = await Promise.all(sources.map((s) => loadOptions(s)));
+            const photo = photoRef ? await site.getUpload(photoRef.id).then((b) => b?.arrayBuffer()) : undefined;
             const bytes = await fillRegistrationPdf({
+                photo,
                 template,
                 font,
                 form,
@@ -210,6 +236,8 @@
     {/if}
 
     {#if application}
+        <div class="head">
+        {#if photoUrl}<img class="photo" src={photoUrl} alt="Passfoto" data-testid="photo" />{/if}
         <dl class="facts">
             <dt>Verfahren</dt><dd>{procedureTitle}</dd>
             <dt>Termin</dt>
@@ -217,6 +245,7 @@
             <dt>Kontakt</dt><dd>{application.contactName ?? '–'} {#if application.contactEmail}<small class="muted">{application.contactEmail}</small>{/if}</dd>
             <dt>Online abgeschickt</dt><dd>{application.submittedAt ? new Date(application.submittedAt).toLocaleString('de-DE') : 'nein'}</dd>
         </dl>
+        </div>
 
         <div class="comments">
             <label>Kommentar Sekretariat <textarea bind:value={secretariatComment} rows="3"></textarea></label>
@@ -225,7 +254,7 @@
 
         {#if form}
             {#key application.id}
-                <FormRenderer {form} {data} mode="secretariat" {loadOptions} />
+                <FormRenderer {form} {data} mode="secretariat" {loadOptions} {files} />
             {/key}
         {/if}
     {:else if !error}
@@ -260,7 +289,19 @@
         color: #b00020;
         font-weight: 600;
     }
+    .head {
+        display: flex;
+        gap: 1rem;
+        align-items: start;
+        margin-top: 0.75rem;
+    }
+    .photo {
+        width: 6rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
     .facts {
+        margin: 0;
         display: grid;
         grid-template-columns: max-content 1fr;
         gap: 0.2rem 1rem;

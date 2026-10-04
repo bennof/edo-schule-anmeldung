@@ -1,8 +1,9 @@
 <!-- Procedure management (backlog D1): create, list and edit procedures. -->
 <script lang="ts">
-    import type { FormDefinition, Procedure } from '@anmeldung/domain';
+    import type { Procedure } from '@anmeldung/domain';
     import type { FormJson } from '@anmeldung/forms';
-    import { errorText, forms, procedures } from '../services.ts';
+    import type { FormVersion } from '@anmeldung/sharepoint';
+    import { errorText, formService, procedures } from '../services.ts';
 
     interface Draft {
         id?: string;
@@ -14,14 +15,19 @@
     }
 
     let list: Procedure[] = $state([]);
-    let formList: FormDefinition[] = $state([]);
+    let formList: FormVersion[] = $state([]);
     let draft: Draft | undefined = $state();
     let message = $state('');
     let busy = $state(false);
 
     const formTitle = (id: string) => {
         const f = formList.find((x) => x.id === id);
-        return f ? `${(f.formJson as FormJson).title} (ID ${f.id})` : `unbekannt (ID ${id})`;
+        return f ? `${(f.formJson as FormJson).title} · Version ${f.version}` : `unbekannt (ID ${id})`;
+    };
+    /** a newer version of the procedure's form exists (D3) */
+    const newerVersion = (id: string) => {
+        const f = formList.find((x) => x.id === id);
+        return f && formList.find((x) => x.formKey === f.formKey && Number(x.version) > Number(f.version));
     };
     const formatDate = (d: string) => d.split('-').reverse().join('.');
 
@@ -36,7 +42,8 @@
     });
 
     async function load(): Promise<void> {
-        [list, formList] = await Promise.all([procedures.list(), forms.list()]);
+        [list, formList] = await Promise.all([procedures.list(), formService.listVersions()]);
+        formList.sort((a, b) => a.formKey.localeCompare(b.formKey) || Number(b.version) - Number(a.version));
         list.sort((a, b) => b.startDate.localeCompare(a.startDate));
     }
 
@@ -110,7 +117,10 @@
                 <tr>
                     <td>{p.info.title}{#if p.info.description}<br /><small class="muted">{p.info.description}</small>{/if}</td>
                     <td>{formatDate(p.startDate)} – {formatDate(p.endDate)}</td>
-                    <td>{formTitle(p.formId)}</td>
+                    <td>
+                        {formTitle(p.formId)}
+                        {#if newerVersion(p.formId)}<br /><small class="muted">Neuere Version {newerVersion(p.formId)?.version} vorhanden – über „Bearbeiten“ wählbar</small>{/if}
+                    </td>
                     <td><button onclick={() => edit(p)} disabled={!!draft}>Bearbeiten</button></td>
                 </tr>
             {:else}

@@ -1,8 +1,8 @@
 // Fills an AcroForm PDF template with application data in the browser or
 // in Node (backlog I1, I3); no server round trip.
 import fontkit from '@pdf-lib/fontkit';
-import { PDFCheckBox, PDFDocument, PDFTextField } from 'pdf-lib';
-import type { FormData, FormJson } from '@anmeldung/forms';
+import { PDFButton, PDFCheckBox, PDFDocument, PDFTextField } from 'pdf-lib';
+import { fileRefs, type FormData, type FormJson } from '@anmeldung/forms';
 import { isChecked, pdfValues, type OptionLists } from './values.ts';
 
 export interface FillInput {
@@ -14,6 +14,24 @@ export interface FillInput {
     options?: OptionLists;
     /** values for fields that are not data paths, e.g. `anmeldung.termin` */
     extra?: Record<string, string>;
+    /** JPEG/PNG bytes of the photo (file field with role "photo") */
+    photo?: ArrayBuffer | Uint8Array;
+}
+
+/** Data path of the photo field (button field of the same name in the template). */
+export function photoFieldPath(form: FormJson): string | undefined {
+    const walk = (items: FormJson['sections'][number]['items'], base: string): string | undefined => {
+        for (const item of items) {
+            const path = base ? `${base}.${item.id}` : item.id;
+            if (item.kind === 'field' && item.type === 'file' && item.role === 'photo') return path;
+            if (item.kind === 'group' && !item.repeat) {
+                const found = walk(form.groups?.[item.group]?.items ?? [], path);
+                if (found) return found;
+            }
+        }
+        return undefined;
+    };
+    return walk(form.sections.flatMap((s) => s.items), '');
 }
 
 export async function fillRegistrationPdf(input: FillInput): Promise<Uint8Array> {
@@ -31,6 +49,15 @@ export async function fillRegistrationPdf(input: FillInput): Promise<Uint8Array>
         } else if (field instanceof PDFTextField) {
             const text = input.extra?.[name] ?? values.text.get(name);
             if (text !== undefined) field.setText(text);
+        }
+    }
+    const photoPath = photoFieldPath(input.form);
+    if (input.photo && photoPath && fileRefs(input.form, input.data, 'photo').length) {
+        const button = acroForm.getFields().find((f) => f.getName() === photoPath);
+        if (button instanceof PDFButton) {
+            const bytes = new Uint8Array(input.photo);
+            const isPng = bytes[0] === 0x89 && bytes[1] === 0x50;
+            button.setImage(isPng ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes));
         }
     }
     acroForm.updateFieldAppearances(font);

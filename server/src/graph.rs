@@ -17,6 +17,12 @@ pub struct Graph {
     token: Mutex<Option<(String, Instant)>>,
 }
 
+enum Body<'a> {
+    None,
+    Json(&'a Value),
+    Raw(&'a [u8], &'a str),
+}
+
 pub struct GraphResponse {
     pub status: u16,
     pub content_type: Option<String>,
@@ -95,20 +101,35 @@ impl Graph {
         body: Option<&Value>,
         if_match: Option<&str>,
     ) -> Result<GraphResponse, String> {
+        self.send(method, path, body.map_or(Body::None, Body::Json), if_match)
+    }
+
+    /// PUT of raw bytes, e.g. a file upload (simple upload, up to 4 MB).
+    pub fn put_bytes(&self, path: &str, bytes: &[u8], content_type: &str) -> Result<GraphResponse, String> {
+        self.send("PUT", path, Body::Raw(bytes, content_type), None)
+    }
+
+    fn send(&self, method: &str, path: &str, body: Body, if_match: Option<&str>) -> Result<GraphResponse, String> {
         let url = format!("{GRAPH}{path}");
         for attempt in 0.. {
             let bearer = format!("Bearer {}", self.token()?);
-            let result = match (method, body) {
+            let result = match (method, &body) {
                 ("GET", _) => self.agent.get(&url).header("Authorization", &bearer).call(),
                 ("DELETE", _) => self.agent.delete(&url).header("Authorization", &bearer).call(),
-                ("PATCH", Some(b)) => {
+                ("PATCH", Body::Json(b)) => {
                     let mut req = self.agent.patch(&url).header("Authorization", &bearer);
                     if let Some(etag) = if_match {
                         req = req.header("If-Match", etag);
                     }
                     req.send_json(b)
                 }
-                ("POST", Some(b)) => self.agent.post(&url).header("Authorization", &bearer).send_json(b),
+                ("POST", Body::Json(b)) => self.agent.post(&url).header("Authorization", &bearer).send_json(b),
+                ("PUT", Body::Raw(bytes, content_type)) => self
+                    .agent
+                    .put(&url)
+                    .header("Authorization", &bearer)
+                    .header("Content-Type", *content_type)
+                    .send(*bytes),
                 _ => return Err(format!("unsupported request {method}")),
             };
             let mut res = result.map_err(|e| format!("Graph request failed: {e}"))?;

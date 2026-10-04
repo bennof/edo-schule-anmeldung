@@ -1,5 +1,13 @@
 // Shared state of one rendered form, passed to nested components via context.
-import type { FormJson, Option } from '@anmeldung/forms';
+import type { FieldItem, FileRef, FormJson, Option } from '@anmeldung/forms';
+
+/** Storage of file fields, provided by the app (public: via the server, secretariat: Graph). */
+export interface FileHandler {
+    upload(file: Blob, name: string, field: FieldItem): Promise<FileRef>;
+    open(ref: FileRef): Promise<Blob | undefined>;
+    /** omitted when files cannot be removed (e.g. after submission) */
+    remove?(ref: FileRef): Promise<void>;
+}
 import { getContext, setContext } from 'svelte';
 
 export type RenderMode = 'public' | 'secretariat';
@@ -12,6 +20,7 @@ export interface FormContext {
     readonly showAllErrors: boolean;
     touched: Set<string>;
     loadOptions?: (source: string) => Promise<Option[]>;
+    files?: FileHandler;
 }
 
 const KEY = Symbol('form');

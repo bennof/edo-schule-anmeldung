@@ -90,7 +90,7 @@
         "kind": { "const": "field" },
         "id": { "$ref": "#/$defs/id" },
         "type": {
-          "enum": ["text", "email", "phone", "date", "year", "integer", "boolean", "select", "multiselect", "searchselect"]
+          "enum": ["text", "email", "phone", "date", "year", "integer", "boolean", "select", "multiselect", "searchselect", "file"]
         },
         "label": { "$ref": "#/$defs/text" },
         "help": { "type": "string" },
@@ -117,6 +117,19 @@
           "description": "Asset key of a JSON option list (e.g. a catalog), alternative to inline options.",
           "type": "string",
           "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "accept": {
+          "description": "file only: allowed content types (default: all of them)",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["application/pdf", "image/jpeg", "image/png"] }
+        },
+        "multiple": { "description": "file only: several files", "type": "boolean" },
+        "maxFiles": { "description": "file only, with multiple: upper limit", "type": "integer", "minimum": 1, "maximum": 20 },
+        "role": {
+          "description": "file only: 'photo' marks the student photo (scaled, shown in the secretariat, printed, transferred to SVWS)",
+          "enum": ["photo"]
         }
       },
       "additionalProperties": false,
@@ -162,6 +175,14 @@
         {
           "if": { "properties": { "type": { "const": "boolean" } } },
           "else": { "not": { "required": ["mustAccept"] } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "file" } } },
+          "else": {
+            "not": {
+              "anyOf": [{ "required": ["accept"] }, { "required": ["multiple"] }, { "required": ["maxFiles"] }, { "required": ["role"] }]
+            }
+          }
         },
         {
           "if": { "properties": { "type": { "const": "multiselect" } } },

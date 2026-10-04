@@ -1,0 +1,4 @@
+{ "formatVersion": 1, "title": "T", "sections": [{ "id": "a", "title": "A", "items": [
+  { "kind": "field", "id": "a1", "type": "file", "label": "A", "role": "photo" },
+  { "kind": "field", "id": "a2", "type": "file", "label": "B", "role": "photo" }
+] }] }

@@ -53,7 +53,9 @@ export const sample = {
     kenntnisDatenschutz: true,
     kenntnisKrankmeldung: true,
     kenntnisInfektionsschutz: true,
+    passfoto: { id: '7/0123456789abcdef0123456789abcdef.png', name: 'foto.png', contentType: 'image/png', size: 70 },
 };
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
 
 describe('pdf values (I3)', () => {
     it('maps data to display values', () => {
@@ -95,6 +97,7 @@ describe('fill template (I1)', () => {
             data: sample,
             options,
             extra: { 'anmeldung.termin': 'Mittwoch, 7. Oktober 2026, 09:20 Uhr', 'anmeldung.nummer': '42' },
+            photo: PNG,
         });
         fs.mkdirSync(new URL('../test-output/', import.meta.url), { recursive: true });
         fs.writeFileSync(new URL('../test-output/anmeldebogen-filled.pdf', import.meta.url), bytes);
@@ -118,5 +121,9 @@ describe('fill template (I1)', () => {
         expect(checked('zustimmungUnterrichtsausfall=false')).toBe(true);
         expect(checked('kenntnisDatenschutz=true')).toBe(true);
         expect(pdf.getPageCount()).toBe(2);
+        // the photo is drawn as the appearance of the photo button
+        const photo = acro.getButton('passfoto');
+        const widget = photo.acroField.getWidgets()[0];
+        expect(widget.getNormalAppearance()).toBeDefined();
     });
 });

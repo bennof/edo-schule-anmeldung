@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import full from './valid/full.json' with { type: 'json' };
+import files from './valid/files.json' with { type: 'json' };
 import {
+    fileRefs,
     canAddRepeat,
     canRemoveRepeat,
     copyGroupData,
@@ -171,5 +173,25 @@ describe('repeat groups and copy', () => {
 
         ((data.sorgeberechtigter2 as FormData).adresse as FormData).ort = 'Bonn';
         expect(((data.sorgeberechtigter1 as FormData).adresse as FormData).ort).toBe('Köln');
+    });
+});
+
+describe('file fields', () => {
+    const form = files as FormJson;
+    const ref = (name: string, contentType = 'image/jpeg') => ({ id: `7/${name}`, name, contentType, size: 1000 });
+
+    it('validates references, types and limits', () => {
+        const ok = { passfoto: ref('a.jpg'), zeugnis: ref('z.pdf', 'application/pdf'), weitere: [ref('1.png', 'image/png')] };
+        expect(validateForm(form, ok)).toEqual([]);
+        expect(validateForm(form, {}).map((e) => `${e.path}:${e.code}`)).toEqual(['zeugnis:required']);
+        expect(validateForm(form, { ...ok, passfoto: ref('a.pdf', 'application/pdf') }).map((e) => e.path)).toEqual(['passfoto']);
+        expect(validateForm(form, { ...ok, weitere: [ref('1'), ref('2'), ref('3'), ref('4')] }).map((e) => e.code)).toEqual(['maxItems']);
+        expect(validateForm(form, { ...ok, zeugnis: 'z.pdf' }).map((e) => e.code)).toEqual(['invalid']);
+    });
+
+    it('finds file references and the photo', () => {
+        const data = { passfoto: ref('a.jpg'), zeugnis: ref('z.pdf', 'application/pdf'), weitere: [ref('1.png', 'image/png')] };
+        expect(fileRefs(form, data).map((r) => r.name)).toEqual(['a.jpg', 'z.pdf', '1.png']);
+        expect(fileRefs(form, data, 'photo').map((r) => r.name)).toEqual(['a.jpg']);
     });
 });

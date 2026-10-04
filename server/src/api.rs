@@ -4,8 +4,9 @@
 
 use crate::formdata;
 use crate::mail;
-use crate::sharepoint::{APPLICATIONS, APPOINTMENTS, CONFIG, FORMS, Item, PROCEDURES, Site, Update};
+use crate::sharepoint::{APPLICATIONS, APPOINTMENTS, CONFIG, FORMS, Item, PROCEDURES, Site, UPLOADS, Update};
 use crate::token;
+use crate::uploads;
 use chrono::{Local, SecondsFormat, Utc};
 use serde_json::{Map, Value, json};
 
@@ -40,6 +41,18 @@ pub struct ApiRequest {
     pub client_ip: String,
     /// token from `Authorization: Bearer ...`
     pub bearer: Option<String>,
+    /// query string without `?`
+    pub query: String,
+    pub content_type: Option<String>,
+}
+
+impl ApiRequest {
+    fn query_param(&self, name: &str) -> Option<String> {
+        self.query.split('&').find_map(|pair| {
+            let (k, v) = pair.split_once('=')?;
+            (k == name).then(|| uploads::url_decode(v))
+        })
+    }
 }
 
 /// Logo key in the Assets library; further public assets come from optionsSource.
@@ -89,6 +102,15 @@ impl Api {
             ("GET", ["api", "applications", id, "form"]) if is_item_id(id) => self.application_form(id, req),
             ("POST", ["api", "applications", id, "start"]) if is_item_id(id) => self.start(id, req),
             ("POST", ["api", "applications", id, "submit"]) if is_item_id(id) => self.submit(id, req),
+            ("POST", ["api", "applications", id, "uploads"]) if is_item_id(id) => self.upload(id, req),
+            ("GET", ["api", "applications", id, "uploads", file]) if is_item_id(id) && uploads::is_file_name(file) => {
+                self.get_upload(id, file, req)
+            }
+            ("DELETE", ["api", "applications", id, "uploads", file])
+                if is_item_id(id) && uploads::is_file_name(file) =>
+            {
+                self.delete_upload(id, file, req)
+            }
             ("GET", ["api", "assets", key]) if is_asset_key(key) => self.asset(key),
             _ => Ok(Reply::not_found()),
         };
@@ -381,7 +403,7 @@ impl Api {
         let Some(form) = self.form_json(app.text("FormId").unwrap_or_default())? else {
             return Ok(Reply::not_found());
         };
-        if let Err(problem) = formdata::check(&form, &input["data"]) {
+        if let Err(problem) = formdata::check(&form, &input["data"], id) {
             return Ok(Reply::error(
                 400,
                 "invalid_data",
@@ -399,6 +421,86 @@ impl Api {
             Update::Conflict => Ok(already_submitted()),
             Update::NotFound => Ok(Reply::not_found()),
         }
+    }
+
+    /// Stores one file for the family's application and returns its reference.
+    /// Only before submission; type, signature, size and count are checked.
+    fn upload(&self, id: &str, req: &ApiRequest) -> Result<Reply, String> {
+        let Some(app) = self.authorized_application(id, req)? else {
+            return Ok(Reply::not_found());
+        };
+        if !matches!(app.text("State"), Some("created" | "form_in_progress")) {
+            return Ok(already_submitted());
+        }
+        let content_type = req
+            .content_type
+            .as_deref()
+            .unwrap_or("")
+            .split(';')
+            .next()
+            .unwrap_or("")
+            .trim()
+            .to_string();
+        if !uploads::ALLOWED.contains(&content_type.as_str()) || !uploads::content_matches(&content_type, &req.body) {
+            return Ok(Reply::error(
+                415,
+                "invalid_type",
+                "Erlaubt sind PDF-, JPEG- und PNG-Dateien",
+            ));
+        }
+        if req.body.is_empty() || req.body.len() > uploads::MAX_SIZE {
+            return Ok(Reply::error(
+                413,
+                "too_large",
+                "Die Datei darf höchstens 4 MB groß sein",
+            ));
+        }
+        if self.site.count_files(UPLOADS, id)? >= uploads::MAX_FILES {
+            return Ok(Reply::error(
+                409,
+                "too_many",
+                "Es wurden bereits zu viele Dateien hochgeladen",
+            ));
+        }
+        let file = format!("{}.{}", &token::generate()?[..32], uploads::extension(&content_type));
+        let upload_id = format!("{id}/{file}");
+        self.site.put_file(UPLOADS, &upload_id, &req.body, &content_type)?;
+        Ok(Reply::json(
+            201,
+            json!({
+                "id": upload_id,
+                "name": uploads::display_name(&req.query_param("name").unwrap_or_default()),
+                "contentType": content_type,
+                "size": req.body.len(),
+            }),
+        ))
+    }
+
+    /// The family's own file (e.g. to show the photo again after a reload).
+    fn get_upload(&self, id: &str, file: &str, req: &ApiRequest) -> Result<Reply, String> {
+        if self.authorized_application(id, req)?.is_none() {
+            return Ok(Reply::not_found());
+        }
+        Ok(match self.site.get_file(UPLOADS, &format!("{id}/{file}"))? {
+            Some((content_type, body)) => Reply {
+                status: 200,
+                content_type,
+                body,
+            },
+            None => Reply::not_found(),
+        })
+    }
+
+    /// Removes one of the family's files; only before submission.
+    fn delete_upload(&self, id: &str, file: &str, req: &ApiRequest) -> Result<Reply, String> {
+        let Some(app) = self.authorized_application(id, req)? else {
+            return Ok(Reply::not_found());
+        };
+        if !matches!(app.text("State"), Some("created" | "form_in_progress")) {
+            return Ok(already_submitted());
+        }
+        self.site.delete_file(UPLOADS, &format!("{id}/{file}"))?;
+        Ok(Reply::json(200, json!({ "deleted": format!("{id}/{file}") })))
     }
 
     /// IP filter: number of booked appointments of this procedure from the
