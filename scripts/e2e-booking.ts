@@ -62,7 +62,7 @@ try {
         await page.locator('input[type=file]').setInputFiles({ name: 'Logo.png', mimeType: 'image/png', buffer: PNG });
         await page.getByRole('button', { name: 'Als Logo' }).click();
         cleanup.logo = true;
-        await page.getByRole('button', { name: 'Hochladen' }).click();
+        await page.getByRole('button', { name: 'Hochladen', exact: true }).click();
         await page.getByText('„logo“ gespeichert.').waitFor({ timeout: 20000 });
         await page.getByRole('img', { name: 'logo' }).waitFor({ timeout: 20000 });
     });

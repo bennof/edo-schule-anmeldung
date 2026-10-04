@@ -11,8 +11,9 @@
     import Forms from './views/Forms.svelte';
     import Procedures from './views/Procedures.svelte';
     import Setup from './views/Setup.svelte';
+    import ConfigEditor from './components/ConfigEditor.svelte';
 
-    type Status = 'loading' | 'signedOut' | 'denied' | 'ready' | 'error';
+    type Status = 'loading' | 'setup' | 'signedOut' | 'denied' | 'ready' | 'error';
 
     const VIEWS = [
         { hash: '#tag', label: 'Tagesansicht', component: Day },
@@ -33,6 +34,10 @@
     const view = $derived(VIEWS.find((v) => route === v.hash || route.startsWith(`${v.hash}/`)) ?? VIEWS[0]);
 
     async function start(): Promise<void> {
+        if (!clientConfig) {
+            status = 'setup';
+            return;
+        }
         try {
             account = await initAuth();
             if (!account) {
@@ -40,7 +45,7 @@
                 return;
             }
             // authorization = the user's access to the site
-            await site.graph.json('GET', `/sites/${clientConfig.siteId}?$select=id`);
+            await site.graph.json('GET', `/sites/${clientConfig!.siteId}?$select=id`);
             status = 'ready';
         } catch (e) {
             if (e instanceof GraphError && [401, 403, 404].includes(e.status)) {
@@ -71,6 +76,10 @@
 
     {#if status === 'loading'}
         <p>Wird geladen …</p>
+    {:else if status === 'setup'}
+        <h2>Einrichtung dieses Browsers</h2>
+        <p>Für diesen Browser ist noch keine gültige Installationskonfiguration hinterlegt. Bitte die Konfigurationsdatei der Schule importieren oder die Werte eintragen.</p>
+        <ConfigEditor />
     {:else if status === 'signedOut'}
         <p>Bitte mit dem Microsoft-365-Konto der Schule anmelden.</p>
         <button onclick={login}>Anmelden</button>

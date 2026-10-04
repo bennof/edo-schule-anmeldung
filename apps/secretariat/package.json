@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "check": "svelte-check --tsconfig ./tsconfig.json"
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run"
   },
   "dependencies": {
     "@anmeldung/domain": "workspace:*",
@@ -14,6 +15,7 @@
     "@azure/msal-browser": "^4.0.0",
     "@anmeldung/forms": "workspace:*",
     "@anmeldung/form-ui": "workspace:*",
-    "@anmeldung/pdf": "workspace:*"
+    "@anmeldung/pdf": "workspace:*",
+    "@anmeldung/svws": "workspace:*"
   }
 }

@@ -5,7 +5,7 @@
     import type { ApplicationSummary } from '@anmeldung/sharepoint';
     import ApplicationEditor from '../components/ApplicationEditor.svelte';
     import { APPLICATION_STATE_LABEL, formatDateTime } from '../labels.ts';
-    import { applicationService, applications, appointments, errorText, procedures } from '../services.ts';
+    import { applicationService, applications, appointments, errorText, procedures, svws } from '../services.ts';
 
     let list: ApplicationSummary[] = $state([]);
     let appointmentByApplication: Map<string, Appointment> = $state(new Map());
@@ -17,6 +17,45 @@
     let stateFilter: ApplicationState[] = $state([]);
     let openId: string | undefined = $state();
     let newProcedureId = $state('');
+
+    // M2: selection of released applications for the SVWS transfer
+    let selected: string[] = $state([]);
+    let transferMessage = $state('');
+    const released = $derived(list.filter((a) => a.state === 'ready_for_svws'));
+
+    function toggleSelected(id: string): void {
+        selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
+    }
+
+    async function transfer(): Promise<void> {
+        busy = true;
+        transferMessage = '';
+        try {
+            const items = await Promise.all(
+                selected.map(async (id) => {
+                    const { application } = await applicationService.load(id);
+                    return { applicationId: id, formId: application.formId, data: application.data };
+                }),
+            );
+            const results = await svws.transfer(items);
+            let ok = 0;
+            for (const r of results.filter((r) => r.ok)) {
+                // imported only after a confirmed transfer
+                await applicationService.transition(r.applicationId, 'imported', (await applicationService.load(r.applicationId)).eTag);
+                ok++;
+            }
+            const failed = results.filter((r) => !r.ok);
+            transferMessage = `${ok} übertragen${failed.length ? `, ${failed.length} nicht übertragen: ${[...new Set(failed.map((f) => f.message))].join(' ')}` : ''}.`;
+            if (ok) {
+                selected = [];
+                await load();
+            }
+        } catch (e) {
+            transferMessage = `Fehler: ${errorText(e)}`;
+        } finally {
+            busy = false;
+        }
+    }
 
     /** case- and accent-insensitive */
     const normalize = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
@@ -95,16 +134,37 @@
             {/each}
         </div>
 
+        {#if released.length}
+            <div class="svws" data-testid="svws-transfer">
+                <strong>SVWS-Übertragung</strong>
+                <span class="muted">{svws.status()}</span>
+                <span>{selected.length} von {released.length} freigegebenen Anmeldungen ausgewählt</span>
+                <button class="secondary" onclick={() => (selected = released.map((a) => a.id))} disabled={busy}>Alle freigegebenen auswählen</button>
+                <button onclick={transfer} disabled={busy || selected.length === 0}>Ausgewählte an SVWS übertragen</button>
+                {#if transferMessage}<p role="status">{transferMessage}</p>{/if}
+            </div>
+        {/if}
+
         {#if loading}
             <p>Wird geladen …</p>
         {:else}
             <p class="muted">{visible.length} von {list.length} Anmeldungen</p>
             <table>
-                <thead><tr><th>Kind</th><th>Kontakt</th><th>Termin</th><th>Verfahren</th><th>Status</th><th></th></tr></thead>
+                <thead><tr><th></th><th>Kind</th><th>Kontakt</th><th>Termin</th><th>Verfahren</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                     {#each visible as a (a.id)}
                         {@const appt = appointmentByApplication.get(a.id)}
                         <tr data-id={a.id}>
+                            <td>
+                                {#if a.state === 'ready_for_svws'}
+                                    <input
+                                        type="checkbox"
+                                        aria-label="Für SVWS-Übertragung auswählen"
+                                        checked={selected.includes(a.id)}
+                                        onchange={() => toggleSelected(a.id)}
+                                    />
+                                {/if}
+                            </td>
                             <td>{a.childName ?? '–'}</td>
                             <td>{a.contactName ?? ''} {#if a.contactEmail}<br /><small class="muted">{a.contactEmail}</small>{/if}</td>
                             <td>{appt ? formatDateTime(appt.datetime) : '–'}</td>
@@ -113,7 +173,7 @@
                             <td><button onclick={() => (openId = a.id)}>Öffnen</button></td>
                         </tr>
                     {:else}
-                        <tr><td colspan="6" class="muted">Keine Anmeldungen gefunden.</td></tr>
+                        <tr><td colspan="7" class="muted">Keine Anmeldungen gefunden.</td></tr>
                     {/each}
                 </tbody>
             </table>
@@ -132,6 +192,20 @@
         flex: 1;
         min-width: 16rem;
         padding: 0.4rem 0.6rem;
+    }
+    .svws {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1rem;
+        align-items: center;
+        background: #f4f6fa;
+        border-radius: 6px;
+        padding: 0.6rem 0.8rem;
+        margin: 0.75rem 0;
+    }
+    .svws p {
+        flex-basis: 100%;
+        margin: 0;
     }
     .filters {
         display: flex;

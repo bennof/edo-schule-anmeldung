@@ -1,7 +1,10 @@
 <script lang="ts">
     import type { ConfigEntry } from '@anmeldung/domain';
     import { LISTS, SCHEMA_VERSION, provision } from '@anmeldung/sharepoint';
-    import { clientConfig } from '../config.ts';
+    import { requireConfig } from '../config.ts';
+    import ConfigEditor from '../components/ConfigEditor.svelte';
+
+    const clientConfig = requireConfig();
     import { config, errorText, site } from '../services.ts';
 
     let loaded = $state(false);
@@ -105,3 +108,8 @@
         </form>
     </section>
 {/if}
+
+<section>
+    <h2>Installationskonfiguration (dieser Browser)</h2>
+    <ConfigEditor />
+</section>
