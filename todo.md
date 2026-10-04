@@ -11,7 +11,7 @@ Klammern: Sprint-Review (S1–S8), Backlog (BL) oder Gespräch.
 - [ ] PDF: vollständige Belehrungstexte (DS-GVO, § 34 IfSG) beilegen oder eigene Vorlage mit denselben Feldnamen hochladen (S6)
 - [ ] SharePoint, Liste Applications: Berechtigungen auf Elementebene auf „Nur eigene Elemente lesen“ setzen (S3, S4)
 - [ ] Entra: `Sites.Selected` beim Daemon entfernen; er braucht nur `Lists.SelectedOperations.Selected` (S3)
-- [ ] Hosting: Reverse-Proxy mit TLS, `TRUST_PROXY=1`, `TZ=Europe/Berlin` (S3)
+- [ ] Hosting: Mietserver mit Docker-Stack (siehe 5.1) – Reverse-Proxy mit TLS, `TRUST_PROXY=1`, `TZ=Europe/Berlin` (S3)
 - [ ] SVWS produktiv: CORS im SVWS-Server mit vertrauenswürdigem Zertifikat **oder** CORS-Proxy; Schuljahr der Neuaufnahmen in den Einstellungen setzen (S8)
 - [ ] Git-Remote einrichten und das Repository sichern (Gespräch)
 
@@ -55,17 +55,37 @@ Klammern: Sprint-Review (S1–S8), Backlog (BL) oder Gespräch.
 
 ## 5. Betriebsvarianten (neu)
 
-### 5.1 Public SPA aus dem Rust-Server ausliefern
+### 5.1 Docker-Bereitstellung auf eigenem Mietserver (empfohlen, Angebot für Schulen)
 
-Für Schulen mit eigenem Server oder VM: Ein Programm für alles Öffentliche. Der
-Server liefert die gebaute Public SPA als statische Dateien aus dem Dateisystem
-(`PUBLIC_DIR`, z. B. `dist/public`) und die API unter `/api`.
+Standardweg für das Angebot an Schulen: ein gemieteter Server (VM), auf dem alles
+Öffentliche als Docker-Container läuft. Das Sekretariat bleibt Web-App bzw. Tauri
+(5.2), die Daten bleiben im SharePoint der jeweiligen Schule.
 
-- [ ] Statische Auslieferung mit SPA-Fallback auf `index.html`, korrekten Content-Types, Cache-Headern (Hash-Dateien lange, `index.html` kurz)
-- [ ] Sicherheits-Header (CSP, `X-Content-Type-Options`, `Referrer-Policy`, `frame-ancestors` für eingebettete Nutzung konfigurierbar)
+**Public Server liefert die SPA mit aus**
+
+- [ ] Rust-Server liefert die gebaute Public SPA als statische Dateien (`PUBLIC_DIR`) und die API unter `/api` – ein Dienst für alles Öffentliche
+- [ ] SPA-Fallback auf `index.html`, korrekte Content-Types, Cache-Header (Hash-Dateien lange, `index.html` kurz)
+- [ ] Sicherheits-Header (CSP, `X-Content-Type-Options`, `Referrer-Policy`, `frame-ancestors` konfigurierbar)
 - [ ] Schutz vor Pfad-Traversal; nur Dateien unterhalb von `PUBLIC_DIR`
-- [ ] `make dist` → ein Ordner mit Binary und `public/`; optional ein Docker-Image für den Public Server
-- [ ] Optional später: Dateien ins Binary einbetten (eine einzige Datei)
+
+**Container**
+
+- [ ] Multi-Stage-Dockerfile: SPA und Rust bauen, schlankes Laufzeit-Image (z. B. distroless), nur Binary + `public/`
+- [ ] Sicher betreiben: Nicht-root-Benutzer, schreibgeschütztes Dateisystem, keine Shell im Image, Healthcheck (`/api/health`), Ressourcenlimits
+- [ ] Compose-Stack mit Reverse-Proxy und automatischem TLS (z. B. Caddy mit Let's Encrypt, alternativ nginx); `TRUST_PROXY=1`, `TZ=Europe/Berlin`
+- [ ] Konfiguration und Secrets pro Schule über Env-Datei bzw. Docker Secrets (Tenant, Daemon-App, Site); nichts im Image
+- [ ] Logs ohne personenbezogene Daten (ist im Server bereits so), Rotation über Docker
+- [ ] Image-Versionen mit Tags; Update = neues Image ziehen und neu starten
+- [ ] `make docker-build`, `make docker-up` analog zu `svws-*`
+
+**Mehrere Schulen auf einem Server**
+
+- [ ] Eine Instanz (Container) pro Schule mit eigener Konfiguration und eigener (Sub-)Domain; der Reverse-Proxy verteilt nach Domain
+- [ ] Vorlage/Skript zum Anlegen einer neuen Schul-Instanz (Env-Datei, Domain, Start)
+- [ ] Einrichtung beim Kunden dokumentieren: SharePoint-Site, App-Registrierungen, Listenrechte, Mail-Postfach (Checkliste je Schule)
+- [ ] Überwachung (Healthchecks, Zertifikatslaufzeit) und Updates für alle Instanzen
+
+**Optional:** PHP-Kern (5.3) zusätzlich als Container (php-fpm + nginx) für Schulen, die die PHP-Variante bevorzugen
 
 ### 5.2 Sekretariat als Desktop-App (Tauri)
 
@@ -76,7 +96,7 @@ Server liefert die gebaute Public SPA als statische Dateien aus dem Dateisystem
 - [ ] Automatische Updates und Code-Signierung festlegen
 - [ ] Die Web-Variante des Sekretariats bleibt parallel nutzbar
 
-### 5.3 Public Server als CMS-Plugin (Webhosting ohne eigenen Server)
+### 5.3 Public Server als CMS-Plugin (nur für Schulen ohne eigenen Server)
 
 Viele Schulen haben nur ein Webhosting-Paket mit CMS und können dort kein eigenes
 Programm wie den Rust-Server starten. Das Plugin **übernimmt die komplette
@@ -104,7 +124,7 @@ die Public SPA aus. Typisches Schul-Webhosting bietet PHP, unabhängig vom CMS.
   - [ ] Reihenfolge nach Bedarf der Schulen festlegen (Umfrage)
 - [ ] Public SPA mit konfigurierbarer API-Basis-URL bauen (Plugin-Pfade statt `/api`)
 
-**Webhosting-Grenzen klären und testen**
+**Webhosting-Grenzen klären und testen** (nur für den Plugin-Weg; beim Mietserver mit Docker entfällt das)
 
 - [ ] Mindest-PHP-Version, benötigte Erweiterungen (curl/openssl, json, mbstring)
 - [ ] Ausgehende HTTPS-Verbindungen zu `login.microsoftonline.com` und `graph.microsoft.com` erlaubt?
