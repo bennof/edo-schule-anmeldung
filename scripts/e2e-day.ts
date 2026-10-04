@@ -4,12 +4,11 @@
 // editing with autosave and comments, review up to the SVWS release,
 // conflict detection, name search after cancellation, status filter.
 // Usage: node scripts/e2e-day.ts
-import { execSync, spawn } from 'node:child_process';
 import type { Application, FormDefinition, Procedure } from '../packages/domain/src/index.ts';
 import testForm from '../packages/forms/examples/test-form.json' with { type: 'json' };
 import { AppointmentService, GraphClient, Repository, SharePointSite } from '../packages/sharepoint/src/index.ts';
 import { appTokenProvider, readEnv } from './env.ts';
-import { assert, failureCount, launch, signIn, startDevServer, step, URLS, watchConsole } from './e2e-util.ts';
+import { assert, failureCount, launch, signIn, startDevServer, step, URLS, watchConsole, startApiServer } from './e2e-util.ts';
 
 const env = readEnv();
 const site = new SharePointSite(new GraphClient(appTokenProvider(env)), env.SHAREPOINT_ID);
@@ -32,8 +31,7 @@ const slots = await appointments.createDrafts([
 ]);
 await appointments.publish(slots.map((s) => s.id));
 
-execSync('cargo build -q', { cwd: 'server', stdio: 'inherit', env: { ...process.env, PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH}` } });
-const server = spawn('./target/debug/anmeldung-server', { cwd: 'server', env: { ...process.env, MAIL_DISABLED: '1', BIND_ADDR: '127.0.0.1:8080' }, stdio: 'ignore' });
+const server = await startApiServer();
 for (let i = 0; i < 50 && !(await fetch(`${API}/health`).then((r) => r.ok, () => false)); i++) await new Promise((r) => setTimeout(r, 200));
 const stopSecretariat = await startDevServer('secretariat');
 const browser = await launch();
@@ -168,7 +166,7 @@ try {
 } finally {
     await browser.close();
     stopSecretariat();
-    server.kill();
+    server.stop();
     const apps = await site.listItems('applications', `fields/ProcedureId eq '${procedure.id}'`).catch(() => []);
     if (apps.length) await site.deleteItems('applications', apps.map((a) => a.id)).catch(() => {});
     await site.deleteItems('appointments', slots.map((s) => s.id)).catch(() => {});

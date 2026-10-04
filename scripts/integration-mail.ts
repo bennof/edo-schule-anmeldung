@@ -2,12 +2,11 @@
 // with MAIL_REDIRECT, so the mail goes to MAIL_TEST_TO from .env instead of
 // the booking address. Also checks the resume link from the mail.
 // Usage: node scripts/integration-mail.ts   (then check the test inbox)
-import { execSync, spawn } from 'node:child_process';
 import type { FormDefinition, Procedure } from '../packages/domain/src/index.ts';
 import testForm from '../packages/forms/examples/test-form.json' with { type: 'json' };
 import { AppointmentService, ConfigStore, GraphClient, Repository, SharePointSite, provision } from '../packages/sharepoint/src/index.ts';
 import { appTokenProvider, readEnv } from './env.ts';
-import { assert, failureCount, launch, startDevServer, step, URLS } from './e2e-util.ts';
+import { assert, failureCount, launch, startDevServer, step, URLS, startApiServer } from './e2e-util.ts';
 
 const env = readEnv();
 if (!env.MAIL_TEST_TO) throw new Error('MAIL_TEST_TO missing in .env');
@@ -33,16 +32,7 @@ const procedure = await procedures.create({ formId: form.id, info: { title: 'Anm
 const [slot] = await appointments.createDrafts([{ procedureId: procedure.id, datetime: `${day(6)}T11:40`, state: 'draft' }]);
 await appointments.publish([slot.id]);
 
-execSync('cargo build -q', { cwd: 'server', stdio: 'inherit', env: { ...process.env, PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH}` } });
-const server = spawn('./target/debug/anmeldung-server', {
-    cwd: 'server',
-    env: { ...process.env, BIND_ADDR: '127.0.0.1:8080', MAIL_REDIRECT: env.MAIL_TEST_TO },
-    stdio: ['ignore', 'pipe', 'pipe'],
-});
-let log = '';
-server.stdout.on('data', (d) => (log += d));
-server.stderr.on('data', (d) => (log += d));
-for (let i = 0; i < 50 && !(await fetch(`${API}/health`).then((r) => r.ok, () => false)); i++) await new Promise((r) => setTimeout(r, 200));
+const server = await startApiServer({ env: { MAIL_DISABLED: '', MAIL_REDIRECT: env.MAIL_TEST_TO } });
 
 let booking: { applicationId: string; token: string } | undefined;
 const stopPublic = await startDevServer('public');
@@ -56,9 +46,9 @@ try {
         booking = await res.json();
         assert(res.ok, `booking ${res.status}`);
         await new Promise((r) => setTimeout(r, 500));
-        const sent = log.split('\n').filter((l) => l.includes('confirmation mail sent')).length;
-        assert(sent === 1, `mails sent: ${sent}; log: ${log.split('\n').filter((l) => /mail/.test(l)).join(' | ')}`);
-        assert(!log.includes('example.org') && !log.includes(env.MAIL_TEST_TO), 'address in log');
+        const sent = server.log().split('\n').filter((l) => l.includes('confirmation mail sent')).length;
+        assert(sent === 1, `mails sent: ${sent}; log: ${server.log().split('\n').filter((l) => /mail/.test(l)).join(' | ')}`);
+        assert(!server.log().includes('example.org') && !server.log().includes(env.MAIL_TEST_TO), 'address in log');
         console.log(`      sent to ${env.MAIL_TEST_TO} (redirected): ${day(6)} 11:40, "Anmeldung Klasse 5 (Mailtest)"`);
     });
 
@@ -78,7 +68,7 @@ try {
         }
     });
 } finally {
-    server.kill();
+    server.stop();
     stopPublic();
     const apps = await site.listItems('applications', `fields/ProcedureId eq '${procedure.id}'`).catch(() => []);
     if (apps.length) await site.deleteItems('applications', apps.map((a) => a.id)).catch(() => {});

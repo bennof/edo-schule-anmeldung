@@ -1,14 +1,13 @@
 // Sprint 4 end-to-end test: book -> fill in the school's registration form ->
 // reload and resume -> submit -> application in SharePoint -> secretariat.
 // Usage: node scripts/e2e-registration.ts
-import { execSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { PDFCheckBox, PDFDocument, PDFTextField } from 'pdf-lib';
 import type { Page } from 'playwright-core';
 import type { Application, FormDefinition, Procedure } from '../packages/domain/src/index.ts';
 import { AppointmentService, GraphClient, Repository, SharePointSite } from '../packages/sharepoint/src/index.ts';
 import { appTokenProvider, readEnv } from './env.ts';
-import { assert, failureCount, launch, signIn, startDevServer, step, URLS, watchConsole } from './e2e-util.ts';
+import { assert, failureCount, launch, signIn, startDevServer, step, URLS, watchConsole, startApiServer } from './e2e-util.ts';
 
 const env = readEnv();
 const site = new SharePointSite(new GraphClient(appTokenProvider(env)), env.SHAREPOINT_ID);
@@ -23,8 +22,7 @@ const tag = `E2E Anmeldung ${Date.now()}`;
 const created = { form: '', procedure: '', catalogs: [] as string[], template: false };
 const existingAssets = new Set((await site.listAssets()).map((a) => a.key));
 
-execSync('cargo build -q', { cwd: 'server', stdio: 'inherit', env: { ...process.env, PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH}` } });
-const server = spawn('./target/debug/anmeldung-server', { cwd: 'server', env: { ...process.env, MAIL_DISABLED: '1', BIND_ADDR: '127.0.0.1:8080' }, stdio: 'ignore' });
+const server = await startApiServer();
 const stopSecretariat = await startDevServer('secretariat');
 const stopPublic = await startDevServer('public');
 const browser = await launch();
@@ -254,7 +252,7 @@ try {
     await browser.close();
     stopSecretariat();
     stopPublic();
-    server.kill();
+    server.stop();
     if (created.procedure) {
         const apps = await site.listItems('applications', `fields/ProcedureId eq '${created.procedure}'`).catch(() => []);
         if (apps.length) await site.deleteItems('applications', apps.map((a) => a.id)).catch(() => {});

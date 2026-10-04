@@ -3,12 +3,11 @@
 // -> book -> SharePoint. Starts the Rust server and both dev servers.
 // Creates its own test data and removes it afterwards.
 // Usage: node scripts/e2e-booking.ts
-import { execSync, spawn } from 'node:child_process';
 import type { FormDefinition, Procedure } from '../packages/domain/src/index.ts';
 import testForm from '../packages/forms/examples/test-form.json' with { type: 'json' };
 import { AppointmentService, ConfigStore, GraphClient, Repository, SharePointSite } from '../packages/sharepoint/src/index.ts';
 import { appTokenProvider, readEnv } from './env.ts';
-import { assert, failureCount, launch, signIn, startDevServer, step, URLS, watchConsole } from './e2e-util.ts';
+import { assert, failureCount, launch, signIn, startDevServer, step, URLS, watchConsole, startApiServer } from './e2e-util.ts';
 
 const env = readEnv();
 const site = new SharePointSite(new GraphClient(appTokenProvider(env)), env.SHAREPOINT_ID);
@@ -37,8 +36,7 @@ if ((await config.get('schoolName')) === undefined) {
     cleanup.schoolName = true;
 }
 
-execSync('cargo build -q', { cwd: 'server', stdio: 'inherit', env: { ...process.env, PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH}` } });
-const server = spawn('./target/debug/anmeldung-server', { cwd: 'server', env: { ...process.env, MAIL_DISABLED: '1', BIND_ADDR: '127.0.0.1:8080' }, stdio: 'ignore' });
+const server = await startApiServer();
 const stopSecretariat = await startDevServer('secretariat');
 const stopPublic = await startDevServer('public');
 const browser = await launch();
@@ -206,7 +204,7 @@ try {
     await browser.close();
     stopSecretariat();
     stopPublic();
-    server.kill();
+    server.stop();
     const apps = await site.listItems('applications', `fields/ProcedureId eq '${procedure.id}'`).catch(() => []);
     if (apps.length) await site.deleteItems('applications', apps.map((a) => a.id)).catch(() => {});
     const list = await appointments.listForProcedure(procedure.id).catch(() => []);

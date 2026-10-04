@@ -2,11 +2,11 @@
 // Test data is created with the app identity, the server uses the daemon
 // identity. Everything created here is removed at the end.
 // Usage: node scripts/integration-public-api.ts
-import { execSync, spawn } from 'node:child_process';
 import { isDeepStrictEqual } from 'node:util';
 import type { Application, FormDefinition, Procedure } from '../packages/domain/src/index.ts';
 import testForm from '../packages/forms/examples/test-form.json' with { type: 'json' };
 import { AppointmentService, ConfigStore, GraphClient, Repository, SharePointSite } from '../packages/sharepoint/src/index.ts';
+import { startApiServer } from './e2e-util.ts';
 import { appTokenProvider, clientCredentialsToken, readEnv } from './env.ts';
 
 const env = readEnv();
@@ -67,12 +67,7 @@ await config.set(`${tag}-public`, 'sichtbar', true);
 await config.set(`${tag}-intern`, 'geheim', false);
 await site.putAsset(`${tag}-intern.txt`, new Blob(['intern'], { type: 'text/plain' }));
 
-execSync('cargo build -q', { cwd: 'server', stdio: 'inherit', env: { ...process.env, PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH}` } });
-const server = spawn('./target/debug/anmeldung-server', { cwd: 'server', env: { ...process.env, MAIL_DISABLED: '1', BIND_ADDR: `127.0.0.1:${PORT}` }, stdio: ['ignore', 'pipe', 'pipe'] });
-let serverLog = '';
-server.stdout.on('data', (d) => (serverLog += d));
-server.stderr.on('data', (d) => (serverLog += d));
-for (let i = 0; i < 50 && !(await fetch(`${API}/health`).then((r) => r.ok, () => false)); i++) await new Promise((r) => setTimeout(r, 200));
+const server = await startApiServer({ port: PORT });
 
 try {
     await step('F2 config: public entries and active procedures only', async () => {
@@ -224,10 +219,10 @@ try {
     });
 
     await step('server log contains no personal data', async () => {
-        assert(!/Person \d|example\.org|Dritte|Muster|[0-9a-f]{64}/.test(serverLog), 'personal data or token in log');
+        assert(!/Person \d|example\.org|Dritte|Muster|[0-9a-f]{64}/.test(server.log()), 'personal data or token in log');
     });
 } finally {
-    server.kill();
+    server.stop();
     await site.deleteItems('appointments', drafts.map((d) => d.id)).catch(() => {});
     const created = await applications.list(applications.filter('procedureId', active.id)).catch(() => []);
     if (created.length) await site.deleteItems('applications', created.map((a) => a.id)).catch(() => {});

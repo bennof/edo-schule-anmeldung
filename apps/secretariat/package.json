@@ -17,5 +17,6 @@
     "@anmeldung/form-ui": "workspace:*",
     "@anmeldung/pdf": "workspace:*",
     "@anmeldung/svws": "workspace:*"
-  }
+  },
+  "license": "MIT"
 }
