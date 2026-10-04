@@ -2,7 +2,8 @@
      booking -> form -> submission. A stored session resumes at the form. -->
 <script lang="ts">
     import { FormRenderer } from '@anmeldung/form-ui';
-    import { normalizeData, validateForm, withoutHidden, type FormData, type FormJson } from '@anmeldung/forms';
+    import { normalizeData, optionSources, validateForm, withoutHidden, type FormData, type FormJson } from '@anmeldung/forms';
+    import fontUrl from '@anmeldung/pdf/fonts/DejaVuSans.ttf?url';
     import { api, ApiError, formatDay, loadOptions, type PublicProcedure, type Slot } from './api.ts';
     import { session, type Session } from './session.ts';
     import SlotPicker from './SlotPicker.svelte';
@@ -36,6 +37,9 @@
     let data: FormData = $state({});
     let submitAttempted = $state(false);
     let keepOnDevice = $state(session.isPersistent());
+    /** kept in memory after submission for the PDF download (I4) */
+    let submitted: { form: FormJson; data: FormData; session: Session } | undefined = $state();
+    let pdfError = $state('');
 
     const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const contactValid = $derived(name.trim().length >= 2 && EMAIL.test(email.trim()) && consent);
@@ -131,7 +135,9 @@
         }
         busy = true;
         try {
-            await api.submit(current.applicationId, current.token, withoutHidden(form, $state.snapshot(data)));
+            const clean = withoutHidden(form, $state.snapshot(data));
+            await api.submit(current.applicationId, current.token, clean);
+            submitted = { form, data: clean, session: current };
             session.clear();
             step = 'submitted';
         } catch (err) {
@@ -148,6 +154,40 @@
 
     function message(e: unknown): string {
         return e instanceof Error ? e.message : String(e);
+    }
+
+    /** I4: fill the registration form PDF in the browser, no server round trip. */
+    async function downloadPdf(): Promise<void> {
+        if (!submitted) return;
+        busy = true;
+        pdfError = '';
+        try {
+            const [{ fillRegistrationPdf, saveAs, pdfFileName }, template, font] = await Promise.all([
+                import('@anmeldung/pdf'),
+                fetch(`/api/assets/anmeldebogen.pdf`).then((r) => (r.ok ? r.arrayBuffer() : undefined)),
+                fetch(fontUrl).then((r) => r.arrayBuffer()),
+            ]);
+            if (!template) {
+                pdfError = 'Der Anmeldebogen steht noch nicht zum Herunterladen bereit. Sie erhalten ihn beim Anmeldegespräch.';
+                return;
+            }
+            const sources = optionSources(submitted.form);
+            const lists = await Promise.all(sources.map((s) => loadOptions(s)));
+            const bytes = await fillRegistrationPdf({
+                template,
+                font,
+                form: submitted.form,
+                data: submitted.data,
+                options: Object.fromEntries(sources.map((s, i) => [s, lists[i]])),
+                extra: { 'anmeldung.termin': when(submitted.session.datetime), 'anmeldung.nummer': submitted.session.applicationId },
+            });
+            const d = submitted.data as Record<string, string>;
+            saveAs(bytes, pdfFileName([d.nachname, d.vorname].filter(Boolean).join(' ')));
+        } catch (e) {
+            pdfError = message(e);
+        } finally {
+            busy = false;
+        }
     }
 
     function toggleKeep(): void {
@@ -216,6 +256,13 @@
         Beim Anmeldegespräch wird der ausgedruckte Anmeldebogen von den Erziehungsberechtigten unterschrieben. Bitte bringen
         Sie die im Einladungsschreiben genannten Unterlagen mit.
     </p>
+    {#if submitted}
+        <p>
+            <button onclick={downloadPdf} disabled={busy}>Anmeldebogen als PDF herunterladen</button>
+            <small class="muted">Sie können ihn ausdrucken und unterschrieben zum Termin mitbringen.</small>
+        </p>
+        {#if pdfError}<p class="error" role="alert">{pdfError}</p>{/if}
+    {/if}
 {/if}
 
 <style>

@@ -44,6 +44,8 @@ pub struct ApiRequest {
 
 /// Logo key in the Assets library; further public assets come from optionsSource.
 const LOGO_KEY: &str = "logo";
+/// Registration form template (I4), filled in the browser after submission.
+const PDF_TEMPLATE_KEY: &str = "anmeldebogen.pdf";
 /// Used when the config entry is missing (see DEFAULT_CONFIG in schema.ts).
 const DEFAULT_MAX_BOOKINGS_PER_IP: usize = 3;
 
@@ -421,7 +423,7 @@ impl Api {
 
     /// Public assets: the logo and option lists referenced by active forms.
     fn asset(&self, key: &str) -> Result<Reply, String> {
-        if key != LOGO_KEY {
+        if key != LOGO_KEY && key != PDF_TEMPLATE_KEY {
             let mut sources = Vec::new();
             for p in self.active_procedures()? {
                 if let Some(form) = self.form_json(&p.form_id)? {

@@ -2,7 +2,7 @@
      (key "logo") shown in the public SPA, images and PDF templates. -->
 <script lang="ts">
     import { isAssetKey, type AssetInfo } from '@anmeldung/sharepoint';
-    import { errorText, site } from '../services.ts';
+    import { errorText, site, uploadDefaultTemplate } from '../services.ts';
 
     let list: AssetInfo[] = $state([]);
     let previews: Record<string, string> = $state({});
@@ -80,6 +80,21 @@
         }
     }
 
+    async function uploadTemplate(): Promise<void> {
+        const exists = list.some((a) => a.key === 'anmeldebogen.pdf');
+        if (exists && !confirm('Vorhandene Vorlage „anmeldebogen.pdf“ durch den Standard-Anmeldebogen ersetzen?')) return;
+        busy = true;
+        try {
+            await uploadDefaultTemplate(true);
+            message = 'Standard-Anmeldebogen als „anmeldebogen.pdf“ gespeichert.';
+            await load();
+        } catch (err) {
+            message = `Fehler: ${errorText(err)}`;
+        } finally {
+            busy = false;
+        }
+    }
+
     const size = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.ceil(bytes / 1024)} kB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
 
     load().catch((e) => (message = `Fehler: ${errorText(e)}`));
@@ -89,8 +104,10 @@
     <h2>Dateien</h2>
     <p class="muted">
         Das Logo der öffentlichen Anmeldung hat den Schlüssel <code>logo</code>. Dateien mit anderen Schlüsseln sind nur
-        öffentlich, wenn ein aktives Formular sie als Optionsliste verwendet.
+        öffentlich, wenn ein aktives Formular sie als Optionsliste verwendet. Die PDF-Vorlage des Anmeldebogens hat den
+        Schlüssel <code>anmeldebogen.pdf</code>; eine eigene Vorlage muss dieselben Feldnamen verwenden.
     </p>
+    <p><button class="secondary" onclick={uploadTemplate} disabled={busy}>Standard-Anmeldebogen hochladen</button></p>
     <form class="upload" onsubmit={upload}>
         <label>Datei <input type="file" onchange={pick} /></label>
         <label>

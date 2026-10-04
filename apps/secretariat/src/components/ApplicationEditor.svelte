@@ -4,10 +4,11 @@
 <script lang="ts">
     import type { Application, ApplicationState, Appointment } from '@anmeldung/domain';
     import { FormRenderer } from '@anmeldung/form-ui';
-    import { normalizeData, type FormData, type FormJson } from '@anmeldung/forms';
+    import { normalizeData, optionSources, withoutHidden, type FormData, type FormJson } from '@anmeldung/forms';
+    import fontUrl from '@anmeldung/pdf/fonts/DejaVuSans.ttf?url';
     import { ConflictError } from '@anmeldung/sharepoint';
     import { APPLICATION_STATE_LABEL, formatDateTime } from '../labels.ts';
-    import { applicationService, appointments, errorText, forms, loadOptions, procedures } from '../services.ts';
+    import { applicationService, appointments, errorText, forms, loadOptions, procedures, site } from '../services.ts';
 
     interface Props {
         applicationId: string;
@@ -126,6 +127,42 @@
         }
     }
 
+    /** I5: the same registration form PDF, from the current data. */
+    async function downloadPdf(): Promise<void> {
+        if (!application || !form) return;
+        busy = true;
+        try {
+            const { fillRegistrationPdf, saveAs, pdfFileName, PDF_TEMPLATE_KEY } = await import('@anmeldung/pdf');
+            const [template, font] = await Promise.all([
+                site.getAsset(PDF_TEMPLATE_KEY).then((b) => b?.arrayBuffer()),
+                fetch(fontUrl).then((r) => r.arrayBuffer()),
+            ]);
+            if (!template) {
+                error = 'Keine PDF-Vorlage vorhanden. Unter „Dateien“ den Standard-Anmeldebogen hochladen.';
+                return;
+            }
+            const sources = optionSources(form);
+            const lists = await Promise.all(sources.map((s) => loadOptions(s)));
+            const bytes = await fillRegistrationPdf({
+                template,
+                font,
+                form,
+                data: withoutHidden(form, $state.snapshot(data)),
+                options: Object.fromEntries(sources.map((s, i) => [s, lists[i]])),
+                extra: {
+                    'anmeldung.termin': appointment ? formatDateTime(appointment.datetime) : '',
+                    'anmeldung.nummer': application.id,
+                    'anmeldung.kontakt': [application.contactName, application.contactEmail].filter(Boolean).join(', '),
+                },
+            });
+            saveAs(bytes, pdfFileName(application.childName));
+        } catch (e) {
+            error = errorText(e);
+        } finally {
+            busy = false;
+        }
+    }
+
     async function close(): Promise<void> {
         if (saveStatus === 'pending') await save();
         if ((saveStatus === 'error' || saveStatus === 'conflict') && !confirm('Änderungen sind nicht gespeichert. Trotzdem schließen?')) return;
@@ -151,6 +188,7 @@
                 <button onclick={advance} disabled={busy}>{NEXT[application.state]?.label}</button>
             {/if}
         {/if}
+        {#if application}<button class="secondary" onclick={downloadPdf} disabled={busy}>Anmeldebogen (PDF)</button>{/if}
         <span class="save {saveStatus}" role="status" data-testid="save-status">
             {#if saveStatus === 'saved'}{savedAt ? `Gespeichert ${savedAt.toLocaleTimeString('de-DE')}` : 'Alles gespeichert'}
             {:else if saveStatus === 'pending'}Ungespeicherte Änderungen …

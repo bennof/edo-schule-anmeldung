@@ -30,3 +30,13 @@ export function loadOptions(source: string): Promise<Option[]> {
 export function errorText(e: unknown): string {
     return e instanceof Error ? e.message : String(e);
 }
+
+/** Uploads the bundled default template unless one exists (or `force`). */
+export async function uploadDefaultTemplate(force = false): Promise<boolean> {
+    const { PDF_TEMPLATE_KEY } = await import('@anmeldung/pdf');
+    if (!force && (await site.listAssets()).some((a) => a.key === PDF_TEMPLATE_KEY)) return false;
+    const { default: url } = await import('@anmeldung/pdf/templates/anmeldebogen.pdf?url');
+    const bytes = await (await fetch(url)).blob();
+    await site.putAsset(PDF_TEMPLATE_KEY, new Blob([bytes], { type: 'application/pdf' }));
+    return true;
+}

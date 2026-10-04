@@ -2,14 +2,14 @@
 <script lang="ts">
     import type { FormDefinition } from '@anmeldung/domain';
     import { FormRenderer } from '@anmeldung/form-ui';
-    import { initialData, type FormJson } from '@anmeldung/forms';
+    import { initialData, optionSources, type FormJson } from '@anmeldung/forms';
     import schoolForm from '@anmeldung/forms/examples/anmeldung-klasse5.json';
     import testForm from '@anmeldung/forms/examples/test-form.json';
     import laender from '@anmeldung/forms/catalogs/laender.json';
     import sprachen from '@anmeldung/forms/catalogs/sprachen.json';
     import staatsangehoerigkeiten from '@anmeldung/forms/catalogs/staatsangehoerigkeiten.json';
     import { validateFormDefinition } from '@anmeldung/forms/validate';
-    import { errorText, forms, loadOptions, site } from '../services.ts';
+    import { errorText, forms, loadOptions, site, uploadDefaultTemplate } from '../services.ts';
 
     /** Catalogs bundled with the app (generated, see packages/forms/scripts). */
     const CATALOGS: Record<string, unknown> = {
@@ -25,21 +25,6 @@
     let preview: FormDefinition | undefined = $state();
     let previewData = $state({});
     let assetKeys: Set<string> = $state(new Set());
-
-    /** optionsSource keys used by a form definition. */
-    function optionSources(json: unknown): string[] {
-        const keys = new Set<string>();
-        const walk = (v: unknown): void => {
-            if (Array.isArray(v)) v.forEach(walk);
-            else if (v && typeof v === 'object') {
-                const o = v as Record<string, unknown>;
-                if (typeof o.optionsSource === 'string') keys.add(o.optionsSource);
-                Object.values(o).forEach(walk);
-            }
-        };
-        walk(json);
-        return [...keys];
-    }
 
     const missingAssets = (form: FormDefinition) => optionSources(form.formJson).filter((k) => !assetKeys.has(k));
 
@@ -69,8 +54,11 @@
         try {
             const created = await forms.create({ formJson: json, dateLastUpdate: new Date().toISOString() });
             const catalogs = await uploadCatalogs(optionSources(json));
-            message = `Formular „${(json as FormJson).title}“ angelegt (ID ${created.id}).`;
-            if (catalogs.length) message += ` Kataloge aktualisiert: ${catalogs.join(', ')}.`;
+            const template = json === schoolForm && (await uploadDefaultTemplate());
+            message =
+                `Formular „${(json as FormJson).title}“ angelegt (ID ${created.id}).` +
+                (catalogs.length ? ` Kataloge aktualisiert: ${catalogs.join(', ')}.` : '') +
+                (template ? ' Anmeldebogen-Vorlage hochgeladen.' : '');
             await load();
         } catch (e) {
             message = `Fehler: ${errorText(e)}`;

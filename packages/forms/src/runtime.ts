@@ -284,3 +284,18 @@ export function canRemoveRepeat(item: GroupItem, list: unknown[]): boolean {
 export function copyGroupData(source: unknown): FormData {
     return isObject(source) ? clone(source) : {};
 }
+
+/** All `optionsSource` keys used by a form definition. */
+export function optionSources(form: unknown): string[] {
+    const keys = new Set<string>();
+    const walk = (v: unknown): void => {
+        if (Array.isArray(v)) v.forEach(walk);
+        else if (v && typeof v === 'object') {
+            const o = v as Record<string, unknown>;
+            if (typeof o.optionsSource === 'string') keys.add(o.optionsSource);
+            Object.values(o).forEach(walk);
+        }
+    };
+    walk(form);
+    return [...keys];
+}

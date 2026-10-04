@@ -10,11 +10,16 @@
     "dev:secretariat": "pnpm --filter @anmeldung/secretariat dev",
     "test:integration": "node scripts/integration-test.ts && node scripts/integration-public-api.ts",
     "test:e2e": "node scripts/e2e-login.ts && node scripts/e2e-forms.ts && node scripts/e2e-secretariat.ts && node scripts/e2e-booking.ts && node scripts/e2e-registration.ts && node scripts/e2e-day.ts",
-    "dev:server": "cd server && cargo run"
+    "dev:server": "cd server && cargo run",
+    "test:mail": "node scripts/integration-mail.ts",
+    "pdf:template": "pnpm --filter @anmeldung/pdf template"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^1.0.10",
     "@sveltejs/vite-plugin-svelte": "^6.0.0",
     "@types/node": "^24.19.1",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.4.299",
     "playwright-core": "^1.63.0",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",

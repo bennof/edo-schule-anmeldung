@@ -2,6 +2,8 @@
 // reload and resume -> submit -> application in SharePoint -> secretariat.
 // Usage: node scripts/e2e-registration.ts
 import { execSync, spawn } from 'node:child_process';
+import fs from 'node:fs';
+import { PDFCheckBox, PDFDocument, PDFTextField } from 'pdf-lib';
 import type { Page } from 'playwright-core';
 import type { Application, FormDefinition, Procedure } from '../packages/domain/src/index.ts';
 import { AppointmentService, GraphClient, Repository, SharePointSite } from '../packages/sharepoint/src/index.ts';
@@ -18,7 +20,7 @@ const appointments = new AppointmentService(site);
 const CATALOGS = ['laender.json', 'sprachen.json', 'staatsangehoerigkeiten.json'];
 const day = (offset: number) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
 const tag = `E2E Anmeldung ${Date.now()}`;
-const created = { form: '', procedure: '', catalogs: [] as string[] };
+const created = { form: '', procedure: '', catalogs: [] as string[], template: false };
 const existingAssets = new Set((await site.listAssets()).map((a) => a.key));
 
 execSync('cargo build -q', { cwd: 'server', stdio: 'inherit', env: { ...process.env, PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH}` } });
@@ -50,6 +52,8 @@ try {
         const msg = (await admin.getByText(/Formular „Anmeldung Klasse 5.*angelegt \(ID \d+\)/).textContent({ timeout: 30000 }))!;
         created.form = /ID (\d+)/.exec(msg)![1];
         created.catalogs = CATALOGS.filter((c) => !existingAssets.has(c));
+        created.template = !existingAssets.has('anmeldebogen.pdf');
+        assert(!created.template || msg.includes('Anmeldebogen-Vorlage hochgeladen'), `template not uploaded: ${msg}`);
         assert(msg.includes('Kataloge aktualisiert: laender.json, sprachen.json, staatsangehoerigkeiten.json'), msg);
         const row = admin.getByRole('row').filter({ has: admin.getByRole('cell', { name: created.form, exact: true }) });
         assert(!(await row.getByText('Fehlende Kataloge').isVisible()), 'catalogs reported missing');
@@ -187,6 +191,27 @@ try {
         assert(stored.length === 0, `left in storage: ${stored}`);
     });
 
+    /** Downloads via a button and returns the PDF's text fields and checkboxes. */
+    async function downloadedPdf(p: Page, button: string): Promise<{ text: (n: string) => string | undefined; checked: (n: string) => boolean }> {
+        const [download] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.getByRole('button', { name: button }).click()]);
+        const file = await download.path();
+        const pdf = await PDFDocument.load(fs.readFileSync(file));
+        const form = pdf.getForm();
+        return {
+            text: (n) => (form.getField(n) as PDFTextField).getText(),
+            checked: (n) => (form.getField(n) as PDFCheckBox).isChecked(),
+        };
+    }
+
+    await step('family downloads the filled registration form PDF (I4)', async () => {
+        const pdf = await downloadedPdf(pub, 'Anmeldebogen als PDF herunterladen');
+        assert(pdf.text('nachname') === 'Testkind' && pdf.text('vorname') === 'Mia', 'names');
+        assert(pdf.text('geburtsland') === 'Deutschland' && pdf.text('geburtsdatum') === '04.05.2015', 'display values');
+        assert(pdf.text('erziehungsberechtigter2.vorname') === 'Tom' && pdf.text('weitereSchulen[0].schule.name') === 'KGS Süd', 'groups');
+        assert(pdf.checked('geschlecht=w') && pdf.checked('zustimmungZecke=false') && pdf.checked('kenntnisDatenschutz=true'), 'checkboxes');
+        assert(pdf.text('anmeldung.termin')?.includes('10:00 Uhr'), `termin ${pdf.text('anmeldung.termin')}`);
+    });
+
     let appId = '';
     await step('application is submitted in SharePoint with clean data (F6)', async () => {
         const [booked] = (await appointments.listForProcedure(procedure.id)).filter((a) => a.state === 'booked');
@@ -214,6 +239,13 @@ try {
         assert(await field(admin, 'foerderschwerpunkte').isVisible(), 'secretariat mode should show hidden fields');
     });
 
+    await step('secretariat downloads the same PDF incl. booking contact (I5)', async () => {
+        const pdf = await downloadedPdf(admin, 'Anmeldebogen (PDF)');
+        assert(pdf.text('nachname') === 'Testkind' && pdf.text('staatsangehoerigkeit') === 'Deutschland', 'values');
+        assert(pdf.text('anmeldung.kontakt') === 'Eva Testkind, eva.testkind@example.org', `kontakt ${pdf.text('anmeldung.kontakt')}`);
+        assert(pdf.text('anmeldung.nummer') === appId, 'nummer');
+    });
+
     await step('no console errors or warnings', async () => {
         const all = [...adminProblems, ...pubProblems];
         assert(all.length === 0, all.join(' | '));
@@ -232,6 +264,7 @@ try {
     }
     if (created.form) await forms.delete(created.form).catch(() => {});
     for (const key of created.catalogs) await site.deleteAsset(key).catch(() => {});
+    if (created.template) await site.deleteAsset('anmeldebogen.pdf').catch(() => {});
     console.log('      test data removed');
 }
 process.exit(failureCount() ? 1 : 0);

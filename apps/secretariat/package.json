@@ -13,6 +13,7 @@
     "@anmeldung/sharepoint": "workspace:*",
     "@azure/msal-browser": "^4.0.0",
     "@anmeldung/forms": "workspace:*",
-    "@anmeldung/form-ui": "workspace:*"
+    "@anmeldung/form-ui": "workspace:*",
+    "@anmeldung/pdf": "workspace:*"
   }
 }
