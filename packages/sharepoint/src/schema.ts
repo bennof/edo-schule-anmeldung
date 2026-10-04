@@ -107,6 +107,31 @@ export const DEFAULT_CONFIG = [
     },
     // bookings per IP address and procedure; 0 = unlimited
     { key: 'maxBookingsPerIp', value: '3', isPublic: false },
+    // confirmation mail (H1); no mail is sent while mailSender is empty
+    { key: 'mailSender', value: '', isPublic: false },
+    { key: 'confirmationMailSubject', value: 'Ihr Termin zur Schulanmeldung', isPublic: false },
+    {
+        key: 'confirmationMailText',
+        value: [
+            'Guten Tag {name},',
+            '',
+            'vielen Dank für Ihre Terminbuchung.',
+            '',
+            'Verfahren: {verfahren}',
+            'Termin: {datum}, {uhrzeit} Uhr',
+            '',
+            'Bitte füllen Sie vor dem Termin das Anmeldeformular aus. Über diesen Link können Sie es auch auf einem anderen Gerät fortsetzen:',
+            '{link}',
+            '',
+            'Bei Fragen oder für eine Absage wenden Sie sich bitte telefonisch an das Sekretariat.',
+            '',
+            'Mit freundlichen Grüßen',
+            'Ihr Sekretariat',
+        ].join('\n'),
+        isPublic: false,
+    },
+    // address of the public SPA, used for links in mails
+    { key: 'publicUrl', value: '', isPublic: false },
 ] as const;
 
 /** Graph columnDefinition for a column spec. */

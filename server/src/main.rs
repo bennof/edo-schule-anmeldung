@@ -4,6 +4,7 @@
 mod api;
 mod formdata;
 mod graph;
+mod mail;
 mod settings;
 mod sharepoint;
 mod token;
@@ -22,7 +23,12 @@ fn main() {
     });
     let graph = graph::Graph::new(&settings.tenant_id, &settings.client_id, &settings.client_secret);
     let trust_proxy = settings.trust_proxy;
-    let api = Arc::new(api::Api::new(sharepoint::Site::new(graph, &settings.site_id)));
+    let mail = match (&settings.mail_redirect, settings.mail_disabled) {
+        (_, true) => api::MailMode::Disabled,
+        (Some(address), false) => api::MailMode::Redirect(address.clone()),
+        (None, false) => api::MailMode::Send,
+    };
+    let api = Arc::new(api::Api::new(sharepoint::Site::new(graph, &settings.site_id), mail));
 
     let server = Arc::new(Server::http(&settings.bind_addr).unwrap_or_else(|e| {
         eprintln!("cannot bind {}: {e}", settings.bind_addr);

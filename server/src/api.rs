@@ -3,6 +3,7 @@
 //! Personal data is written to SharePoint and never stored or logged here.
 
 use crate::formdata;
+use crate::mail;
 use crate::sharepoint::{APPLICATIONS, APPOINTMENTS, CONFIG, FORMS, Item, PROCEDURES, Site, Update};
 use crate::token;
 use chrono::{Local, SecondsFormat, Utc};
@@ -48,6 +49,14 @@ const DEFAULT_MAX_BOOKINGS_PER_IP: usize = 3;
 
 pub struct Api {
     site: Site,
+    mail: MailMode,
+}
+
+pub enum MailMode {
+    Send,
+    Disabled,
+    /// every mail goes to this address (testing)
+    Redirect(String),
 }
 
 struct Procedure {
@@ -59,8 +68,8 @@ struct Procedure {
 }
 
 impl Api {
-    pub fn new(site: Site) -> Api {
-        Api { site }
+    pub fn new(site: Site, mail: MailMode) -> Api {
+        Api { site, mail }
     }
 
     pub fn handle(&self, req: &ApiRequest) -> Reply {
@@ -186,6 +195,11 @@ impl Api {
                 (None, None)
             }
         };
+        // H1: best effort, the booking stands even if the mail fails
+        if let Err(e) = self.send_confirmation(&procedure_id, &datetime, &name, &email, &application_id, &access_token)
+        {
+            eprintln!("booking {appointment_id}: confirmation mail failed: {e}");
+        }
         Ok(Reply::json(
             200,
             json!({
@@ -196,6 +210,61 @@ impl Api {
                 "token": access_token,
             }),
         ))
+    }
+
+    /// H1: confirmation mail with procedure, date, time and a resume link,
+    /// configured in the Config list (no mail while `mailSender` is empty).
+    fn send_confirmation(
+        &self,
+        procedure_id: &str,
+        datetime: &str,
+        name: &str,
+        email: &str,
+        application_id: &Option<String>,
+        access_token: &Option<String>,
+    ) -> Result<(), String> {
+        let to = match &self.mail {
+            MailMode::Disabled => return Ok(()),
+            MailMode::Redirect(address) => address.as_str(),
+            MailMode::Send => email,
+        };
+        let config: Map<String, Value> = self
+            .site
+            .list_items(CONFIG, None)?
+            .iter()
+            .filter_map(|i| Some((i.text("Title")?.to_string(), json!(i.text("Value").unwrap_or("")))))
+            .collect();
+        let text = |key: &str| config.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
+        let sender = text("mailSender");
+        if sender.is_empty() {
+            return Ok(());
+        }
+        let procedure = self.active_procedure(procedure_id)?;
+        let title = procedure
+            .as_ref()
+            .and_then(|p| p.info["title"].as_str())
+            .unwrap_or("Anmeldung")
+            .to_string();
+        let public_url = text("publicUrl");
+        let link = match (application_id, access_token) {
+            (Some(id), Some(token)) if !public_url.is_empty() => {
+                format!("{}/#fortsetzen/{id}/{token}", public_url.trim_end_matches('/'))
+            }
+            _ => String::new(),
+        };
+        let confirmation = mail::Confirmation {
+            name,
+            procedure: &title,
+            datetime,
+            link: &link,
+        };
+        let subject = Some(text("confirmationMailSubject"))
+            .filter(|s| !s.is_empty())
+            .unwrap_or("Ihr Termin".into());
+        let body = mail::render(&text("confirmationMailText"), &confirmation);
+        self.site.send_mail(&sender, &mail::message(to, &subject, &body))?;
+        println!("confirmation mail sent for booking of procedure {procedure_id}");
+        Ok(())
     }
 
     /// Creates the application for a booked appointment and links both.

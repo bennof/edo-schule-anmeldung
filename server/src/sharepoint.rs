@@ -143,6 +143,17 @@ impl Site {
         to_item(&res.json()?).ok_or_else(|| "unexpected create response".to_string())
     }
 
+    /// Sends a mail as `sender` (needs Mail.Send for that mailbox).
+    pub fn send_mail(&self, sender: &str, message: &Value) -> Result<(), String> {
+        let res = self.graph.request(
+            "POST",
+            &format!("/users/{}/sendMail", encode(sender)),
+            Some(message),
+            None,
+        )?;
+        if res.ok() { Ok(()) } else { Err(res.error_text()) }
+    }
+
     pub fn asset_exists(&self, key: &str) -> Result<bool, String> {
         let path = format!(
             "{}/lists/{}/drive/root:/{}?$select=id",

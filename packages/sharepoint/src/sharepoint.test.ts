@@ -60,7 +60,7 @@ describe('provision', () => {
 describe('default config', () => {
     it('seeds missing defaults without overwriting existing values', async () => {
         const first = await provision(site);
-        expect(first.createdConfig).toEqual(['consentText', 'maxBookingsPerIp']);
+        expect(first.createdConfig).toEqual(['consentText', 'maxBookingsPerIp', 'mailSender', 'confirmationMailSubject', 'confirmationMailText', 'publicUrl']);
         const config = new ConfigStore(site);
         expect((await config.publicEntries()).map((e) => e.key)).toEqual(['consentText']);
 

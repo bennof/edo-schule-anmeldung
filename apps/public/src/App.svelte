@@ -5,7 +5,11 @@
     import { session, type Session } from './session.ts';
 
     let route = $state(location.hash);
-    window.addEventListener('hashchange', () => (route = location.hash));
+    window.addEventListener('hashchange', () => {
+        // a resume link opened in an already open tab: start over with it
+        if (location.hash.startsWith('#fortsetzen/')) location.reload();
+        route = location.hash;
+    });
 
     let config: PublicConfig | undefined = $state();
     let error = $state('');
@@ -21,8 +25,18 @@
             (config?.procedures.length === 1 ? config.procedures[0] : undefined),
     );
 
-    /** A booking from an earlier visit on this device continues at the form. */
+    /** Resume link from the confirmation mail: #fortsetzen/{applicationId}/{token} */
+    const RESUME_LINK = /^#fortsetzen\/(\d+)\/([0-9a-f]{64})$/;
+
+    /** A booking from an earlier visit (or from the mail link) continues at the form. */
     async function checkSession(): Promise<void> {
+        const link = RESUME_LINK.exec(location.hash);
+        if (link) {
+            // keep the token out of the address bar and browser history
+            history.replaceState(null, '', location.pathname);
+            route = '';
+            await resumeFromLink(link[1], link[2]);
+        }
         const stored = session.load();
         if (!stored) return;
         try {
@@ -40,6 +54,19 @@
     $effect(() => {
         document.title = schoolName ? `Anmeldung – ${schoolName}` : 'Anmeldung';
     });
+
+    async function resumeFromLink(applicationId: string, token: string): Promise<void> {
+        try {
+            const status = await api.application(applicationId, token);
+            if (!status.appointment) return;
+            session.save(
+                { applicationId, token, procedureId: status.procedureId, datetime: status.appointment.datetime },
+                session.isPersistent(),
+            );
+        } catch {
+            error = 'Der Link ist ungültig oder abgelaufen. Bitte wenden Sie sich an das Sekretariat.';
+        }
+    }
 
     $effect(() => {
         if (route === '#vorschau' || config) return;

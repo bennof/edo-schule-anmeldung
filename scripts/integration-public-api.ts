@@ -68,7 +68,7 @@ await config.set(`${tag}-intern`, 'geheim', false);
 await site.putAsset(`${tag}-intern.txt`, new Blob(['intern'], { type: 'text/plain' }));
 
 execSync('cargo build -q', { cwd: 'server', stdio: 'inherit', env: { ...process.env, PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH}` } });
-const server = spawn('./target/debug/anmeldung-server', { cwd: 'server', env: { ...process.env, BIND_ADDR: `127.0.0.1:${PORT}` }, stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn('./target/debug/anmeldung-server', { cwd: 'server', env: { ...process.env, MAIL_DISABLED: '1', BIND_ADDR: `127.0.0.1:${PORT}` }, stdio: ['ignore', 'pipe', 'pipe'] });
 let serverLog = '';
 server.stdout.on('data', (d) => (serverLog += d));
 server.stderr.on('data', (d) => (serverLog += d));

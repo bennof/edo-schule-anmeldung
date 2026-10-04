@@ -13,6 +13,10 @@ pub struct Settings {
     pub site_id: String,
     /// take the client IP from X-Forwarded-For (only behind a trusted reverse proxy)
     pub trust_proxy: bool,
+    /// MAIL_DISABLED=1: never send mails (automated tests)
+    pub mail_disabled: bool,
+    /// MAIL_REDIRECT=addr: send every mail to this address instead (testing)
+    pub mail_redirect: Option<String>,
 }
 
 impl Settings {
@@ -33,6 +37,8 @@ impl Settings {
             client_secret: require("DAEMON_CLIENT_SECRET")?,
             site_id: require("SHAREPOINT_ID")?,
             trust_proxy: get("TRUST_PROXY").is_some_and(|v| v == "1" || v == "true"),
+            mail_disabled: get("MAIL_DISABLED").is_some_and(|v| v == "1" || v == "true"),
+            mail_redirect: get("MAIL_REDIRECT"),
         })
     }
 }

@@ -22,7 +22,7 @@ const created = { form: '', procedure: '', catalogs: [] as string[] };
 const existingAssets = new Set((await site.listAssets()).map((a) => a.key));
 
 execSync('cargo build -q', { cwd: 'server', stdio: 'inherit', env: { ...process.env, PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH}` } });
-const server = spawn('./target/debug/anmeldung-server', { cwd: 'server', env: { ...process.env, BIND_ADDR: '127.0.0.1:8080' }, stdio: 'ignore' });
+const server = spawn('./target/debug/anmeldung-server', { cwd: 'server', env: { ...process.env, MAIL_DISABLED: '1', BIND_ADDR: '127.0.0.1:8080' }, stdio: 'ignore' });
 const stopSecretariat = await startDevServer('secretariat');
 const stopPublic = await startDevServer('public');
 const browser = await launch();
