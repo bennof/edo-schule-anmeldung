@@ -9,6 +9,7 @@ Datenhaltung ist **SharePoint (Microsoft 365)** der Schule. Der öffentliche
 Server speichert keine personenbezogenen Daten.
 
 Fachlicher Umfang und Architekturentscheidungen: [`backlog.md`](backlog.md).
+Offene Punkte und Betriebsvarianten: [`todo.md`](todo.md).
 Zugänge und Testumgebung: [`info.md`](info.md). Verlauf und Entscheidungen je
 Sprint: [`docs/sprint-reviews/`](docs/sprint-reviews/).
 
