@@ -42,7 +42,7 @@ Public SPA (Svelte) ──► Rust Public Server ──► SharePoint (Listen, A
                          (Daemon-App, Listenrechte)        ▲
 Sekretariat SPA (Svelte) ────── Microsoft Graph ───────────┘
           │                    (angemeldeter Benutzer)
-          └─► SVWS-Adapter (Schnittstelle vorbereitet) ──► SVWS-Server / SchILD-NRW 3
+          └─► SVWS-Adapter ──► (CORS-Proxy) ──► SVWS-Server / SchILD-NRW 3
 ```
 
 SharePoint-Listen: `Config`, `Assets` (Dokumentbibliothek), `Appointments`,
@@ -60,7 +60,7 @@ packages/sharepoint   Graph/SharePoint-Adapter, Provisionierung, Services
 packages/forms        Formularformat (JSON-Schema), Laufzeit, Schulformular, Kataloge
 packages/form-ui      Svelte-Formular-Renderer (öffentlich / Sekretariat)
 packages/pdf          Anmeldebogen: Vorlagen-Generator und Befüllung (pdf-lib)
-packages/svws         SVWS-Schnittstelle (Adapter-Port, Transportwege)
+packages/svws         SVWS-Adapter: Transportwege, Kataloge, Mapping, Übertragung
 server                öffentlicher Server (Rust: tiny_http, ureq)
 docker/svws           SVWS-Server + MariaDB als Testumgebung
 scripts               Integrations- und Browser-Tests, Hilfswerkzeuge
@@ -99,6 +99,7 @@ ein Verfahren anlegen, unter „Termine“ Termine erzeugen und veröffentlichen
 | `make test-integration` | gegen die SharePoint-Test-Site |
 | `make test-e2e` | Browser-Tests (headless Chromium, M365-Testbenutzer) |
 | `make test-mail` | eine Testbuchung → genau eine Mail an `MAIL_TEST_TO` |
+| `make test-svws` | SVWS-Adapter gegen den laufenden SVWS-Testserver |
 | `make generate` | Kataloge und PDF-Vorlage neu erzeugen |
 | `make svws-init` / `svws-up` / `svws-down` | SVWS-Testserver (siehe unten) |
 
@@ -162,6 +163,21 @@ make svws-reset    # alle SVWS-/MariaDB-Daten löschen
 - SchILD-NRW 3 (Windows-Client) kann sich mit diesem SVWS-Server verbinden.
 - Für den Weg „Browser → SVWS“ muss im SVWS-Server CORS erlaubt sein
   (`UseCORSHeader` in `svwsconfig.json`), sonst „Browser → CORS-Proxy → SVWS“ wählen.
+
+**Übertragung aus dem Sekretariat** (SVWS-Adapter):
+1. Einstellungen → SVWS: Adresse, Verbindung und **Datenbank-Schema** der Schule
+   (Testserver: `https://localhost:8443`, Verbindung „Browser → CORS-Proxy“,
+   Proxy-Adresse `http://localhost:5173/svws-proxy` – der Entwicklungsserver leitet weiter –,
+   Schema `gymabi`); optional das Schuljahr der Neuaufnahmen.
+2. Anmeldungen → freigegebene Anmeldungen auswählen → „Ausgewählte an SVWS übertragen …“ →
+   SVWS-Benutzer und Passwort (werden nicht gespeichert) → „Verbindung prüfen“ → übertragen.
+3. Angelegt werden Schüler (Status Aufnahme, Jahrgang 05), Stammdaten mit Adresse, Herkunft,
+   Religion und **Passfoto** sowie die Erziehungsberechtigten. Katalogwerte werden zur Laufzeit
+   aus SVWS gelesen; was nicht zugeordnet werden kann, erscheint als Warnung. Vollständig
+   übertragene Anmeldungen erhalten den Status „In SVWS übernommen“ und die Schüler-ID;
+   eine zweite Übertragung wird verhindert.
+
+`make test-svws` prüft den Adapter gegen den laufenden Testserver.
 
 Version und Ports lassen sich in `docker/svws/.env` ändern (`SVWS_VERSION`,
 `SVWS_PORT`, `MARIADB_PORT`).

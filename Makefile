@@ -103,8 +103,13 @@ test-mail: install ## Mail test: one booking -> one mail to MAIL_TEST_TO
 test-e2e: install ## Browser tests (headless Chromium, M365 test user)
 	@for t in $(E2E_TESTS); do echo "== $$t"; $(NODE) scripts/$$t.ts; done
 
+.PHONY: test-svws
+test-svws: install ## SVWS adapter against the local SVWS test server (make svws-up first)
+	$(NODE) scripts/integration-svws.ts
+	$(NODE) scripts/e2e-svws.ts
+
 .PHONY: test-all
-test-all: check test test-integration test-e2e ## Everything except the mail test
+test-all: check test test-integration test-e2e ## Everything except the mail and SVWS tests
 
 .PHONY: playwright
 playwright: install ## Download the headless Chromium for the browser tests

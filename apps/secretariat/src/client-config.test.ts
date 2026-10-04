@@ -29,8 +29,9 @@ describe('client configuration (N1, N2)', () => {
     });
 
     it('accepts an optional SVWS endpoint and validates it', () => {
-        const ok = parseClientConfig({ ...valid, svws: { url: 'https://svws.schule.local:8443', transport: 'proxy', proxyUrl: 'https://proxy.schule.de' } });
-        expect(ok.config?.svws).toEqual({ url: 'https://svws.schule.local:8443', transport: 'proxy', proxyUrl: 'https://proxy.schule.de' });
+        const ok = parseClientConfig({ ...valid, svws: { url: 'https://svws.schule.local:8443', transport: 'proxy', proxyUrl: 'https://proxy.schule.de', schema: 'gymabi', schuljahr: 2026 } });
+        expect(ok.config?.svws).toEqual({ url: 'https://svws.schule.local:8443', transport: 'proxy', proxyUrl: 'https://proxy.schule.de', schema: 'gymabi', schuljahr: 2026 });
+        expect(parseClientConfig({ ...valid, svws: { url: 'https://svws.local', transport: 'direct', schema: 'drop table' } }).errors[0]).toMatch(/Schema/);
         expect(parseClientConfig({ ...valid, svws: { url: 'svws', transport: 'direct' } }).errors[0]).toMatch(/^SVWS:/);
     });
 });

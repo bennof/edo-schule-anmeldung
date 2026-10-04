@@ -13,6 +13,8 @@
     let svwsUrl = $state(c?.svws?.url ?? '');
     let svwsTransport = $state(c?.svws?.transport ?? 'direct');
     let svwsProxyUrl = $state(c?.svws?.proxyUrl ?? '');
+    let svwsSchema = $state(c?.svws?.schema ?? '');
+    let svwsSchuljahr = $state(c?.svws?.schuljahr ? String(c.svws.schuljahr) : '');
     let errors: string[] = $state(clientConfig ? [] : configErrors.filter((e) => e !== 'Kein JSON-Objekt'));
     let message = $state('');
 
@@ -25,7 +27,13 @@
             siteId,
             siteUrl,
             ...(svwsUrl.trim() && {
-                svws: { url: svwsUrl, transport: svwsTransport, ...(svwsTransport === 'proxy' && { proxyUrl: svwsProxyUrl }) },
+                svws: {
+                    url: svwsUrl,
+                    transport: svwsTransport,
+                    ...(svwsTransport === 'proxy' && { proxyUrl: svwsProxyUrl }),
+                    ...(svwsSchema.trim() && { schema: svwsSchema.trim() }),
+                    ...(svwsSchuljahr.trim() && { schuljahr: Number(svwsSchuljahr) }),
+                },
             }),
         };
     }
@@ -92,7 +100,7 @@
             <label>Site-Adresse <input bind:value={siteUrl} placeholder="https://…sharepoint.com/sites/…" /></label>
         </fieldset>
         <fieldset>
-            <legend>SVWS (später, optional)</legend>
+            <legend>SVWS (optional)</legend>
             <label>SVWS-Adresse <input bind:value={svwsUrl} placeholder="https://svws.schule.local:8443" /></label>
             <label>
                 Verbindung
@@ -103,6 +111,8 @@
                 </select>
             </label>
             {#if svwsTransport === 'proxy'}<label>Proxy-Adresse <input bind:value={svwsProxyUrl} /></label>{/if}
+            <label>Datenbank-Schema der Schule <input bind:value={svwsSchema} placeholder="z. B. gymabi" /></label>
+            <label>Schuljahr der Neuaufnahmen (optional) <input bind:value={svwsSchuljahr} placeholder="z. B. 2026 für 2026/27; leer = aktueller Abschnitt" /></label>
         </fieldset>
         {#if errors.length}<ul class="error" role="alert">{#each errors as e}<li>{e}</li>{/each}</ul>{/if}
         {#if message}<p role="status">{message}</p>{/if}

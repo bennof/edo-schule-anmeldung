@@ -45,6 +45,8 @@ export interface Application {
     /** contact from the booking; kept when the appointment is cancelled */
     contactName?: string;
     contactEmail?: string;
+    /** student id in SVWS once transferred */
+    svwsId?: string;
 }
 
 export interface FormDefinition {

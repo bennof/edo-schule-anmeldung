@@ -63,6 +63,17 @@ describe('application service', () => {
         expect((await service.load(app.id)).application.state).toBe('ready_for_svws');
     });
 
+    it('records SVWS transfers: imported only when complete', async () => {
+        const app = await create();
+        await service.repo.update(app.id, { state: 'ready_for_svws' });
+        await service.recordTransfer(app.id, { ok: false, svwsId: '77' });
+        expect((await service.load(app.id)).application).toMatchObject({ state: 'ready_for_svws', svwsId: '77' });
+        await service.recordTransfer(app.id, { ok: true, svwsId: '77' });
+        expect((await service.load(app.id)).application).toMatchObject({ state: 'imported', svwsId: '77' });
+        const other = await create();
+        await expect(service.recordTransfer(other.id, { ok: true, svwsId: '78' })).rejects.toThrow(/submitted → imported/);
+    });
+
     it('marks the booked appointment done on interview (J4)', async () => {
         const app = await create('created');
         const [slot] = await appointments.createDrafts([{ procedureId: 'p1', datetime: '2030-03-04T08:00', state: 'draft' }]);

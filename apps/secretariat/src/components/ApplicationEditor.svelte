@@ -243,6 +243,7 @@
             <dt>Termin</dt>
             <dd>{appointment ? `${formatDateTime(appointment.datetime)}${appointment.verantwortlicherId ? ` · ${appointment.verantwortlicherId}` : ''}` : 'kein Termin'}</dd>
             <dt>Kontakt</dt><dd>{application.contactName ?? '–'} {#if application.contactEmail}<small class="muted">{application.contactEmail}</small>{/if}</dd>
+            {#if application.svwsId}<dt>SVWS</dt><dd>Schüler-ID {application.svwsId}</dd>{/if}
             <dt>Online abgeschickt</dt><dd>{application.submittedAt ? new Date(application.submittedAt).toLocaleString('de-DE') : 'nein'}</dd>
         </dl>
         </div>

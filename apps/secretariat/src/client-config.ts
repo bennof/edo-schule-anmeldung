@@ -42,6 +42,8 @@ export function parseClientConfig(value: unknown): { config?: ClientConfig; erro
         const s = v.svws as Record<string, unknown>;
         svws = { url: String(s?.url ?? ''), transport: (s?.transport ?? 'direct') as SvwsEndpoint['transport'] };
         if (s?.proxyUrl) svws.proxyUrl = String(s.proxyUrl);
+        if (s?.schema) svws.schema = String(s.schema);
+        if (s?.schuljahr !== undefined && s.schuljahr !== '') svws.schuljahr = Number(s.schuljahr);
         errors.push(...checkEndpoint(svws).map((e) => `SVWS: ${e}`));
     }
     if (errors.length) return { errors };

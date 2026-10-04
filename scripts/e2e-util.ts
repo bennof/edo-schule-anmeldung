@@ -116,7 +116,8 @@ export function failureCount(): number {
  */
 export async function signIn(page: Page, user: string, password: string): Promise<void> {
     await page.getByRole('button', { name: 'Anmelden' }).click();
-    await page.waitForURL(/login\.microsoftonline\.com/);
+    // Microsoft's login page is sometimes slow after many logins in a row
+    await page.waitForURL(/login\.microsoftonline\.com/, { timeout: 60000 });
     await page.fill('input[name="loginfmt"]', user);
     await page.click('#idSIButton9');
     await page.fill('input[name="passwd"]', password);
@@ -128,7 +129,7 @@ export async function signIn(page: Page, user: string, password: string): Promis
         back.waitFor({ timeout: 15000 }).then(() => back.click()),
         page.waitForURL(`${URLS.secretariat}/**`, { timeout: 15000 }),
     ]).catch(() => {});
-    await page.waitForURL(`${URLS.secretariat}/**`, { timeout: 15000 }).catch(() => {
+    await page.waitForURL(`${URLS.secretariat}/**`, { timeout: 45000 }).catch(() => {
         throw new Error(`login did not return to the app (stuck at ${new URL(page.url()).host})`);
     });
 }

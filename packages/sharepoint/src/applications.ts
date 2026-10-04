@@ -29,7 +29,7 @@ export function childNameOf(data: unknown): string | undefined {
     return parts.length ? parts.map((p) => p.trim()).join(', ') : undefined;
 }
 
-const SUMMARY_PROPS = ['procedureId', 'formId', 'state', 'submittedAt', 'childName', 'contactName', 'contactEmail'] as const;
+const SUMMARY_PROPS = ['procedureId', 'formId', 'state', 'submittedAt', 'childName', 'contactName', 'contactEmail', 'svwsId'] as const;
 
 export class ApplicationService {
     readonly repo: Repository<Application>;
@@ -75,6 +75,18 @@ export class ApplicationService {
         const [appointment] = await this.appointments.repo.list(this.appointments.repo.filter('applicationId', id));
         if (appointment?.state === 'booked') await this.appointments.markDone(appointment.id);
         return next;
+    }
+
+    /**
+     * Records a SVWS transfer: a complete transfer sets the state to imported;
+     * a partial one only keeps the SVWS id so the student is not created twice.
+     */
+    async recordTransfer(id: string, result: { ok: boolean; svwsId?: string }): Promise<void> {
+        if (!result.svwsId) return;
+        const { application, eTag } = await this.load(id);
+        if (result.ok && !canTransitionApplication(application.state, 'imported'))
+            throw new ApplicationError(`Statuswechsel ${application.state} → imported ist nicht erlaubt`);
+        await this.update(id, { svwsId: result.svwsId, ...(result.ok && { state: 'imported' as const }) }, eTag);
     }
 
     private async update(id: string, changes: Partial<Application>, eTag: string): Promise<string> {

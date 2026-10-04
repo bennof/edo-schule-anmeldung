@@ -22,5 +22,19 @@ const clientConfig = Object.fromEntries(PUBLIC_KEYS.map((k) => [k, env[k] ?? '']
 export default defineConfig({
     plugins: [svelte()],
     define: { __CLIENT_CONFIG__: JSON.stringify(clientConfig) },
-    server: { port: 5173, strictPort: true },
+    server: {
+        port: 5173,
+        strictPort: true,
+        // development stand-in for a CORS proxy in front of the local SVWS test
+        // server (make svws-up, self-signed certificate): transport "proxy",
+        // proxy address http://localhost:5173/svws-proxy
+        proxy: {
+            '/svws-proxy': {
+                target: env.SVWS_PROXY_TARGET || 'https://localhost:8443',
+                secure: false,
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/svws-proxy/, ''),
+            },
+        },
+    },
 });

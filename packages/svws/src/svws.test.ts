@@ -42,26 +42,41 @@ describe('svws transport (N2)', () => {
             { tauriInvoke: async (cmd, args) => (seen.push([cmd, args]), { status: 204, body: undefined }) },
         );
         expect((await t.request('GET', '/a')).status).toBe(204);
-        expect(seen).toEqual([['svws_request', { method: 'GET', url: 'https://svws.local/a', body: undefined }]]);
+        expect(seen).toEqual([['svws_request', { method: 'GET', url: 'https://svws.local/a', body: undefined, headers: undefined }]]);
         await expect(createTransport({ url: 'https://svws.local', transport: 'tauri' }).request('GET', '/a')).rejects.toThrow(/Tauri/);
     });
 });
 
 describe('svws adapter boundary (M1)', () => {
     const items = [{ applicationId: '7', formId: 'f', data: {} }];
+    const creds = { user: 'Admin', password: '' };
 
-    it('without endpoint: not configured, nothing transferred', async () => {
-        const adapter = createSvwsAdapter(undefined);
-        expect(adapter.ready).toBe(false);
-        expect(await adapter.transfer(items)).toEqual([{ applicationId: '7', ok: false, message: adapter.status() }]);
+    it('without endpoint or schema: not configured, nothing transferred', async () => {
+        for (const endpoint of [undefined, { url: 'https://svws.local', transport: 'direct' as const }]) {
+            const adapter = createSvwsAdapter(endpoint);
+            expect(adapter.ready).toBe(false);
+            expect(await adapter.transfer(items, creds)).toEqual([{ applicationId: '7', ok: false, message: adapter.status() }]);
+        }
     });
 
-    it('with endpoint: pending adapter, no SVWS call is made', async () => {
+    it('with endpoint and schema: ready, sends Basic auth to /db/{schema}', async () => {
         const { calls, fetchFn } = recordingFetch();
-        const adapter = createSvwsAdapter({ url: 'https://svws.local', transport: 'direct' }, { fetch: fetchFn });
-        expect(adapter.status()).toMatch(/noch nicht umgesetzt/);
-        const [result] = await adapter.transfer(items);
-        expect(result.ok).toBe(false);
-        expect(calls).toHaveLength(0);
+        const adapter = createSvwsAdapter({ url: 'https://svws.local', transport: 'direct', schema: 'gymabi' }, { fetch: fetchFn });
+        expect(adapter.ready).toBe(true);
+        await adapter.check(creds).catch(() => {});
+        expect(calls.map((c) => c.url)).toEqual(['https://svws.local/status/version', 'https://svws.local/db/gymabi/schule/stammdaten']);
+        expect((calls[1].init?.headers as Record<string, string>).Authorization).toBe(`Basic ${btoa('Admin:')}`);
+    });
+
+    it('skips applications that were already transferred', async () => {
+        const fetchFn = (async (input: RequestInfo | URL) => {
+            const url = String(input);
+            const body = url.endsWith('/schule/stammdaten') ? { idSchuljahresabschnitt: 1, abschnitte: [] } : [];
+            return new Response(JSON.stringify(body), { status: 200 });
+        }) as typeof fetch;
+        const adapter = createSvwsAdapter({ url: 'https://svws.local', transport: 'direct', schema: 's' }, { fetch: fetchFn });
+        const [r] = await adapter.transfer([{ ...items[0], svwsId: '99' }], creds);
+        expect(r).toMatchObject({ ok: false, svwsId: '99' });
+        expect(r.message).toMatch(/Bereits an SVWS übertragen/);
     });
 });

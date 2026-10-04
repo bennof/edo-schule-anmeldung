@@ -67,16 +67,16 @@ try {
         assert((await page.getByLabel('Proxy-Adresse').inputValue()) === 'https://proxy.schule.local', 'proxy url');
     });
 
-    await step('released applications can be selected; nothing is transferred yet (M2, M1)', async () => {
+    await step('released applications can be selected; without schema the adapter is not configured (M2)', async () => {
         await nav('Anmeldungen');
         const box = page.getByTestId('svws-transfer');
         await box.waitFor({ timeout: 20000 });
-        assert(await box.getByText(/Endpunkt konfiguriert \(proxy\).*noch nicht umgesetzt/).isVisible(), 'adapter status');
-        assert(await page.getByRole('button', { name: 'Ausgewählte an SVWS übertragen' }).isDisabled(), 'enabled without selection');
+        const open = page.getByRole('button', { name: 'Ausgewählte an SVWS übertragen …' });
+        assert(await open.isDisabled(), 'enabled without selection');
         await page.locator(`tr[data-id="${released.id}"]`).getByRole('checkbox').check();
         await box.getByText(/^1 von \d+ freigegebenen/).waitFor();
-        await page.getByRole('button', { name: 'Ausgewählte an SVWS übertragen' }).click();
-        await box.getByText(/0 übertragen, 1 nicht übertragen: Die SVWS-Übertragung ist noch nicht umgesetzt/).waitFor({ timeout: 20000 });
+        await open.click();
+        await page.getByTestId('svws-dialog').getByText(/Kein SVWS-Endpunkt konfiguriert/).waitFor({ timeout: 10000 });
         assert((await applications.get(released.id))?.state === 'ready_for_svws', 'state changed');
     });
 

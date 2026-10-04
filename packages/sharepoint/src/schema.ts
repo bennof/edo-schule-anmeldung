@@ -3,7 +3,7 @@
 import { APPLICATION_STATES, APPOINTMENT_STATES } from '@anmeldung/domain';
 
 /** Bump when lists or columns are added. Stored in Config as `schemaVersion`. */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export type ColumnType = 'text' | 'note' | 'json' | 'boolean' | 'choice';
 
@@ -69,6 +69,8 @@ export const LISTS = {
             { name: 'ChildName', prop: 'childName', type: 'text', indexed: true },
             { name: 'ContactName', prop: 'contactName', type: 'text', indexed: true },
             { name: 'ContactEmail', prop: 'contactEmail', type: 'text' },
+            // student id in SVWS after the transfer (prevents a second transfer)
+            { name: 'SvwsId', prop: 'svwsId', type: 'text', indexed: true },
             // SHA-256 of the family's access token (public form); never the token itself
             { name: 'AccessTokenHash', prop: 'accessTokenHash', type: 'text' },
         ],

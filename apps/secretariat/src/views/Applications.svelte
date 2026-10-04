@@ -5,7 +5,8 @@
     import type { ApplicationSummary } from '@anmeldung/sharepoint';
     import ApplicationEditor from '../components/ApplicationEditor.svelte';
     import { APPLICATION_STATE_LABEL, formatDateTime } from '../labels.ts';
-    import { applicationService, applications, appointments, errorText, procedures, svws } from '../services.ts';
+    import SvwsTransfer from '../components/SvwsTransfer.svelte';
+    import { applicationService, applications, appointments, errorText, procedures } from '../services.ts';
 
     let list: ApplicationSummary[] = $state([]);
     let appointmentByApplication: Map<string, Appointment> = $state(new Map());
@@ -20,41 +21,12 @@
 
     // M2: selection of released applications for the SVWS transfer
     let selected: string[] = $state([]);
-    let transferMessage = $state('');
+    let transferOpen = $state(false);
     const released = $derived(list.filter((a) => a.state === 'ready_for_svws'));
+    const selectedSummaries = $derived(list.filter((a) => selected.includes(a.id)));
 
     function toggleSelected(id: string): void {
         selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
-    }
-
-    async function transfer(): Promise<void> {
-        busy = true;
-        transferMessage = '';
-        try {
-            const items = await Promise.all(
-                selected.map(async (id) => {
-                    const { application } = await applicationService.load(id);
-                    return { applicationId: id, formId: application.formId, data: application.data };
-                }),
-            );
-            const results = await svws.transfer(items);
-            let ok = 0;
-            for (const r of results.filter((r) => r.ok)) {
-                // imported only after a confirmed transfer
-                await applicationService.transition(r.applicationId, 'imported', (await applicationService.load(r.applicationId)).eTag);
-                ok++;
-            }
-            const failed = results.filter((r) => !r.ok);
-            transferMessage = `${ok} übertragen${failed.length ? `, ${failed.length} nicht übertragen: ${[...new Set(failed.map((f) => f.message))].join(' ')}` : ''}.`;
-            if (ok) {
-                selected = [];
-                await load();
-            }
-        } catch (e) {
-            transferMessage = `Fehler: ${errorText(e)}`;
-        } finally {
-            busy = false;
-        }
     }
 
     /** case- and accent-insensitive */
@@ -134,14 +106,21 @@
             {/each}
         </div>
 
-        {#if released.length}
+        {#if released.length || transferOpen}
             <div class="svws" data-testid="svws-transfer">
                 <strong>SVWS-Übertragung</strong>
-                <span class="muted">{svws.status()}</span>
                 <span>{selected.length} von {released.length} freigegebenen Anmeldungen ausgewählt</span>
-                <button class="secondary" onclick={() => (selected = released.map((a) => a.id))} disabled={busy}>Alle freigegebenen auswählen</button>
-                <button onclick={transfer} disabled={busy || selected.length === 0}>Ausgewählte an SVWS übertragen</button>
-                {#if transferMessage}<p role="status">{transferMessage}</p>{/if}
+                <button class="secondary" onclick={() => (selected = released.map((a) => a.id))} disabled={!released.length}>Alle freigegebenen auswählen</button>
+                <button onclick={() => (transferOpen = true)} disabled={selected.length === 0}>Ausgewählte an SVWS übertragen …</button>
+                {#if transferOpen}
+                    <SvwsTransfer
+                        selected={selectedSummaries}
+                        ondone={async () => {
+                            selected = [];
+                            await load();
+                        }}
+                    />
+                {/if}
             </div>
         {/if}
 
@@ -203,9 +182,8 @@
         padding: 0.6rem 0.8rem;
         margin: 0.75rem 0;
     }
-    .svws p {
+    .svws :global([data-testid='svws-dialog']) {
         flex-basis: 100%;
-        margin: 0;
     }
     .filters {
         display: flex;
