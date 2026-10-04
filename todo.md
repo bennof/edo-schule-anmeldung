@@ -57,8 +57,9 @@ Klammern: Sprint-Review (S1–S8), Backlog (BL) oder Gespräch.
 
 ### 5.1 Public SPA aus dem Rust-Server ausliefern
 
-Ein Programm für alles Öffentliche: Der Server liefert die gebaute Public SPA als
-statische Dateien aus dem Dateisystem (`PUBLIC_DIR`, z. B. `dist/public`) und die API unter `/api`.
+Für Schulen mit eigenem Server oder VM: Ein Programm für alles Öffentliche. Der
+Server liefert die gebaute Public SPA als statische Dateien aus dem Dateisystem
+(`PUBLIC_DIR`, z. B. `dist/public`) und die API unter `/api`.
 
 - [ ] Statische Auslieferung mit SPA-Fallback auf `index.html`, korrekten Content-Types, Cache-Headern (Hash-Dateien lange, `index.html` kurz)
 - [ ] Sicherheits-Header (CSP, `X-Content-Type-Options`, `Referrer-Policy`, `frame-ancestors` für eingebettete Nutzung konfigurierbar)
@@ -75,27 +76,47 @@ statische Dateien aus dem Dateisystem (`PUBLIC_DIR`, z. B. `dist/public`) und di
 - [ ] Automatische Updates und Code-Signierung festlegen
 - [ ] Die Web-Variante des Sekretariats bleibt parallel nutzbar
 
-### 5.3 Public Server als WordPress-Plugin
+### 5.3 Public Server als CMS-Plugin (Webhosting ohne eigenen Server)
 
-Alternative zum Rust-Server für Schulen mit WordPress-Homepage.
+Viele Schulen haben nur ein Webhosting-Paket mit CMS und können dort kein eigenes
+Programm wie den Rust-Server starten. Das Plugin **übernimmt die komplette
+Funktion des Public Servers** auf dem Webhost: öffentliche API, Graph-Zugriff mit
+der Daemon-Identität, Buchung, Anmeldung, Uploads, Bestätigungsmail – und liefert
+die Public SPA aus. Typisches Schul-Webhosting bietet PHP, unabhängig vom CMS.
 
-- [ ] **Voraussetzung:** öffentliche API als Vertrag festschreiben (OpenAPI für `/api/...`: config, procedures, appointments, booking, applications, uploads)
-- [ ] **Voraussetzung:** `integration-public-api` gegen eine beliebige Basis-URL lauffähig machen; derselbe Test prüft dann Rust-Server und Plugin (Konformitätstest)
-- [ ] PHP-Implementierung der API als WP-REST-Routen: Graph mit Client Credentials, eTag gegen Doppelbuchung, Token-Hash, Upload-Prüfungen, IP-Filter, Bestätigungsmail
-- [ ] Secrets nur serverseitig (wp-config.php oder geschützte Optionen), nie im Frontend
-- [ ] Shortcode/Block `[schulanmeldung]` bettet die Public SPA ein; API-Basis-URL in der SPA konfigurierbar machen
-- [ ] Einstellungsseite im WP-Admin (Tenant, Daemon-App, Site, Status-Check)
-- [ ] Hosting-Grenzen prüfen: PHP-Version, ausgehende HTTPS-Verbindungen, Upload-Limits, Laufzeitlimits
+**Aufbau: ein PHP-Kern, dünne CMS-Adapter**
 
-### 5.4 Weitere CMS im Schuleinsatz
+- [ ] **API-Vertrag** festschreiben (OpenAPI für alle `/api/...`-Routen) – gilt für Rust-Server und PHP-Kern gleichermaßen
+- [ ] **Konformitätstest:** `integration-public-api` gegen eine beliebige Basis-URL lauffähig machen; jede Umsetzung (Rust, PHP-Kern pur, jedes Plugin) muss ihn bestehen
+- [ ] **PHP-Kern** (framework-unabhängige Bibliothek, keine CMS-Abhängigkeit):
+  - Graph-Client mit Client Credentials, Token-Cache, Throttling-Retry
+  - Listenzugriff mit eTag (Schutz vor Doppelbuchung), Token-Hash der Familie
+  - Endpunkte wie der Rust-Server: config, procedures/form, appointments, booking, applications (start, submit, form), uploads, assets
+  - Strukturprüfung der Formulardaten und Upload-Prüfungen (Typ, Signatur, Größe, Anzahl)
+  - IP-Filter, Bestätigungsmail über Graph, keine personenbezogenen Daten in Logs
+- [ ] **Reine PHP-Variante** ohne CMS (`index.php` + Kern) für Webspace ohne CMS
+- [ ] **CMS-Adapter** übernehmen nur: Routing der API, Einstellungsseite, sichere Ablage der Secrets, Auslieferung/Einbindung der Public SPA (Seite, Shortcode/Block/Modul)
+  - [ ] WordPress (Plugin, REST-Routen, Shortcode/Block) – zuerst
+  - [ ] Joomla (Komponente)
+  - [ ] TYPO3 (Extension)
+  - [ ] Drupal (Modul)
+  - [ ] Contao (Bundle) – in Schulen verbreitet
+  - [ ] Reihenfolge nach Bedarf der Schulen festlegen (Umfrage)
+- [ ] Public SPA mit konfigurierbarer API-Basis-URL bauen (Plugin-Pfade statt `/api`)
 
-- [ ] **Einbettung ohne eigenes Backend** als Standardweg für alle CMS: Script-Snippet oder iframe, das die vom Rust-Server ausgelieferte Public SPA einbindet (setzt 5.1 voraus; `frame-ancestors` konfigurierbar)
-- [ ] Bedarf erheben, welche Systeme die Schulen nutzen; Kandidaten für eigene Plugins nach WordPress:
-  - Joomla (Komponente/Modul)
-  - TYPO3 (Extension)
-  - Drupal (Modul)
-  - IServ (Modul), Moodle (Plugin)
-- [ ] Eigene Plugins nur bei Bedarf und nur gegen denselben API-Vertrag und Konformitätstest (5.3)
+**Webhosting-Grenzen klären und testen**
+
+- [ ] Mindest-PHP-Version, benötigte Erweiterungen (curl/openssl, json, mbstring)
+- [ ] Ausgehende HTTPS-Verbindungen zu `login.microsoftonline.com` und `graph.microsoft.com` erlaubt?
+- [ ] Upload- und Request-Limits (`upload_max_filesize`, `post_max_size`, `max_execution_time`)
+- [ ] Token-Cache ohne Hintergrundprozesse (Datei oder CMS-Cache), keine Cronjobs voraussetzen
+- [ ] Secrets außerhalb des Webroots bzw. verschlüsselt in der CMS-Konfiguration; nie im Frontend
+- [ ] Zeitzone und Reverse-Proxy-Verhalten des Hosters (Client-IP für den IP-Filter)
+
+**Wartung**
+
+- [ ] Versionen von Rust-Server und PHP-Kern synchron halten (gleicher API-Vertrag, gleiche Testsuite)
+- [ ] Update-Weg pro CMS (Plugin-Verzeichnis, Paket-Download)
 
 ## 6. Future Releases aus dem Backlog (noch offen)
 
