@@ -111,11 +111,11 @@
             <button class="menu" aria-label="Menü öffnen" aria-expanded={menuOpen} onclick={() => (menuOpen = true)}>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
-            <span class="brand">Sekretariat</span>
+            <span class="brand"><img src="/icon.png" alt="" />Sekretariat</span>
         </header>
         {#if menuOpen}<button class="backdrop" aria-label="Menü schließen" onclick={() => (menuOpen = false)}></button>{/if}
         <aside class="sidebar" class:open={menuOpen}>
-            <div class="brand">Sekretariat</div>
+            <div class="brand"><img src="/icon.png" alt="" />Sekretariat</div>
             <nav aria-label="Hauptnavigation">
                 <div class="group">
                     <span class="caption">Ablauf</span>
@@ -158,7 +158,7 @@
 {:else}
     <main class="center">
         <div class="card" class:wide={status === 'setup'}>
-            <div class="brand">Sekretariat</div>
+            <div class="brand"><img src="/icon.png" alt="" />Sekretariat</div>
             {#if status === 'loading'}
                 <p class="muted">Wird geladen …</p>
             {:else if status === 'setup'}
@@ -205,9 +205,16 @@
         overflow-y: auto;
     }
     .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
         font-weight: 600;
         font-size: 1.05rem;
         padding: 0.25rem 0.6rem;
+    }
+    .brand img {
+        width: 1.75rem;
+        height: 1.75rem;
     }
     nav {
         flex: 1;
@@ -372,8 +379,14 @@
         justify-items: stretch;
     }
     .card .brand {
+        flex-direction: column;
+        gap: 0.75rem;
         font-size: 1.25rem;
         margin-bottom: 1.5rem;
+    }
+    .card .brand img {
+        width: 4.5rem;
+        height: 4.5rem;
     }
     .card h2 {
         margin: 0;
