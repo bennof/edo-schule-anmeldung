@@ -70,7 +70,7 @@
     }
     input {
         font: inherit;
-        padding: 0.35rem 0.5rem;
+        padding: var(--form-input-padding, 0.35rem 0.5rem);
         width: 100%;
         box-sizing: border-box;
     }
@@ -78,7 +78,8 @@
         list-style: none;
         margin: 0;
         padding: 0;
-        border: 1px solid #ccc;
+        border: 1px solid var(--form-section-border, #ccc);
+        border-radius: var(--form-list-radius, 0);
         max-height: 14rem;
         overflow-y: auto;
     }
@@ -89,15 +90,16 @@
         background: none;
         padding: 0.35rem 0.5rem;
         font: inherit;
+        color: inherit;
         cursor: pointer;
     }
     li button:hover,
     li button:focus {
-        background: #eef;
+        background: var(--form-hover, #eef);
     }
     .empty {
         padding: 0.35rem 0.5rem;
-        color: #666;
+        color: var(--form-muted, #666);
     }
     .selected {
         display: flex;

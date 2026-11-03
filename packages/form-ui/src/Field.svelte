@@ -146,12 +146,12 @@
         font-weight: 500;
     }
     .req {
-        color: #b00020;
+        color: var(--form-error, #b00020);
     }
     input:not([type='radio'], [type='checkbox']),
     select {
         font: inherit;
-        padding: 0.35rem 0.5rem;
+        padding: var(--form-input-padding, 0.35rem 0.5rem);
         max-width: 28rem;
     }
     input.year {
@@ -164,7 +164,7 @@
     }
     .invalid input:not([type='radio'], [type='checkbox']),
     .invalid select {
-        border-color: #b00020;
+        border-color: var(--form-error, #b00020);
     }
     .accept {
         display: flex;
@@ -172,13 +172,13 @@
         align-items: center;
     }
     .help {
-        color: #555;
+        color: var(--form-muted, #555);
         white-space: pre-line;
         font-size: 0.85rem;
         margin: 0;
     }
     .error {
-        color: #b00020;
+        color: var(--form-error, #b00020);
         font-size: 0.9rem;
         margin: 0;
     }

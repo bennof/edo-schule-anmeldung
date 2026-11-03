@@ -158,10 +158,10 @@
         min-width: 11rem;
     }
     .slot.available {
-        background: #f6fbf7;
+        background: var(--success-bg);
     }
     .slot.done {
-        background: #f4f4f4;
+        color: var(--text-muted);
     }
     .who {
         font-weight: 600;

@@ -1,7 +1,90 @@
-body {
-    font-family: system-ui, sans-serif;
-    margin: 0;
+/* Minimal flat design: neutral surfaces, one dark accent, soft rounded
+   controls, hairline borders. Light and dark follow the system setting. */
+:root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --surface: #f7f7f8;
+    --surface-2: #ececec;
+    --border: #e5e5e5;
+    --text: #0d0d0d;
+    --text-muted: #6e6e6e;
+    --accent: #0d0d0d;
+    --accent-text: #ffffff;
+    --ring: rgb(13 13 13 / 0.12);
+    --danger: #c62828;
+    --success: #1b6b30;
+    --success-bg: #e6f4ea;
+    --info-bg: #e8eefb;
+    --warn: #8a6d00;
+    --warn-bg: #fbf1d2;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --sidebar: 15rem;
 }
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #212121;
+        --surface: #171717;
+        --surface-2: #2f2f2f;
+        --border: #383838;
+        --text: #ececec;
+        --text-muted: #a1a1a1;
+        --accent: #ececec;
+        --accent-text: #0d0d0d;
+        --ring: rgb(236 236 236 / 0.16);
+        --danger: #f07070;
+        --success: #7fd394;
+        --success-bg: #1d3526;
+        --info-bg: #1f2a3d;
+        --warn: #e5c45f;
+        --warn-bg: #3a3219;
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+}
+h2 {
+    font-size: 1.5rem;
+    margin: 2.5rem 0 1rem;
+}
+h2:first-child {
+    margin-top: 0;
+}
+section + section:not(.form section) {
+    margin-top: 3rem;
+}
+h3 {
+    font-size: 1.1rem;
+    margin: 1.75rem 0 0.75rem;
+}
+h4 {
+    font-size: 1rem;
+}
+
+a {
+    color: inherit;
+}
+
+/* tables: no grid, hairline rows, quiet header */
 table {
     border-collapse: collapse;
     margin: 1rem 0;
@@ -10,41 +93,165 @@ table {
 th,
 td {
     text-align: left;
-    padding: 0.3rem 0.5rem;
-    border-bottom: 1px solid #eee;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--border);
     vertical-align: top;
 }
+th {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+tbody tr:hover td {
+    background: var(--surface);
+}
+
+/* buttons: dark pill as primary, outlined ghost as secondary */
 button,
 label.button {
     font: inherit;
-    padding: 0.35rem 0.8rem;
-    border: 1px solid #2456a6;
-    background: #2456a6;
-    color: white;
-    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.45rem 1rem;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--accent-text);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: opacity 0.15s, background 0.15s;
+}
+button:hover:not(:disabled),
+label.button:hover {
+    opacity: 0.85;
+}
+/* secondary: explicit, row actions in tables and buttons inside the form renderer */
+button.secondary,
+td button,
+.form button,
+::file-selector-button {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+button.secondary:hover:not(:disabled),
+td button:hover:not(:disabled),
+.form button:hover:not(:disabled) {
+    background: var(--surface-2);
+    opacity: 1;
+}
+td button {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.85rem;
+}
+::file-selector-button {
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 0.35rem 0.9rem;
+    margin-right: 0.75rem;
+    border-radius: 999px;
     cursor: pointer;
 }
-button.secondary {
-    background: white;
-    color: #2456a6;
-}
 button:disabled {
-    opacity: 0.5;
+    opacity: 0.35;
     cursor: default;
 }
+button:focus-visible,
+a:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* inputs: soft rounded fields with a focus ring */
 input,
 select,
 textarea {
     font: inherit;
+    color: var(--text);
 }
+input:not([type='checkbox'], [type='radio'], [type='file']),
+select,
+textarea {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.5rem 0.7rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+input:not([type='checkbox'], [type='radio'], [type='file']):focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--text-muted);
+    box-shadow: 0 0 0 3px var(--ring);
+}
+input[type='checkbox'],
+input[type='radio'] {
+    accent-color: var(--accent);
+}
+label {
+    font-size: 0.9rem;
+}
+
+/* cards: flat panels instead of boxed borders */
+fieldset {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem 1.25rem;
+    margin: 0 0 1rem;
+}
+legend {
+    font-weight: 600;
+    padding: 0 0.4rem;
+}
+
 .actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     align-items: center;
 }
 .muted {
-    color: #666;
+    color: var(--text-muted);
 }
 .error {
-    color: #b00020;
+    color: var(--danger);
+}
+
+/* status pills used across the views */
+.badge {
+    display: inline-block;
+    padding: 0.1rem 0.6rem;
+    border-radius: 999px;
+    background: var(--surface-2);
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.badge.state-submitted,
+.badge.booked {
+    background: var(--info-bg);
+}
+.badge.state-interview,
+.badge.state-in_review,
+.badge.draft {
+    background: var(--warn-bg);
+}
+.badge.state-checked,
+.badge.state-ready_for_svws,
+.badge.available {
+    background: var(--success-bg);
+}
+
+/* form renderer (packages/form-ui) in the secretariat theme */
+:root {
+    --form-section-border: var(--border);
+    --form-section-radius: var(--radius-lg);
+    --form-muted: var(--text-muted);
+    --form-error: var(--danger);
+    --form-surface: var(--surface);
+    --form-hover: var(--surface-2);
+    --form-warn: var(--warn);
+    --form-input-padding: 0.5rem 0.7rem;
+    --form-section-padding: 0.75rem 1.5rem 1.5rem;
+    --form-list-radius: var(--radius);
 }

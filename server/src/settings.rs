@@ -17,6 +17,8 @@ pub struct Settings {
     pub mail_disabled: bool,
     /// MAIL_REDIRECT=addr: send every mail to this address instead (testing)
     pub mail_redirect: Option<String>,
+    /// who may embed the registration page in a frame (CSP frame-ancestors)
+    pub frame_ancestors: String,
 }
 
 impl Settings {
@@ -30,7 +32,7 @@ impl Settings {
         };
         let require = |key: &str| get(key).ok_or_else(|| format!("missing setting {key}"));
         Ok(Settings {
-            bind_addr: get("BIND_ADDR").unwrap_or_else(|| "127.0.0.1:8080".to_string()),
+            bind_addr: get("BIND_ADDR").unwrap_or_else(|| "127.0.0.1:23180".to_string()),
             workers: get("WORKERS").and_then(|w| w.parse().ok()).unwrap_or(8),
             tenant_id: require("TENANT_ID")?,
             client_id: require("DAEMON_CLIENT_ID")?,
@@ -39,6 +41,7 @@ impl Settings {
             trust_proxy: get("TRUST_PROXY").is_some_and(|v| v == "1" || v == "true"),
             mail_disabled: get("MAIL_DISABLED").is_some_and(|v| v == "1" || v == "true"),
             mail_redirect: get("MAIL_REDIRECT"),
+            frame_ancestors: get("FRAME_ANCESTORS").unwrap_or_else(|| "'self'".to_string()),
         })
     }
 }

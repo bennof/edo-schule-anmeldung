@@ -79,8 +79,8 @@
 
 <style>
     fieldset {
-        border: 1px solid #ddd;
-        border-radius: 6px;
+        border: 1px solid var(--form-section-border, #ddd);
+        border-radius: var(--form-section-radius, 6px);
         padding: 0.5rem 1rem 1rem;
         display: grid;
         gap: 0.75rem;
@@ -90,7 +90,7 @@
         padding: 0 0.3rem;
     }
     .entry {
-        background: #f8f8f8;
+        background: var(--form-surface, #f8f8f8);
     }
     .hidden-public {
         border-style: dashed;
@@ -99,7 +99,7 @@
         justify-self: start;
     }
     .error {
-        color: #b00020;
+        color: var(--form-error, #b00020);
         margin: 0;
     }
 </style>

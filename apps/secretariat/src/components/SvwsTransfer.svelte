@@ -4,8 +4,9 @@
 <script lang="ts">
     import { fileRefs, type FormJson } from '@anmeldung/forms';
     import type { ApplicationSummary } from '@anmeldung/sharepoint';
-    import type { SvwsCredentials, TransferResult } from '@anmeldung/svws';
+    import type { TransferResult } from '@anmeldung/svws';
     import { applicationService, errorText, forms, site, svws } from '../services.ts';
+    import { rememberSvwsUser, svwsCredentials, svwsLogin } from '../svws-credentials.svelte.ts';
 
     interface Props {
         selected: ApplicationSummary[];
@@ -15,19 +16,17 @@
 
     let { selected, ondone }: Props = $props();
 
-    let user = $state('');
-    let password = $state('');
     let busy = $state(false);
     let info = $state('');
     let error = $state('');
     let results: (TransferResult & { name: string })[] = $state([]);
-    const credentials = (): SvwsCredentials => ({ user: user.trim(), password });
 
     async function check(): Promise<void> {
         busy = true;
         error = info = '';
         try {
-            info = await svws.check(credentials());
+            info = await svws.check(svwsCredentials());
+            rememberSvwsUser();
         } catch (e) {
             error = errorText(e);
         } finally {
@@ -56,7 +55,8 @@
                     };
                 }),
             );
-            const transferred = await svws.transfer(items, credentials());
+            const transferred = await svws.transfer(items, svwsCredentials());
+            if (transferred.some((r) => r.ok)) rememberSvwsUser();
             for (const r of transferred) await applicationService.recordTransfer(r.applicationId, r);
             results = transferred.map((r) => ({ ...r, name: selected.find((s) => s.id === r.applicationId)?.childName ?? r.applicationId }));
             ondone();
@@ -78,12 +78,12 @@
                 transfer();
             }}
         >
-            <label>SVWS-Benutzer <input bind:value={user} autocomplete="username" /></label>
-            <label>Passwort <input type="password" bind:value={password} autocomplete="current-password" /></label>
-            <button type="button" class="secondary" onclick={check} disabled={busy || !user.trim()}>Verbindung prüfen</button>
-            <button type="submit" disabled={busy || !user.trim() || !selected.length}>{selected.length} Anmeldung(en) übertragen</button>
+            <label>SVWS-Benutzer <input bind:value={svwsLogin.user} autocomplete="username" /></label>
+            <label>Passwort <input type="password" bind:value={svwsLogin.password} autocomplete="current-password" /></label>
+            <button type="button" class="secondary" onclick={check} disabled={busy || !svwsLogin.user.trim()}>Verbindung prüfen</button>
+            <button type="submit" disabled={busy || !svwsLogin.user.trim() || !selected.length}>{selected.length} Anmeldung(en) übertragen</button>
         </form>
-        <p class="muted">Die Zugangsdaten werden nicht gespeichert.</p>
+        <p class="muted">Der Benutzername wird in diesem Browser gemerkt, das Passwort nur bis zum Neuladen oder Abmelden.</p>
     {/if}
     {#if busy}<p role="status">Bitte warten …</p>{/if}
     {#if info}<p role="status" class="ok">{info}</p>{/if}
@@ -118,13 +118,13 @@
         padding-left: 1.2rem;
     }
     .ok {
-        color: #1b6b30;
+        color: var(--success);
     }
     .fail {
-        color: #b00020;
+        color: var(--danger);
     }
     .warnings {
-        color: #8a6d00;
+        color: var(--warn);
         font-size: 0.9rem;
     }
     p {

@@ -92,6 +92,7 @@ impl Api {
         let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
         let result = match (method, parts.as_slice()) {
             ("GET", ["api", "health"]) => Ok(Reply::json(200, json!({ "status": "ok" }))),
+            ("GET", ["api", "status"]) => Ok(self.status()),
             ("GET", ["api", "config"]) => self.config(),
             ("GET", ["api", "procedures", id, "form"]) if is_item_id(id) => self.form(id),
             ("GET", ["api", "procedures", id, "appointments"]) if is_item_id(id) => self.appointments(id),
@@ -118,6 +119,22 @@ impl Api {
             eprintln!("upstream error on {method} {path}: {e}");
             Reply::error(502, "upstream", "Der Dienst ist vorübergehend nicht erreichbar")
         })
+    }
+
+    /// Connection test for the secretariat: the server runs and reaches
+    /// SharePoint with its daemon rights. Details only in the server log.
+    fn status(&self) -> Reply {
+        let version = env!("CARGO_PKG_VERSION");
+        match self.site.list_items(CONFIG, None) {
+            Ok(_) => Reply::json(200, json!({ "status": "ok", "version": version, "sharepoint": "ok" })),
+            Err(e) => {
+                eprintln!("status: SharePoint check failed: {e}");
+                Reply::json(
+                    503,
+                    json!({ "status": "error", "version": version, "sharepoint": "error" }),
+                )
+            }
+        }
     }
 
     /// F2: public config entries and the currently active procedures.

@@ -102,8 +102,8 @@
 
 <style>
     .condition {
-        border: 1px dashed #ccc;
-        border-radius: 4px;
+        border: 1px dashed var(--border);
+        border-radius: var(--radius);
         display: grid;
         gap: 0.3rem;
     }

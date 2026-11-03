@@ -195,10 +195,4 @@
     .tools {
         white-space: nowrap;
     }
-    .badge {
-        background: #dff3e4;
-        border-radius: 999px;
-        padding: 0 0.4rem;
-        font-size: 0.8rem;
-    }
 </style>

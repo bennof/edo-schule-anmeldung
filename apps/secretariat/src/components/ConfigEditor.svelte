@@ -130,9 +130,6 @@
 
 <style>
     fieldset {
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        margin-bottom: 0.75rem;
         display: grid;
         gap: 0.5rem;
         max-width: 40rem;

@@ -1,10 +1,12 @@
-//! Public server: the only component the public SPA talks to.
-//! It keeps no personal data; SharePoint is the persistent store.
+//! Public server: serves the registration page (embedded at build time)
+//! and the API it talks to. It keeps no personal data; SharePoint is the
+//! persistent store.
 
 mod api;
 mod formdata;
 mod graph;
 mod mail;
+mod public;
 mod settings;
 mod sharepoint;
 mod token;
@@ -30,19 +32,27 @@ fn main() {
         (None, false) => api::MailMode::Send,
     };
     let api = Arc::new(api::Api::new(sharepoint::Site::new(graph, &settings.site_id), mail));
+    let csp: Arc<str> = public::csp(&settings.frame_ancestors).into();
 
     let server = Arc::new(Server::http(&settings.bind_addr).unwrap_or_else(|e| {
         eprintln!("cannot bind {}: {e}", settings.bind_addr);
         std::process::exit(1);
     }));
     println!("anmeldung-server listening on http://{}", settings.bind_addr);
+    if !public::embedded() {
+        println!("registration page not embedded (built without `make build`): API only");
+    }
 
     let workers: Vec<_> = (0..settings.workers)
         .map(|_| {
-            let (server, api) = (Arc::clone(&server), Arc::clone(&api));
+            let (server, api, csp) = (Arc::clone(&server), Arc::clone(&api), Arc::clone(&csp));
             thread::spawn(move || {
                 while let Ok(request) = server.recv() {
-                    handle(&api, request, trust_proxy);
+                    if request.url().starts_with("/api/") {
+                        handle(&api, request, trust_proxy);
+                    } else {
+                        serve_page(request, &csp);
+                    }
                 }
             })
         })
@@ -100,10 +110,45 @@ fn handle(api: &api::Api, mut request: Request, trust_proxy: bool) {
     };
     // log method, path and status only, never bodies (personal data)
     println!("{method} {path} {}", reply.status);
-    let response = Response::from_data(reply.body)
+    let mut response = Response::from_data(reply.body)
         .with_status_code(reply.status)
         .with_header(Header::from_bytes("Content-Type", reply.content_type.as_bytes()).expect("valid header"))
         .with_header(Header::from_bytes("Cache-Control", "no-store").expect("valid header"));
+    // the secretariat (another origin) may test the connection; no data in these replies
+    if method == "GET" && (path == "/api/health" || path == "/api/status") {
+        response.add_header(Header::from_bytes("Access-Control-Allow-Origin", "*").expect("valid header"));
+    }
+    if let Err(e) = request.respond(response) {
+        eprintln!("failed to send response: {e}");
+    }
+}
+
+/// Files of the registration page, with cache and security headers.
+fn serve_page(request: Request, csp: &str) {
+    let method = request.method().as_str().to_uppercase();
+    let path = request.url().split(['?', '#']).next().unwrap_or("/").to_string();
+    let header = |name: &str, value: &str| Header::from_bytes(name, value).expect("valid header");
+    let response = match (method.as_str(), public::lookup(&path)) {
+        ("GET" | "HEAD", Some(file)) => {
+            let cache = if file.immutable {
+                "public, max-age=31536000, immutable"
+            } else {
+                "no-cache"
+            };
+            let mut r = Response::from_data(file.body)
+                .with_header(header("Content-Type", file.content_type))
+                .with_header(header("Cache-Control", cache));
+            if file.content_type.starts_with("text/html") {
+                r.add_header(header("Content-Security-Policy", csp));
+            }
+            r
+        }
+        ("GET" | "HEAD", None) => Response::from_string("Nicht gefunden").with_status_code(404),
+        _ => Response::from_string("Methode nicht erlaubt").with_status_code(405),
+    }
+    .with_header(header("X-Content-Type-Options", "nosniff"))
+    .with_header(header("Referrer-Policy", "no-referrer"));
+    println!("{method} {path} {}", response.status_code().0);
     if let Err(e) = request.respond(response) {
         eprintln!("failed to send response: {e}");
     }

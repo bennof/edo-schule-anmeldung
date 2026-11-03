@@ -1,8 +1,11 @@
-// Helpers for the browser end-to-end scripts (Playwright, headless Chromium).
+// Starts the apps for the tests and drives the browser (Playwright, headless Chromium).
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import { chromium, type Browser, type Page } from 'playwright-core';
 
-export const URLS = { secretariat: 'http://localhost:5173', public: 'http://localhost:5174' } as const;
+export const URLS = { secretariat: 'http://localhost:8944', public: 'http://localhost:8954' } as const;
+
+/** Port of the Rust public server; the SPA dev servers proxy /api there. */
+export const API_PORT = 23180;
 
 /** Starts a SPA dev server unless one is already running on its port. */
 export async function startDevServer(app: keyof typeof URLS): Promise<() => void> {
@@ -24,19 +27,16 @@ export async function startDevServer(app: keyof typeof URLS): Promise<() => void
 }
 
 export interface ApiServer {
-    /** e.g. http://127.0.0.1:8080/api */
+    /** e.g. http://127.0.0.1:23180/api */
     api: string;
     /** everything the server wrote to stdout/stderr so far */
     log: () => string;
     stop: () => void;
 }
 
-/**
- * Builds and starts the Rust public server. Port 8080 is where the SPA dev
- * servers proxy /api to. Mails are disabled unless `env` says otherwise.
- */
+/** Builds and starts the Rust public server. Mails are disabled unless `env` says otherwise. */
 export async function startApiServer(options: { port?: number; env?: Record<string, string> } = {}): Promise<ApiServer> {
-    const port = options.port ?? 8080;
+    const port = options.port ?? API_PORT;
     const env = { ...process.env, PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH}` };
     execSync('cargo build -q', { cwd: 'server', stdio: 'inherit', env });
     const child = spawn('./target/debug/anmeldung-server', {
@@ -68,6 +68,9 @@ export async function launch(): Promise<Browser> {
     return chromium.launch();
 }
 
+/** Expected failures: an account without profile photo answers 404. */
+const EXPECTED = (url: string) => url.includes('/me/photos/');
+
 /**
  * Collects console errors/warnings, uncaught exceptions and failed requests
  * while one of our apps is shown (the Microsoft login page is ignored).
@@ -76,11 +79,13 @@ export function watchConsole(page: Page): string[] {
     const problems: string[] = [];
     const ours = () => page.url().startsWith('http://localhost');
     page.on('console', (m) => {
-        if (ours() && (m.type() === 'error' || m.type() === 'warning')) problems.push(`${m.type()}: ${m.text().slice(0, 300)}`);
+        if (ours() && (m.type() === 'error' || m.type() === 'warning') && !EXPECTED(m.location().url)) {
+            problems.push(`${m.type()}: ${m.text().slice(0, 300)}`);
+        }
     });
     page.on('pageerror', (e) => problems.push(`exception: ${e.message.slice(0, 300)}`));
     page.on('response', (r) => {
-        if (ours() && r.status() >= 400) {
+        if (ours() && r.status() >= 400 && !EXPECTED(r.url())) {
             const u = new URL(r.url());
             problems.push(`http ${r.status()} ${r.request().method()} ${u.host}${u.pathname}`);
         }
@@ -88,31 +93,9 @@ export function watchConsole(page: Page): string[] {
     return problems;
 }
 
-let failures = 0;
-
-export async function step(name: string, fn: () => Promise<void>): Promise<boolean> {
-    try {
-        await fn();
-        console.log(`ok    ${name}`);
-        return true;
-    } catch (e) {
-        failures++;
-        console.log(`FAIL  ${name}: ${e instanceof Error ? e.message.split('\n')[0] : e}`);
-        return false;
-    }
-}
-
-export function assert(cond: unknown, message: string): asserts cond {
-    if (!cond) throw new Error(message);
-}
-
-export function failureCount(): number {
-    return failures;
-}
-
 /**
- * Signs in through the real Microsoft login page. Credentials are typed into
- * the page only and never logged; no screenshots are taken.
+ * Signs in to the secretariat through the real Microsoft login page.
+ * Credentials are typed into the page only and never logged; no screenshots are taken.
  */
 export async function signIn(page: Page, user: string, password: string): Promise<void> {
     await page.getByRole('button', { name: 'Anmelden' }).click();

@@ -1,6 +1,5 @@
-// Manages the SharePoint permissions of the public daemon (backlog F1).
-//
-// Target: the daemon only gets list-level grants instead of site-wide write.
+// Manages the SharePoint permissions of the public daemon: list-level grants
+// instead of site-wide write.
 //   node scripts/daemon-permissions.ts show         current site and list grants
 //   node scripts/daemon-permissions.ts grant        add list grants (safe, idempotent)
 //   node scripts/daemon-permissions.ts revoke-site  remove the site-wide grant
@@ -8,10 +7,10 @@
 //
 // List grants only take effect once the daemon app registration has the
 // application permission Lists.SelectedOperations.Selected (admin consent in
-// Entra). Run revoke-site only after that, then `pnpm test:integration`.
+// Entra). Run revoke-site only after that, then `make test-integration`.
 // Uses the app identity, which has fullcontrol on the site.
-import { GraphClient, LISTS, SharePointSite, type ListKey } from '../packages/sharepoint/src/index.ts';
-import { appTokenProvider, readEnv } from './env.ts';
+import { LISTS, type ListKey } from '../packages/sharepoint/src/index.ts';
+import { env, testSite } from '../tests/support/env.ts';
 
 /** Minimal grants: read public data, write appointments, applications and uploads. */
 const LIST_ROLES: Record<Exclude<ListKey, never>, 'read' | 'write'> = {
@@ -31,8 +30,7 @@ interface Permission {
     grantedToV2?: { application?: { id: string; displayName?: string } };
 }
 
-const env = readEnv();
-const site = new SharePointSite(new GraphClient(appTokenProvider(env)), env.SHAREPOINT_ID);
+const site = testSite();
 const graph = site.graph;
 const daemon = { id: env.DAEMON_CLIENT_ID, displayName: env.DAEMON_NAME || 'Public Daemon' };
 

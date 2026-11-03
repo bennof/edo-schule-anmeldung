@@ -3,6 +3,7 @@
     import { LISTS, SCHEMA_VERSION, provision } from '@anmeldung/sharepoint';
     import { requireConfig } from '../config.ts';
     import ConfigEditor from '../components/ConfigEditor.svelte';
+    import ConnectionChecks from '../components/ConnectionChecks.svelte';
 
     const clientConfig = requireConfig();
     import { config, errorText, site } from '../services.ts';
@@ -57,6 +58,11 @@
 
     initialLoad();
 </script>
+
+<section>
+    <h2>Verbindungen</h2>
+    <ConnectionChecks />
+</section>
 
 <section>
     <h2>SharePoint</h2>

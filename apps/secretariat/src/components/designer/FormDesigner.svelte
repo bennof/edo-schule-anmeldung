@@ -227,9 +227,9 @@
     .tree,
     .props,
     .preview {
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        padding: 0.5rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 0.75rem;
         align-self: start;
         max-height: 80vh;
         overflow: auto;
@@ -261,27 +261,32 @@
         gap: 0.25rem;
     }
     .section {
-        border-left: 3px solid #eee;
+        border-left: 2px solid var(--border);
         margin-bottom: 0.5rem;
         padding-left: 0.25rem;
     }
     .node {
         background: none;
         border: none;
+        border-radius: 8px;
         color: inherit;
+        font-weight: 400;
         text-align: left;
-        padding: 0.15rem 0.25rem;
+        padding: 0.25rem 0.4rem;
         cursor: pointer;
         flex: 1;
     }
+    .node:hover {
+        background: var(--surface);
+        opacity: 1;
+    }
     .node small {
-        color: #777;
+        color: var(--text-muted);
     }
     .selected > .node,
     .selected > .head > .node,
     .node.selected {
-        background: #dde8fb;
-        border-radius: 3px;
+        background: var(--surface-2);
     }
     .tools {
         white-space: nowrap;
@@ -289,8 +294,8 @@
     .icon {
         background: none;
         border: none;
-        color: #2456a6;
-        padding: 0 0.2rem;
+        color: var(--text-muted);
+        padding: 0 0.3rem;
     }
     .small {
         padding: 0.1rem 0.5rem;

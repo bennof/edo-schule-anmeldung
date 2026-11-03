@@ -25,9 +25,8 @@ Klammern: Sprint-Review (S1–S8), Backlog (BL) oder Gespräch.
 
 ## 3. Tests und Entwicklungsumgebung
 
-- [ ] **Vor dem Entfernen von `APP_CLIENT_SECRET`:** eigene Test-App-Registrierung nur für die Test-Site (`Sites.Selected`), Zugangsdaten in `.env.test`; `scripts/env.ts` liest zuerst `.env.test`, dann `.env` (Gespräch)
+- [ ] **Vor dem Entfernen von `APP_CLIENT_SECRET`:** eigene Test-App-Registrierung nur für die Test-Site (`Sites.Selected`), Zugangsdaten in `.env.test`; `tests/support/env.ts` liest zuerst `.env.test`, dann `.env` (Gespräch)
 - [ ] Danach `APP_CLIENT_SECRET` aus der App „Anmeldesystem“ entfernen (info.md)
-- [ ] Ordner aufteilen: `tests/integration`, `tests/e2e`; Werkzeuge bleiben in `scripts/` (Gespräch)
 - [ ] CI-Pipeline (z. B. GitHub Actions): `make check test` bei jedem Push; Integrations- und Browser-Tests gegen die Test-Site mit Secrets der Test-App
 - [ ] Login-Wartezeiten in den Browser-Tests beobachten (gelegentlich langsame Microsoft-Anmeldung) (S8)
 
@@ -67,13 +66,14 @@ Funktion des Public Servers läuft. Die Umgebungen der Schulen sind verschieden:
 
 Gemeinsame Grundlage für alle Varianten:
 
-- [ ] Rust-Server liefert die gebaute Public SPA mit aus (`PUBLIC_DIR`) und die API unter `/api` – ein Dienst für alles Öffentliche; SPA-Fallback, Cache- und Sicherheits-Header (CSP, `frame-ancestors` konfigurierbar), Schutz vor Pfad-Traversal
+- [x] Rust-Server liefert die Public SPA mit aus (beim Bau eingebettet) und die API unter `/api` – ein Dienst für alles Öffentliche; SPA-Fallback, Cache- und Sicherheits-Header (CSP, `FRAME_ANCESTORS`), kein Dateisystemzugriff
 - [ ] **API-Vertrag** (OpenAPI für alle `/api/...`-Routen) als verbindliche Beschreibung der Serverfunktion
 - [ ] **Konformitätstest:** `integration-public-api` gegen eine beliebige Basis-URL lauffähig machen; jede Umsetzung (Rust, PHP) muss ihn bestehen
 
 ### 5.1 Bare Metal: Rust-Server als Dienst
 
-- [ ] `make dist` liefert Binary + `public/`; Installationsanleitung
+- [x] `make dist` liefert ein Binary mit eingebetteter Anmeldeseite
+- [ ] Installationsanleitung
 - [ ] systemd-Unit (eigener Benutzer, Härtung: `ProtectSystem`, `NoNewPrivileges`, …), Konfiguration über Env-Datei
 - [ ] Hinter vorhandenem Reverse-Proxy (nginx/Apache/Caddy) mit TLS; `TRUST_PROXY=1`, `TZ=Europe/Berlin`; Beispielkonfigurationen
 

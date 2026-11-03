@@ -271,10 +271,10 @@
         align-items: center;
         position: sticky;
         top: 0;
-        background: white;
-        padding: 0.5rem 0;
+        background: var(--bg);
+        padding: 0.75rem 0;
         z-index: 2;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid var(--border);
     }
     .bar h2 {
         margin: 0;
@@ -283,11 +283,11 @@
     .save {
         margin-left: auto;
         font-size: 0.9rem;
-        color: #555;
+        color: var(--text-muted);
     }
     .save.error,
     .save.conflict {
-        color: #b00020;
+        color: var(--danger);
         font-weight: 600;
     }
     .head {
@@ -298,8 +298,7 @@
     }
     .photo {
         width: 6rem;
-        border: 1px solid #ccc;
-        border-radius: 4px;
+        border-radius: var(--radius);
     }
     .facts {
         margin: 0;
@@ -308,7 +307,7 @@
         gap: 0.2rem 1rem;
     }
     .facts dt {
-        color: #555;
+        color: var(--text-muted);
     }
     .facts dd {
         margin: 0;
@@ -322,25 +321,5 @@
     .comments label {
         display: grid;
         gap: 0.2rem;
-    }
-    :global(.badge) {
-        padding: 0.1rem 0.55rem;
-        border-radius: 999px;
-        background: #eee;
-        font-size: 0.85rem;
-        white-space: nowrap;
-    }
-    :global(.badge.state-submitted),
-    :global(.badge.booked) {
-        background: #dde8fb;
-    }
-    :global(.badge.state-interview),
-    :global(.badge.state-in_review) {
-        background: #fff3cd;
-    }
-    :global(.badge.state-checked),
-    :global(.badge.state-ready_for_svws),
-    :global(.badge.available) {
-        background: #dff3e4;
     }
 </style>

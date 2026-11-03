@@ -117,14 +117,14 @@
     .photo {
         max-height: 6rem;
         max-width: 4.5rem;
-        border: 1px solid #ccc;
+        border: 1px solid var(--form-section-border, #ccc);
     }
     .muted {
-        color: #666;
+        color: var(--form-muted, #666);
         margin: 0;
     }
     .error {
-        color: #b00020;
+        color: var(--form-error, #b00020);
         margin: 0;
     }
     button {

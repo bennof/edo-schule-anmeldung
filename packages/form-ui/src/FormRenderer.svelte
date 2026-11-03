@@ -68,22 +68,22 @@
         gap: 1.5rem;
     }
     section {
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        padding: 0.5rem 1rem 1rem;
+        border: 1px solid var(--form-section-border, #ccc);
+        border-radius: var(--form-section-radius, 6px);
+        padding: var(--form-section-padding, 0.5rem 1rem 1rem);
     }
     h2 {
         font-size: 1.2rem;
     }
     .description {
-        color: #555;
+        color: var(--form-muted, #555);
     }
     .hidden-public {
         border-style: dashed;
-        background: #fafafa;
+        background: var(--form-surface, #fafafa);
     }
     :global(.form .hidden-note) {
-        color: #8a6d00;
+        color: var(--form-warn, #8a6d00);
         font-size: 0.85rem;
         margin: 0.2rem 0;
     }

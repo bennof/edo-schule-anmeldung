@@ -268,9 +268,9 @@
 
 <style>
     .generator {
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        padding: 0 1rem 1rem;
+        background: var(--surface);
+        border-radius: var(--radius-lg);
+        padding: 0.25rem 1.25rem 1.25rem;
     }
     .grid {
         display: flex;
@@ -297,21 +297,6 @@
         flex-wrap: wrap;
         gap: 0.5rem;
         align-items: center;
-    }
-    .badge {
-        padding: 0.1rem 0.5rem;
-        border-radius: 999px;
-        background: #eee;
-        font-size: 0.85rem;
-    }
-    .badge.available {
-        background: #dff3e4;
-    }
-    .badge.booked {
-        background: #dde8fb;
-    }
-    .badge.draft {
-        background: #fff3cd;
     }
     h4 {
         display: flex;

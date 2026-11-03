@@ -4,9 +4,9 @@ import { defineConfig } from 'vite';
 export default defineConfig({
     plugins: [svelte()],
     server: {
-        port: 5174,
+        port: 8954,
         strictPort: true,
         // the Rust public server
-        proxy: { '/api': 'http://localhost:8080' },
+        proxy: { '/api': 'http://localhost:23180' },
     },
 });

@@ -135,9 +135,9 @@
         display: grid;
         gap: 0.6rem;
         max-width: 32rem;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        padding: 0 1rem;
+        background: var(--surface);
+        border-radius: var(--radius-lg);
+        padding: 0.25rem 1.25rem 1.25rem;
         margin: 1rem 0;
     }
     .editor label {

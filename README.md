@@ -33,7 +33,9 @@ Sprint: [`docs/sprint-reviews/`](docs/sprint-reviews/).
 - Einstellungen: SharePoint-Provisionierung, Konfigurationsliste, Browser-Konfiguration (Import/Export)
 
 **Öffentlicher Server** (`server`, Rust)
+- ein Binary für alles Öffentliche: die Anmeldeseite ist beim Bau eingebettet, dazu die API unter `/api`
 - schmale API für die öffentliche SPA, Zugriff auf SharePoint nur mit Listenrechten
+- Verbindungstest `/api/status` (Server läuft, erreicht SharePoint) für die Einstellungen im Sekretariat
 - Schutz vor Doppelbuchung (eTag), IP-Filter, Bestätigungsmail über Microsoft Graph
 
 ## Architektur
@@ -63,15 +65,15 @@ packages/form-ui      Svelte-Formular-Renderer (öffentlich / Sekretariat)
 packages/pdf          Anmeldebogen: Vorlagen-Generator und Befüllung (pdf-lib)
 packages/svws         SVWS-Adapter: Transportwege, Kataloge, Mapping, Übertragung
 server                öffentlicher Server (Rust: tiny_http, ureq)
-docker/svws           SVWS-Server + MariaDB als Testumgebung
-scripts               Integrations- und Browser-Tests, Hilfswerkzeuge
+tests                 Integrations-, Browser-, SVWS- und Mailtests (Vitest)
+scripts               daemon-permissions: Listenrechte der Daemon-App
 docs                  Sprint-Reviews, bisheriges Anmeldeformular (Word)
 ```
 
 ## Voraussetzungen
 
 - Node.js 24, pnpm, Rust (rustup), GNU Make
-- Docker (rootless genügt) für den SVWS-Testserver
+- für `make test-svws`: ein erreichbarer SVWS-Server mit der Testschule (siehe unten)
 - Microsoft-365-Tenant mit einer SharePoint-Site und zwei App-Registrierungen (siehe unten)
 
 `make doctor` prüft die Werkzeuge.
@@ -81,10 +83,10 @@ docs                  Sprint-Reviews, bisheriges Anmeldeformular (Word)
 ```sh
 cp .env.example .env        # Werte eintragen (siehe info.md)
 make install
-make dev                    # Server :8080, Public :5174, Sekretariat :5173
+make dev                    # Server :23180, Public :8954, Sekretariat :8944
 ```
 
-Im Sekretariat (http://localhost:5173) anmelden, unter „Einstellungen“ die Site
+Im Sekretariat (http://localhost:8944) anmelden, unter „Einstellungen“ die Site
 initialisieren, unter „Formulare“ das Schulformular anlegen, unter „Verfahren“
 ein Verfahren anlegen, unter „Termine“ Termine erzeugen und veröffentlichen.
 
@@ -94,15 +96,19 @@ ein Verfahren anlegen, unter „Termine“ Termine erzeugen und veröffentlichen
 
 | Target | Zweck |
 |---|---|
-| `make build` / `make dist` | SPAs und Server bauen / Artefakte in `dist/` sammeln |
+| `make build` / `make dist` | Sekretariat und Server mit eingebetteter Anmeldeseite bauen / nach `dist/` |
 | `make check` | Typprüfung, Rust-Lints, Formatierung |
 | `make test` | Unit-Tests (TypeScript, Rust) |
 | `make test-integration` | gegen die SharePoint-Test-Site |
 | `make test-e2e` | Browser-Tests (headless Chromium, M365-Testbenutzer) |
 | `make test-mail` | eine Testbuchung → genau eine Mail an `MAIL_TEST_TO` |
-| `make test-svws` | SVWS-Adapter gegen den laufenden SVWS-Testserver |
+| `make test-svws` | SVWS-Adapter gegen den SVWS-Server aus `.env` |
 | `make generate` | Kataloge und PDF-Vorlage neu erzeugen |
-| `make svws-init` / `svws-up` / `svws-down` | SVWS-Testserver (siehe unten) |
+| `make clean` | alles Erzeugte löschen, auch `node_modules` und `server/target` |
+
+Einzelne Befehle ohne Make: `pnpm dev:server`, `pnpm dev:public`, `pnpm dev:secretariat`.
+Die Tests liegen unter `tests/` (`integration`, `e2e`, `svws`, `mail`) und laufen mit
+Vitest gegen die echten Systeme, nacheinander statt parallel.
 
 ## Konfiguration
 
@@ -128,9 +134,19 @@ importiert/exportiert (keine Geheimnisse).
 
 **Öffentlicher Server** (Umgebungsvariablen, sonst `.env`): `TENANT_ID`,
 `DAEMON_CLIENT_ID`, `DAEMON_CLIENT_SECRET`, `SHAREPOINT_ID`, `BIND_ADDR`
-(Standard `127.0.0.1:8080`), `WORKERS`, `TRUST_PROXY=1` hinter einem
-Reverse-Proxy, `MAIL_DISABLED`, `MAIL_REDIRECT` (Tests). Der Server muss in der
-Zeitzone der Schule laufen (z. B. `TZ=Europe/Berlin`).
+(Standard `127.0.0.1:23180`), `WORKERS`, `TRUST_PROXY=1` hinter einem
+Reverse-Proxy, `FRAME_ANCESTORS` (wer die Anmeldeseite in einem Frame einbinden
+darf, Standard `'self'`, z. B. `'self' https://www.schule.de`), `MAIL_DISABLED`,
+`MAIL_REDIRECT` (Tests). Der Server muss in der Zeitzone der Schule laufen
+(z. B. `TZ=Europe/Berlin`).
+
+**Bau und Betrieb:** `make dist` erzeugt `dist/anmeldung-server` und
+`dist/secretariat/`. Beim Bau des Servers wird `apps/public/dist` in das Binary
+eingebettet (`server/build.rs`); im Betrieb braucht es keine weiteren Dateien.
+Der Server liefert die Seite mit CSP, `nosniff` und `no-referrer`, `index.html`
+ohne Cache, die gehashten Dateien unter `/assets/` dauerhaft cachebar.
+Unbekannte Pfade ohne Dateiendung bekommen `index.html`. Ein reines
+`cargo build` ohne gebaute Seite liefert nur die API (Entwicklung über Vite).
 
 ## Microsoft 365
 
@@ -143,33 +159,23 @@ Zeitzone der Schule laufen (z. B. `TZ=Europe/Berlin`).
 - Empfehlung: In der Liste `Applications` die Berechtigung auf Elementebene auf
   „Nur eigene Elemente lesen“ setzen.
 
-## SVWS-/SchILD-NRW-Testserver
+## SVWS / SchILD-NRW
 
-Für die spätere Übertragung in die Schuldatenbank startet `make` den offiziellen
-**SVWS-Server** (`svwsnrw/svws-server`, REST-API und Web-Client, Serverseite von
-SchILD-NRW 3) mit **MariaDB** als rootless Docker-Container – nur auf `localhost`.
+Die Übertragung in die Schuldatenbank läuft über die REST-API des
+**SVWS-Servers** (Serverseite von SchILD-NRW 3). Für Entwicklung und Tests wird
+ein vorhandener SVWS-Server mit der offiziellen Testschule „Albert Zweistein
+Gymnasium“ (Schema `gymabi`, Benutzer `Admin` ohne Passwort) verwendet.
+Standard ist `https://localhost:8443`; abweichend in `.env`: `SVWS_URL`,
+`SVWS_SCHEMA`, `SVWS_USER`, `SVWS_PASSWORD`.
 
-```sh
-make svws-init     # Images laden, erster Start mit der Testschule (GymAbi)
-make svws-check    # API-Test: Version und Stammdaten der Testschule
-make svws-up       # weitere Starts, Daten bleiben erhalten
-make svws-logs     # Log verfolgen
-make svws-down     # stoppen
-make svws-reset    # alle SVWS-/MariaDB-Daten löschen
-```
-
-- Web-Client und API: https://localhost:8443 (selbstsigniertes Zertifikat)
-- Testschule „Albert Zweistein Gymnasium“ (Schema `gymabi`), Benutzer `Admin` ohne Passwort
-- Zugangsdaten der Datenbank: `docker/svws/.env` (wird mit Zufallspasswörtern erzeugt)
-- SchILD-NRW 3 (Windows-Client) kann sich mit diesem SVWS-Server verbinden.
 - Für den Weg „Browser → SVWS“ muss im SVWS-Server CORS erlaubt sein
   (`UseCORSHeader` in `svwsconfig.json`), sonst „Browser → CORS-Proxy → SVWS“ wählen.
+  Der Entwicklungsserver des Sekretariats leitet `/svws-proxy` an `SVWS_URL` weiter.
 
 **Übertragung aus dem Sekretariat** (SVWS-Adapter):
 1. Einstellungen → SVWS: Adresse, Verbindung und **Datenbank-Schema** der Schule
-   (Testserver: `https://localhost:8443`, Verbindung „Browser → CORS-Proxy“,
-   Proxy-Adresse `http://localhost:5173/svws-proxy` – der Entwicklungsserver leitet weiter –,
-   Schema `gymabi`); optional das Schuljahr der Neuaufnahmen.
+   (Entwicklung: `https://localhost:8443`, Verbindung „Browser → CORS-Proxy“,
+   Proxy-Adresse `http://localhost:8944/svws-proxy`, Schema `gymabi`); optional das Schuljahr der Neuaufnahmen.
 2. Anmeldungen → freigegebene Anmeldungen auswählen → „Ausgewählte an SVWS übertragen …“ →
    SVWS-Benutzer und Passwort (werden nicht gespeichert) → „Verbindung prüfen“ → übertragen.
 3. Angelegt werden Schüler (Status Aufnahme, Jahrgang 05), Stammdaten mit Adresse, Herkunft,
@@ -178,10 +184,7 @@ make svws-reset    # alle SVWS-/MariaDB-Daten löschen
    übertragene Anmeldungen erhalten den Status „In SVWS übernommen“ und die Schüler-ID;
    eine zweite Übertragung wird verhindert.
 
-`make test-svws` prüft den Adapter gegen den laufenden Testserver.
-
-Version und Ports lassen sich in `docker/svws/.env` ändern (`SVWS_VERSION`,
-`SVWS_PORT`, `MARIADB_PORT`).
+`make test-svws` prüft den Adapter gegen den SVWS-Server aus `.env`.
 
 ## Sicherheit und Datenschutz
 

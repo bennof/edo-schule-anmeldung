@@ -170,17 +170,19 @@
     .tools input[type='search'] {
         flex: 1;
         min-width: 16rem;
-        padding: 0.4rem 0.6rem;
+        border-radius: 999px;
+        padding: 0.6rem 1rem;
+        background: var(--surface);
     }
     .svws {
         display: flex;
         flex-wrap: wrap;
         gap: 0.5rem 1rem;
         align-items: center;
-        background: #f4f6fa;
-        border-radius: 6px;
-        padding: 0.6rem 0.8rem;
-        margin: 0.75rem 0;
+        background: var(--surface);
+        border-radius: var(--radius-lg);
+        padding: 0.75rem 1rem;
+        margin: 1rem 0;
     }
     .svws :global([data-testid='svws-dialog']) {
         flex-basis: 100%;
@@ -192,15 +194,21 @@
         margin: 0.75rem 0;
     }
     .chip {
-        border: 1px solid #ccc;
+        border: 1px solid var(--border);
         border-radius: 999px;
-        padding: 0.15rem 0.6rem;
-        font-size: 0.85rem;
-        background: white;
-        color: inherit;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.82rem;
+        font-weight: 400;
+        background: transparent;
+        color: var(--text);
+    }
+    .chip:hover:not(:disabled) {
+        background: var(--surface-2);
+        opacity: 1;
     }
     .chip[aria-pressed='true'] {
-        background: #dde8fb;
-        border-color: #2456a6;
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-text);
     }
 </style>
