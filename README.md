@@ -78,6 +78,14 @@ docs                  Sprint-Reviews, bisheriges Anmeldeformular (Word)
 
 `make doctor` prüft die Werkzeuge.
 
+**Windows:** Das Makefile braucht bash und GNU-Werkzeuge, also WSL (oder Git Bash
+mit make). Ohne Make baut `pnpm build` alles in der richtigen Reihenfolge
+(SPAs, dann `server/target/release/anmeldung-server.exe` mit eingebetteter
+Anmeldeseite; Rust mit MSVC-Toolchain). Ebenso laufen `pnpm dev:server`, `pnpm dev:public`,
+`pnpm dev:secretariat` sowie die Tests (`pnpm exec vitest run --config
+tests/vitest.config.ts tests/…`) auch direkt unter Windows. Der Server läuft dort
+in der Zeitzone des Systems (`TZ` wird unter Windows nicht beachtet).
+
 ## Schnellstart
 
 ```sh

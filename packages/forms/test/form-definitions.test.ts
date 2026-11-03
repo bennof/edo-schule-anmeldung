@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { checkFormDefinition } from '../src/check.ts';
 import type { FormJson } from '../src/types.ts';
 import { validateFormDefinition } from '../src/validate-definition.ts';
-const dir = path.dirname(new URL(import.meta.url).pathname);
+const dir = path.dirname(fileURLToPath(import.meta.url));
 
 function load(sub: string): [string, unknown][] {
     const d = path.join(dir, sub);

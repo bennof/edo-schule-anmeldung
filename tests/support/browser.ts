@@ -1,6 +1,10 @@
 // Starts the apps for the tests and drives the browser (Playwright, headless Chromium).
-import { execSync, spawn, type ChildProcess } from 'node:child_process';
+import { execSync, spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
 import { chromium, type Browser, type Page } from 'playwright-core';
+
+const WINDOWS = process.platform === 'win32';
 
 export const URLS = { secretariat: 'http://localhost:8944', public: 'http://localhost:8954' } as const;
 
@@ -10,17 +14,10 @@ export const API_PORT = 23180;
 /** Starts a SPA dev server unless one is already running on its port. */
 export async function startDevServer(app: keyof typeof URLS): Promise<() => void> {
     if (await isUp(URLS[app])) return () => {};
-    const child: ChildProcess = spawn('pnpm', ['--filter', `@anmeldung/${app}`, 'dev'], { stdio: 'ignore', detached: true });
+    // pnpm is a .cmd script on Windows and needs a shell there
+    const child: ChildProcess = spawn('pnpm', ['--filter', `@anmeldung/${app}`, 'dev'], { stdio: 'ignore', detached: !WINDOWS, shell: WINDOWS });
     for (let i = 0; i < 60; i++) {
-        if (await isUp(URLS[app])) {
-            return () => {
-                try {
-                    process.kill(-child.pid!);
-                } catch {
-                    // already gone
-                }
-            };
-        }
+        if (await isUp(URLS[app])) return () => killTree(child);
         await new Promise((r) => setTimeout(r, 500));
     }
     throw new Error(`${app} dev server did not start`);
@@ -37,9 +34,12 @@ export interface ApiServer {
 /** Builds and starts the Rust public server. Mails are disabled unless `env` says otherwise. */
 export async function startApiServer(options: { port?: number; env?: Record<string, string> } = {}): Promise<ApiServer> {
     const port = options.port ?? API_PORT;
-    const env = { ...process.env, PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH}` };
+    // cargo from rustup is not always on PATH; Windows calls the variable "Path"
+    const pathKey = Object.keys(process.env).find((k) => k.toUpperCase() === 'PATH') ?? 'PATH';
+    const env = { ...process.env, [pathKey]: [path.join(os.homedir(), '.cargo', 'bin'), process.env[pathKey]].join(path.delimiter) };
     execSync('cargo build -q', { cwd: 'server', stdio: 'inherit', env });
-    const child = spawn('./target/debug/anmeldung-server', {
+    const binary = path.resolve('server', 'target', 'debug', WINDOWS ? 'anmeldung-server.exe' : 'anmeldung-server');
+    const child = spawn(binary, {
         cwd: 'server',
         env: { ...env, MAIL_DISABLED: '1', BIND_ADDR: `127.0.0.1:${port}`, ...options.env },
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -54,6 +54,17 @@ export async function startApiServer(options: { port?: number; env?: Record<stri
         throw new Error(`public server did not start: ${log.slice(-500)}`);
     }
     return { api, log: () => log, stop: () => child.kill() };
+}
+
+/** Stops a process with everything it started (the dev server runs below pnpm). */
+function killTree(child: ChildProcess): void {
+    if (!child.pid) return;
+    try {
+        if (WINDOWS) spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+        else process.kill(-child.pid);
+    } catch {
+        // already gone
+    }
 }
 
 async function isUp(url: string): Promise<boolean> {

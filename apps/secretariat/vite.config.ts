@@ -1,5 +1,6 @@
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 
 // Only these non-secret keys from the repository .env reach browser code.
@@ -16,7 +17,7 @@ function readEnv(file: string): Record<string, string> {
     return env;
 }
 
-const env = readEnv(new URL('../../.env', import.meta.url).pathname);
+const env = readEnv(fileURLToPath(new URL('../../.env', import.meta.url)));
 const clientConfig = Object.fromEntries(PUBLIC_KEYS.map((k) => [k, env[k] ?? '']));
 
 export default defineConfig({

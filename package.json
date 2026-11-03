@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm -r build && pnpm build:server",
+    "build:server": "cargo build --release --manifest-path server/Cargo.toml",
     "check": "pnpm -r check",
     "test": "pnpm -r test",
     "dev:public": "pnpm --filter @anmeldung/public dev",
