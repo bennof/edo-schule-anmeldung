@@ -15,5 +15,6 @@
   "dependencies": {
     "@anmeldung/forms": "workspace:*"
   },
+  "author": "Benjamin Benno Falkner <benno@falkner.xyz>",
   "license": "MIT"
 }

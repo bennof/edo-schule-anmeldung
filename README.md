@@ -240,6 +240,13 @@ Standard ist `https://localhost:8443`; abweichend in `.env`: `SVWS_URL`,
 - Familien erhalten einen Zugangsschlüssel für ihre Anmeldung; gespeichert wird nur dessen Hash
 - Secrets nie im Browser-Code (geprüft in den Tests), `.env` ist Testinfrastruktur
 
+## Autor
+
+Benjamin Benno Falkner, <benno@falkner.xyz>, [github.com/bennof](https://github.com/bennof)
+
+Bei der Entwicklung wurde KI eingesetzt: Teile von Code, vor allem Tests und
+Dokumentation sind mit KI entstanden.
+
 ## Lizenz
 
 [MIT](LICENSE). Mitgelieferte Schrift: DejaVu Sans

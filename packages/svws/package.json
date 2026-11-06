@@ -10,5 +10,6 @@
     "check": "tsc -p .",
     "test": "vitest run"
   },
+  "author": "Benjamin Benno Falkner <benno@falkner.xyz>",
   "license": "MIT"
 }

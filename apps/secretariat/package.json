@@ -18,5 +18,6 @@
     "@anmeldung/pdf": "workspace:*",
     "@anmeldung/svws": "workspace:*"
   },
+  "author": "Benjamin Benno Falkner <benno@falkner.xyz>",
   "license": "MIT"
 }

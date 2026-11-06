@@ -2,6 +2,7 @@
 name = "anmeldung-desktop"
 version = "0.1.0"
 edition = "2024"
+authors = ["Benjamin Benno Falkner <benno@falkner.xyz>"]
 publish = false
 license = "MIT"
 
