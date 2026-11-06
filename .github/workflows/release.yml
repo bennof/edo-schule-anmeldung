@@ -19,8 +19,8 @@ jobs:
   version:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Tag matches the versions in Cargo.toml, package.json and tauri.conf.json
@@ -31,8 +31,8 @@ jobs:
     needs: [ci, version]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - run: npm install -g pnpm@$PNPM_VERSION
@@ -42,15 +42,15 @@ jobs:
           mkdir out
           (cd apps/secretariat/dist && zip -qr ../../../out/edo-anmeldung-web.zip .)
           (cd scripts/tenant && zip -q ../../out/edo-anmeldung-tenant-setup.zip setup-tenant.ps1 sharepoint-schema.json)
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-web
           path: out/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: public-dist
           path: apps/public/dist/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: secretariat-dist
           path: apps/secretariat/dist/
@@ -64,8 +64,8 @@ jobs:
           - { arch: arm64, runner: ubuntu-24.04-arm, target: aarch64-unknown-linux-musl }
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: public-dist
           path: apps/public/dist
@@ -83,7 +83,7 @@ jobs:
           bin=server/target/${{ matrix.target }}/release/edo-anmeldung-server
           cp "$bin" out/edo-anmeldung-server-linux-${{ matrix.arch }}
           packaging/build-deb.sh "$bin" "${GITHUB_REF_NAME#v}" ${{ matrix.arch }} out
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-server-${{ matrix.arch }}
           path: out/
@@ -104,8 +104,8 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends ca-certificates curl build-essential pkg-config \
             libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-      - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: secretariat-dist
           path: apps/secretariat/dist
@@ -116,7 +116,7 @@ jobs:
       - run: cargo build --release --locked
         working-directory: desktop
       - run: mkdir out && cp desktop/target/release/edo-anmeldung out/edo-anmeldung-linux-${{ matrix.arch }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-desktop-linux-${{ matrix.arch }}
           path: out/
@@ -128,8 +128,8 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: secretariat-dist
           path: apps/secretariat/dist
@@ -141,7 +141,7 @@ jobs:
       - run: cargo build --release --locked
         working-directory: desktop
       - run: mkdir out && cp desktop/target/release/edo-anmeldung.exe out/edo-anmeldung.exe
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-desktop-windows
           path: out/
@@ -149,13 +149,13 @@ jobs:
   # .app in a .dmg, universal (Apple Silicon and Intel), not signed
   desktop-macos:
     needs: web
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: secretariat-dist
           path: apps/secretariat/dist
@@ -163,7 +163,7 @@ jobs:
       - run: npx --yes @tauri-apps/cli@2 build --target universal-apple-darwin --bundles dmg --config '{"bundle":{"active":true}}'
         working-directory: desktop
       - run: mkdir out && cp desktop/target/universal-apple-darwin/release/bundle/dmg/*.dmg out/edo-anmeldung.dmg
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-desktop-macos
           path: out/
@@ -174,7 +174,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: release-*
           path: out
