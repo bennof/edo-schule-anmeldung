@@ -71,7 +71,7 @@ scripts               daemon-permissions (Listenrechte der Daemon-App), check-ve
 scripts/tenant        setup-tenant.ps1: Einrichtung eines Tenants; sharepoint-schema.json
 packaging             Debian-Paket des Servers: systemd-Dienst, config.env, build-deb.sh
 .github/workflows     CI (jeder Push) und Release (Tag vX.Y.Z)
-docs                  Sprint-Reviews, bisheriges Anmeldeformular (Word)
+docs                  Sprint-Reviews, Logo; bisheriges Anmeldeformular (Word) nur lokal in docs/reference/
 ```
 
 ## Voraussetzungen

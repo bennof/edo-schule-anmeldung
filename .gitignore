@@ -7,3 +7,6 @@ target/
 *.log
 test-output/
 desktop/gen/
+
+# the school's previous Word form: local only (packages/forms/test/school-form.test.ts)
+docs/reference/

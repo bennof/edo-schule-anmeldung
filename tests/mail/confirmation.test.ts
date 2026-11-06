@@ -24,9 +24,10 @@ let booking: { applicationId: string; token: string } | undefined;
 
 beforeAll(async () => {
     assert(env.MAIL_TEST_TO, 'MAIL_TEST_TO missing in .env');
+    assert(env.MAIL_SENDER, 'MAIL_SENDER missing in .env');
     await provision(site);
     for (const [key, value] of [
-        ['mailSender', 'anmeldung@schule.de'],
+        ['mailSender', env.MAIL_SENDER],
         ['publicUrl', URLS.public],
     ] as const) {
         if (!(await config.get(key))) await config.set(key, value, false);
