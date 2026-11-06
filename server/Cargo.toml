@@ -1,5 +1,5 @@
 [package]
-name = "anmeldung-server"
+name = "edo-anmeldung-server"
 version = "0.1.0"
 edition = "2024"
 authors = ["Benjamin Benno Falkner <benno@falkner.xyz>"]

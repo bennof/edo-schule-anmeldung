@@ -67,8 +67,10 @@ packages/svws         SVWS-Adapter: Transportwege, Kataloge, Mapping, Übertragu
 server                öffentlicher Server (Rust: tiny_http, ureq)
 desktop               Sekretariat als Desktop-App (Tauri) mit SVWS-Proxy
 tests                 Integrations-, Browser-, SVWS- und Mailtests (Vitest)
-scripts               daemon-permissions: Listenrechte der Daemon-App
+scripts               daemon-permissions (Listenrechte der Daemon-App), check-version (Release)
 scripts/tenant        setup-tenant.ps1: Einrichtung eines Tenants; sharepoint-schema.json
+packaging             Debian-Paket des Servers: systemd-Dienst, config.env, build-deb.sh
+.github/workflows     CI (jeder Push) und Release (Tag vX.Y.Z)
 docs                  Sprint-Reviews, bisheriges Anmeldeformular (Word)
 ```
 
@@ -84,8 +86,8 @@ docs                  Sprint-Reviews, bisheriges Anmeldeformular (Word)
 
 **Windows:** Das Makefile braucht bash und GNU-Werkzeuge, also WSL (oder Git Bash
 mit make). Ohne Make baut `pnpm build` alles in der richtigen Reihenfolge
-(SPAs, dann `server/target/release/anmeldung-server.exe` mit eingebetteter
-Anmeldeseite und `desktop/target/release/anmeldung-desktop.exe` mit eingebettetem
+(SPAs, dann `server/target/release/edo-anmeldung-server.exe` mit eingebetteter
+Anmeldeseite und `desktop/target/release/edo-anmeldung.exe` mit eingebettetem
 Sekretariat; Rust mit MSVC-Toolchain). `.cargo/config.toml` linkt die C-Laufzeit
 statisch, beide sind einzelne `.exe` ohne weitere Dateien (die Desktop-App nutzt
 das in Windows 10/11 enthaltene WebView2). Ebenso laufen `pnpm dev:server`, `pnpm dev:public`,
@@ -112,6 +114,7 @@ ein Verfahren anlegen, unter „Termine“ Termine erzeugen und veröffentlichen
 | Target | Zweck |
 |---|---|
 | `make build` / `make dist` | Sekretariat, Server (mit Anmeldeseite) und Desktop-App bauen / nach `dist/` |
+| `make deb` | Debian-Paket des Servers nach `dist/` (arm64: `MUSL=aarch64-unknown-linux-musl DEB_ARCH=arm64`) |
 | `make check` | Typprüfung, Rust-Lints, Formatierung |
 | `make test` | Unit-Tests (TypeScript, Rust) |
 | `make test-integration` | gegen die SharePoint-Test-Site |
@@ -155,14 +158,35 @@ darf, Standard `'self'`, z. B. `'self' https://www.schule.de`), `MAIL_DISABLED`,
 `MAIL_REDIRECT` (Tests). Der Server muss in der Zeitzone der Schule laufen
 (z. B. `TZ=Europe/Berlin`).
 
-**Bau und Betrieb:** `make dist` erzeugt `dist/anmeldung-server` (unter Linux
-statisch gegen musl gelinkt, läuft auf jeder Distribution), `dist/anmeldung-desktop`
+**Bau und Betrieb:** `make dist` erzeugt `dist/edo-anmeldung-server` (unter Linux
+statisch gegen musl gelinkt, läuft auf jeder Distribution), `dist/edo-anmeldung`
 und `dist/secretariat/`. Beim Bau des Servers wird `apps/public/dist` in das Binary
 eingebettet (`server/build.rs`); im Betrieb braucht es keine weiteren Dateien.
 Der Server liefert die Seite mit CSP, `nosniff` und `no-referrer`, `index.html`
 ohne Cache, die gehashten Dateien unter `/assets/` dauerhaft cachebar.
 Unbekannte Pfade ohne Dateiendung bekommen `index.html`. Ein reines
 `cargo build` ohne gebaute Seite liefert nur die API (Entwicklung über Vite).
+
+**Server als Debian-Paket** (`edo-anmeldung-server_<version>_<amd64|arm64>.deb`,
+Debian 12/13, Ubuntu 22.04/24.04):
+
+```sh
+sudo apt install ./edo-anmeldung-server_*.deb
+sudoedit /etc/edo-anmeldung-server/config.env    # Werte aus <name>.env von setup-tenant.ps1
+sudo systemctl enable --now edo-anmeldung-server
+journalctl -u edo-anmeldung-server -f
+```
+
+Das Paket legt den Systembenutzer `edo-anmeldung-server` an und installiert
+`/usr/bin/edo-anmeldung-server` und den Dienst
+[`packaging/edo-anmeldung-server.service`](packaging/edo-anmeldung-server.service).
+Der Dienst wird **nicht** automatisch aktiviert. Die Einstellungen stehen in
+`/etc/edo-anmeldung-server/config.env` (nur für root lesbar, Vorlage:
+[`packaging/config.env`](packaging/config.env)); systemd liest sie beim Start,
+`TZ=Europe/Berlin` ist voreingestellt. Ein Update behält die Einstellungen und
+startet einen laufenden Dienst neu; `apt purge` entfernt Einstellungen und Benutzer.
+Der Dienst läuft ohne Rechte und mit systemd-Härtung (kein Schreibzugriff aufs
+System, keine Capabilities); für Port 80/443 einen Reverse-Proxy davorsetzen.
 
 ## Desktop-App (Sekretariat)
 
@@ -180,6 +204,27 @@ WebViews, getrennt vom Browser.
 `make dev-desktop` startet sie (braucht einen Bildschirm). Unter Windows ist sie
 eine einzelne `.exe`; unter Linux braucht sie WebKitGTK (glibc), kann daher
 nicht statisch gebaut werden.
+
+## Releases
+
+Jeder Push: `make check` und `make test` (GitHub Actions, `.github/workflows/ci.yml`;
+nur Tests ohne Tenant und Zugangsdaten). Ein Tag `vX.Y.Z` startet
+`.github/workflows/release.yml`:
+
+1. Prüfung, dass der Tag zu allen Versionen passt (`node scripts/check-version.ts vX.Y.Z`:
+   `Cargo.toml`, `tauri.conf.json`, `package.json`), dann Checks und Tests
+2. Bau aller Dateien, Prerelease mit `SHA256SUMS` und automatisch erzeugten Release-Notes
+3. Nach Freigabe in der GitHub-Umgebung `release` wird das Prerelease zum Release
+
+| Datei | Inhalt |
+|---|---|
+| `edo-anmeldung-server-linux-<amd64\|arm64>` | Server, statisch (musl) |
+| `edo-anmeldung-server_<version>_<amd64\|arm64>.deb` | Server mit systemd-Dienst |
+| `edo-anmeldung-linux-<amd64\|arm64>` | Desktop-App, braucht WebKitGTK 4.1 (`libwebkit2gtk-4.1-0`); gebaut auf Debian 12 |
+| `edo-anmeldung.exe` | Desktop-App Windows (WebView2; ohne Signatur warnt SmartScreen) |
+| `edo-anmeldung.dmg` | Desktop-App macOS, Apple Silicon und Intel (ohne Signatur: beim ersten Start erlauben) |
+| `edo-anmeldung-web.zip` | Sekretariat als statische Dateien, ohne Tenant (Einrichtung über das Zahnrad) |
+| `edo-anmeldung-tenant-setup.zip` | `setup-tenant.ps1` und `sharepoint-schema.json` |
 
 ## Microsoft 365
 

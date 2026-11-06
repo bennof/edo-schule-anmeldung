@@ -19,7 +19,10 @@ DESKTOP := desktop
 DIST    := dist
 # Linux: server as a static musl binary (single file, runs on any distribution)
 MUSL    := x86_64-unknown-linux-musl
-SERVER_BIN := $(SERVER)/target/$(MUSL)/release/anmeldung-server
+SERVER_BIN := $(SERVER)/target/$(MUSL)/release/edo-anmeldung-server
+# Debian package architecture matching MUSL (aarch64-unknown-linux-musl: arm64)
+DEB_ARCH := amd64
+VERSION := $(shell sed -n 's/^version = "\(.*\)"/\1/p' $(SERVER)/Cargo.toml | head -1)
 VITEST  := $(PNPM) exec vitest run --config tests/vitest.config.ts
 
 ##@ Overview
@@ -68,12 +71,16 @@ build-server: build-public ## Build the server (static musl); the registration p
 build-desktop: build-secretariat ## Build the desktop app; the secretariat is embedded
 	cd $(DESKTOP) && $(CARGO) build --release
 
+.PHONY: deb
+deb: build-server ## Debian package of the server in dist/ (arm64: MUSL=aarch64-unknown-linux-musl DEB_ARCH=arm64)
+	packaging/build-deb.sh $(SERVER_BIN) $(VERSION) $(DEB_ARCH) $(DIST)
+
 .PHONY: dist
 dist: build ## Collect deployable artifacts in dist/
 	rm -rf $(DIST) && mkdir -p $(DIST)
 	cp -r apps/secretariat/dist $(DIST)/secretariat
-	cp $(SERVER_BIN) $(DESKTOP)/target/release/anmeldung-desktop $(DIST)/
-	@echo "dist/: anmeldung-server (API + registration page), anmeldung-desktop (secretariat app), secretariat/ (static files)"
+	cp $(SERVER_BIN) $(DESKTOP)/target/release/edo-anmeldung $(DIST)/
+	@echo "dist/: edo-anmeldung-server (API + registration page), edo-anmeldung (secretariat app), secretariat/ (static files)"
 
 .PHONY: generate
 generate: install ## Regenerate catalogs and the PDF template

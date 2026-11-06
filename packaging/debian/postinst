@@ -1,0 +1,19 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+    if ! getent passwd edo-anmeldung-server >/dev/null; then
+        useradd --system --user-group --no-create-home --home-dir /nonexistent \
+            --shell /usr/sbin/nologin edo-anmeldung-server
+    fi
+    chown root:root /etc/edo-anmeldung-server/config.env
+    chmod 600 /etc/edo-anmeldung-server/config.env
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload >/dev/null || true
+        # an update restarts a running server, a new install does not start it
+        if systemctl is-active --quiet edo-anmeldung-server; then systemctl restart edo-anmeldung-server; fi
+    fi
+    if [ -z "$2" ]; then
+        echo "edo-anmeldung-server: settings in /etc/edo-anmeldung-server/config.env,"
+        echo "then: systemctl enable --now edo-anmeldung-server"
+    fi
+fi

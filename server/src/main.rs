@@ -38,7 +38,7 @@ fn main() {
         eprintln!("cannot bind {}: {e}", settings.bind_addr);
         std::process::exit(1);
     }));
-    println!("anmeldung-server listening on http://{}", settings.bind_addr);
+    println!("edo-anmeldung-server listening on http://{}", settings.bind_addr);
     if !public::embedded() {
         println!("registration page not embedded (built without `make build`): API only");
     }

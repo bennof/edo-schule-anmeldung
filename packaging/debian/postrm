@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+if [ -d /run/systemd/system ]; then systemctl daemon-reload >/dev/null || true; fi
+if [ "$1" = purge ]; then
+    rm -rf /etc/edo-anmeldung-server
+    if getent passwd edo-anmeldung-server >/dev/null; then userdel edo-anmeldung-server || true; fi
+fi

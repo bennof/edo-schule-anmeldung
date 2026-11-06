@@ -1,0 +1,47 @@
+# systemd service of the registration server (API and registration page).
+# Installed by the Debian package, not enabled automatically:
+#   sudoedit /etc/edo-anmeldung-server/config.env
+#   sudo systemctl enable --now edo-anmeldung-server
+[Unit]
+Description=edo-anmeldung-server: Online-Anmeldung (API und Anmeldeseite)
+Documentation=https://github.com/bennof/edo-schule-anmeldung
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=edo-anmeldung-server
+Group=edo-anmeldung-server
+# read by systemd as root; values here override the defaults below
+EnvironmentFile=/etc/edo-anmeldung-server/config.env
+Environment=TZ=Europe/Berlin
+# all settings come from the environment, the server reads no .env file
+Environment=ENV_FILE=/dev/null
+ExecStart=/usr/bin/edo-anmeldung-server
+Restart=on-failure
+RestartSec=5
+
+# hardening: the server only needs outgoing HTTPS and its listening socket
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

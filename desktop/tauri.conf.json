@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Anmeldung Sekretariat",
+  "productName": "edo-anmeldung",
   "version": "0.1.0",
   "identifier": "de.anmeldung.sekretariat",
   "build": {},

@@ -18,19 +18,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anmeldung-server"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "getrandom 0.3.4",
- "serde",
- "serde_json",
- "sha2",
- "tiny_http",
- "ureq",
-]
-
-[[package]]
 name = "ascii"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -199,6 +186,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4b8a88685455ed29a21542a33abd9cb6510b6b129abadabdcef0f4c55bc8f61"
 dependencies = [
  "litrs",
+]
+
+[[package]]
+name = "edo-anmeldung-server"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "getrandom 0.3.4",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tiny_http",
+ "ureq",
 ]
 
 [[package]]

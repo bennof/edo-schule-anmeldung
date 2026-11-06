@@ -38,7 +38,7 @@ export async function startApiServer(options: { port?: number; env?: Record<stri
     const pathKey = Object.keys(process.env).find((k) => k.toUpperCase() === 'PATH') ?? 'PATH';
     const env = { ...process.env, [pathKey]: [path.join(os.homedir(), '.cargo', 'bin'), process.env[pathKey]].join(path.delimiter) };
     execSync('cargo build -q', { cwd: 'server', stdio: 'inherit', env });
-    const binary = path.resolve('server', 'target', 'debug', WINDOWS ? 'anmeldung-server.exe' : 'anmeldung-server');
+    const binary = path.resolve('server', 'target', 'debug', WINDOWS ? 'edo-anmeldung-server.exe' : 'edo-anmeldung-server');
     const child = spawn(binary, {
         cwd: 'server',
         env: { ...env, MAIL_DISABLED: '1', BIND_ADDR: `127.0.0.1:${port}`, ...options.env },

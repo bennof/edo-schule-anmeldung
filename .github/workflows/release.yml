@@ -1,0 +1,199 @@
+# Tag vX.Y.Z: checks and tests, build all artifacts, publish a prerelease.
+# After approval in the "release" environment the prerelease becomes final.
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+env:
+  PNPM_VERSION: 12.8.1
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  version:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Tag matches the versions in Cargo.toml, package.json and tauri.conf.json
+        run: node scripts/check-version.ts "$GITHUB_REF_NAME"
+
+  # SPAs (embedded in server and desktop app), web zip, tenant setup zip
+  web:
+    needs: [ci, version]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: npm install -g pnpm@$PNPM_VERSION
+      - run: make build-public build-secretariat
+      - name: Zips
+        run: |
+          mkdir out
+          (cd apps/secretariat/dist && zip -qr ../../../out/edo-anmeldung-web.zip .)
+          (cd scripts/tenant && zip -q ../../out/edo-anmeldung-tenant-setup.zip setup-tenant.ps1 sharepoint-schema.json)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-web
+          path: out/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-dist
+          path: apps/public/dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: secretariat-dist
+          path: apps/secretariat/dist/
+
+  server:
+    needs: web
+    strategy:
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-24.04, target: x86_64-unknown-linux-musl }
+          - { arch: arm64, runner: ubuntu-24.04-arm, target: aarch64-unknown-linux-musl }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: public-dist
+          path: apps/public/dist
+      - run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - run: rustup toolchain install stable --profile minimal --target ${{ matrix.target }} && rustup default stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server -> target
+          key: ${{ matrix.target }}
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+        working-directory: server
+      - name: Binary and Debian package
+        run: |
+          mkdir out
+          bin=server/target/${{ matrix.target }}/release/edo-anmeldung-server
+          cp "$bin" out/edo-anmeldung-server-linux-${{ matrix.arch }}
+          packaging/build-deb.sh "$bin" "${GITHUB_REF_NAME#v}" ${{ matrix.arch }} out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-server-${{ matrix.arch }}
+          path: out/
+
+  # built on Debian 12 (oldstable): runs on Debian 12/13 and Ubuntu 22.04/24.04
+  desktop-linux:
+    needs: web
+    strategy:
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-24.04 }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.runner }}
+    container: debian:bookworm
+    steps:
+      - name: System packages
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl build-essential pkg-config \
+            libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: secretariat-dist
+          path: apps/secretariat/dist
+      - name: Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - run: cargo build --release --locked
+        working-directory: desktop
+      - run: mkdir out && cp desktop/target/release/edo-anmeldung out/edo-anmeldung-linux-${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-desktop-linux-${{ matrix.arch }}
+          path: out/
+
+  desktop-windows:
+    needs: web
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: secretariat-dist
+          path: apps/secretariat/dist
+      - run: rustup toolchain install stable --profile minimal && rustup default stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop -> target
+      # static CRT via .cargo/config.toml: one exe without Visual C++ runtime
+      - run: cargo build --release --locked
+        working-directory: desktop
+      - run: mkdir out && cp desktop/target/release/edo-anmeldung.exe out/edo-anmeldung.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-desktop-windows
+          path: out/
+
+  # .app in a .dmg, universal (Apple Silicon and Intel), not signed
+  desktop-macos:
+    needs: web
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          name: secretariat-dist
+          path: apps/secretariat/dist
+      - run: rustup toolchain install stable --profile minimal --target aarch64-apple-darwin --target x86_64-apple-darwin && rustup default stable
+      - run: npx --yes @tauri-apps/cli@2 build --target universal-apple-darwin --bundles dmg --config '{"bundle":{"active":true}}'
+        working-directory: desktop
+      - run: mkdir out && cp desktop/target/universal-apple-darwin/release/bundle/dmg/*.dmg out/edo-anmeldung.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-desktop-macos
+          path: out/
+
+  prerelease:
+    needs: [web, server, desktop-linux, desktop-windows, desktop-macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: out
+          merge-multiple: true
+      - run: cd out && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - run: gh release create "$GITHUB_REF_NAME" out/* --prerelease --generate-notes --title "edo-anmeldung $GITHUB_REF_NAME" --verify-tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+
+  # waits for approval in the "release" environment (Settings > Environments)
+  release:
+    needs: prerelease
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - run: gh release edit "$GITHUB_REF_NAME" --prerelease=false --latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
