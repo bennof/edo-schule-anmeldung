@@ -8,9 +8,24 @@ export interface FileHandler {
     /** omitted when files cannot be removed (e.g. after submission) */
     remove?(ref: FileRef): Promise<void>;
 }
-import { getContext, setContext } from 'svelte';
+import { getContext, setContext, type Snippet } from 'svelte';
 
 export type RenderMode = 'public' | 'secretariat';
+
+/** Where a list of items lives: a section or a group definition. */
+export type DesignContainer = { type: 'section'; index: number } | { type: 'group'; name: string };
+/** An element of the definition that can be selected in the designer. */
+export type DesignTarget = { kind: 'section'; index: number } | { kind: 'item'; container: DesignContainer; index: number };
+
+/** Form designer: every section and item becomes selectable, with tools from the app. */
+export interface DesignHooks {
+    isSelected(target: DesignTarget): boolean;
+    select(target: DesignTarget): void;
+    /** shown on the selected element (move, remove) */
+    tools: Snippet<[DesignTarget]>;
+    /** shown at the end of each section (add field, add group) */
+    add: Snippet<[DesignContainer]>;
+}
 
 export interface FormContext {
     readonly form: FormJson;
@@ -21,6 +36,7 @@ export interface FormContext {
     touched: Set<string>;
     loadOptions?: (source: string) => Promise<Option[]>;
     files?: FileHandler;
+    design?: DesignHooks;
 }
 
 const KEY = Symbol('form');

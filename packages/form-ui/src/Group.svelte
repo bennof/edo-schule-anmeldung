@@ -32,6 +32,8 @@
     );
     const list = $derived((Array.isArray(local[group.id]) ? local[group.id] : []) as FormData[]);
     const error = $derived(visibleError(ctx, path));
+    // designer: the fields of the definition are always shown, even without data
+    const container = $derived({ type: 'group', name: group.group } as const);
 
     function copyFrom(source: GroupItem): void {
         local[group.id] = copyGroupData(local[source.id]);
@@ -52,10 +54,16 @@
     {#if hiddenPublic}<p class="hidden-note">Im Online-Formular ausgeblendet</p>{/if}
 
     {#if group.repeat}
+        {#if ctx.design && !list.length}
+            <fieldset class="entry">
+                <legend>{group.repeat.itemLabel ?? group.label}</legend>
+                <Items items={inner} local={{}} {root} base={joinPath(path, 0)} {container} />
+            </fieldset>
+        {/if}
         {#each list as entry, i (entry)}
             <fieldset class="entry" data-path={joinPath(path, i)}>
                 <legend>{group.repeat.itemLabel ?? group.label} {i + 1}</legend>
-                <Items items={inner} local={entry} {root} base={joinPath(path, i)} />
+                <Items items={inner} local={entry} {root} base={joinPath(path, i)} {container} />
                 {#if canRemoveRepeat(group, list)}
                     <button type="button" class="secondary" onclick={() => remove(i)}>Eintrag entfernen</button>
                 {/if}
@@ -71,8 +79,8 @@
                 Angaben von „{source.label}“ übernehmen
             </button>
         {/each}
-        {#if local[group.id]}
-            <Items items={inner} local={local[group.id] as FormData} {root} base={path} />
+        {#if local[group.id] || ctx.design}
+            <Items items={inner} local={(local[group.id] ?? {}) as FormData} {root} base={path} {container} />
         {/if}
     {/if}
 </fieldset>

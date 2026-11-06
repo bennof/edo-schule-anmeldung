@@ -34,10 +34,11 @@ let v2: FormDefinition;
 let appId = '';
 
 const nav = (label: string) => admin.getByRole('navigation').getByRole('link', { name: label }).click();
-const tree = () => admin.getByRole('navigation', { name: 'Formularstruktur' });
-const props = () => admin.locator('.props');
-const previewPane = () => admin.getByLabel('Vorschau', { exact: true });
-const selectNode = (text: string | RegExp) => tree().getByRole('button', { name: text }).first().click();
+const canvas = () => admin.getByRole('region', { name: 'Formular-Arbeitsfläche' });
+const props = () => admin.getByRole('complementary', { name: 'Einstellungen' });
+// click the label area of a field on the work surface
+const select = (path: string) => canvas().locator(`[data-path="${path}"]`).first().click({ position: { x: 4, y: 4 } });
+const addField = () => canvas().getByRole('button', { name: '+ Feld' }).first().click();
 
 async function bookAndOpen(p: Page, time: string): Promise<void> {
     await p.goto(URLS.public);
@@ -109,19 +110,19 @@ it('build a new form in the designer', async () => {
     await props().getByLabel('Titel').fill(title);
 
     // field 1: required child name
-    await selectNode(/Neues Feld/);
+    await select('feld1');
     await props().getByLabel('ID (Datenname)').fill('nachname');
     await props().getByLabel('Beschriftung').fill('Name des Kindes');
     await props().getByLabel('Pflichtfeld').check();
 
     // field 2: Ja/Nein
-    await tree().getByRole('button', { name: '+ Feld' }).first().click();
+    await addField();
     await props().getByLabel('ID (Datenname)').fill('geschwister');
     await props().getByLabel('Beschriftung').fill('Geschwister an der Schule?');
     await props().getByLabel('Feldtyp').selectOption('boolean');
 
     // field 3: visible only if field 2 is Ja
-    await tree().getByRole('button', { name: '+ Feld' }).first().click();
+    await addField();
     await props().getByLabel('ID (Datenname)').fill('geschwisterName');
     await props().getByLabel('Beschriftung').fill('Name der Geschwister');
     await props().getByLabel('Sichtbar, wenn: Feld').fill('geschwister');
@@ -130,7 +131,7 @@ it('build a new form in the designer', async () => {
     await props().getByLabel('Sichtbar, wenn: Wert').blur();
 
     // field 4: selection with options
-    await tree().getByRole('button', { name: '+ Feld' }).first().click();
+    await addField();
     await props().getByLabel('ID (Datenname)').fill('klasse');
     await props().getByLabel('Beschriftung').fill('Gewünschte Klasse');
     await props().getByLabel('Feldtyp').selectOption('select');
@@ -140,22 +141,23 @@ it('build a new form in the designer', async () => {
     await props().getByLabel('Anzeigetext 2').fill('5b');
 
     // field 5: photo, field 6: documents
-    await tree().getByRole('button', { name: '+ Feld' }).first().click();
+    await addField();
     await props().getByLabel('ID (Datenname)').fill('passfoto');
     await props().getByLabel('Beschriftung').fill('Passfoto');
     await props().getByLabel('Feldtyp').selectOption('file');
     await props().getByLabel(/Passfoto des Kindes/).check();
-    await tree().getByRole('button', { name: '+ Feld' }).first().click();
+    await addField();
     await props().getByLabel('ID (Datenname)').fill('unterlagen');
     await props().getByLabel('Beschriftung').fill('Unterlagen');
     await props().getByLabel('Feldtyp').selectOption('file');
     await props().getByLabel('Mehrere Dateien').check();
 
     // a reusable, repeatable group
-    await tree().getByRole('button', { name: '+ Gruppe definieren' }).click();
+    await canvas().getByRole('button', { name: title }).click(); // form settings
+    await props().getByRole('button', { name: '+ Gruppe definieren' }).click();
     await props().getByLabel('Name').fill('kontakt');
     await props().getByLabel('Name').blur();
-    await tree().getByRole('button', { name: '+ Gruppe' }).first().click();
+    await canvas().getByRole('button', { name: '+ Gruppe' }).first().click();
     await props().getByLabel('ID (Datenname)').fill('notfall');
     await props().getByLabel('Beschriftung').fill('Notfallkontakte');
     await props().getByLabel(/Wiederholbar/).check();
@@ -164,15 +166,20 @@ it('build a new form in the designer', async () => {
     assert(shown.length === 0, `problems: ${shown.join(' | ')}`);
 });
 
-it('live preview reflects the condition', async () => {
-    await previewPane().locator('[data-path="nachname"]').waitFor();
-    assert(!(await previewPane().locator('[data-path="geschwisterName"]').isVisible()), 'conditional field visible');
-    await previewPane().locator('[data-path="geschwister"]').getByLabel('Ja', { exact: true }).check();
-    await previewPane().locator('[data-path="geschwisterName"]').waitFor();
+it('work surface shows the condition and selects what is clicked', async () => {
+    const conditional = canvas().locator('[data-path="geschwisterName"]');
+    await conditional.getByText('Im Online-Formular ausgeblendet').waitFor();
+    await canvas().locator('[data-path="geschwister"]').getByLabel('Ja', { exact: true }).check();
+    await conditional.getByText('Im Online-Formular ausgeblendet').waitFor({ state: 'detached' });
+    await select('klasse');
+    assert((await props().getByLabel('Beschriftung').inputValue()) === 'Gewünschte Klasse', 'selection');
+    // fields inside a group edit the shared definition
+    await canvas().locator('[data-path="notfall"] .design-item').first().click({ position: { x: 4, y: 4 } });
+    await props().getByText(/Teil der Gruppe „kontakt“/).waitFor();
 });
 
 it('invalid definitions block saving', async () => {
-    await selectNode(/Name der Geschwister/);
+    await select('geschwisterName');
     await props().getByLabel('ID (Datenname)').fill('nachname'); // duplicate id
     await admin.getByText(/Problem\(e\)/).waitFor();
     assert(await admin.getByRole('button', { name: 'Als Version 1 speichern' }).isDisabled(), 'save enabled');
@@ -191,7 +198,7 @@ it('save as version 1', async () => {
 it('editing saves version 2, version 1 stays unchanged', async () => {
     const row = admin.locator(`[data-form-key="${created.formKey}"]`);
     await row.getByRole('button', { name: 'Bearbeiten → Version 2' }).click();
-    await selectNode(/Name des Kindes/);
+    await select('nachname');
     await props().getByLabel('Beschriftung').fill('Nachname des Kindes');
     await admin.getByRole('button', { name: 'Als Version 2 speichern' }).click();
     await admin.getByText(/Neue Version gespeichert/).waitFor({ timeout: 20000 });

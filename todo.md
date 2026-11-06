@@ -114,10 +114,10 @@ ist**, wird sie in PHP umgesetzt – gegen denselben API-Vertrag und Konformitä
 
 ## 6. Sekretariat als Desktop-App (Tauri)
 
-- [ ] Tauri-Hülle um `apps/secretariat`; Build über `make` (Windows-Installer, ggf. macOS/Linux)
-- [ ] SVWS-Transport `tauri` umsetzen (im Adapter vorbereitet): Rust-Command `svws_request`, Zugriff direkt aus der App ohne CORS-Proxy, selbstsignierte Schulzertifikate gezielt vertrauen
-- [ ] Microsoft-365-Login in Tauri klären (MSAL im WebView, Redirect über Loopback oder eigenes Schema; ggf. System-Browser)
-- [ ] Browser-Konfiguration (N1) im App-Datenverzeichnis statt localStorage; Import/Export bleibt
+- [x] Tauri-App `desktop/` mit eingebettetem Sekretariat auf http://localhost:8964; Build über `make` (einzelne Datei)
+- [x] SVWS über den eingebauten Proxy `/svws-proxy` (selbstsignierte Zertifikate), Einstellungen bleiben in der App
+- [ ] Microsoft-365-Login in der Desktop-App ausprobieren (Redirect-URI `http://localhost:8964`)
+- [ ] Desktop-App unter Windows bauen und testen
 - [ ] Automatische Updates und Code-Signierung festlegen
 - [ ] Die Web-Variante des Sekretariats bleibt parallel nutzbar
 

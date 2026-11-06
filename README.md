@@ -29,7 +29,7 @@ Sprint: [`docs/sprint-reviews/`](docs/sprint-reviews/).
   Konflikterkennung, Prüfschritte bis „Für SVWS freigeben“, Anmeldebogen als PDF
 - Anmeldungen: Namenssuche (auch nach Absage), Statusfilter, Auswahl für die SVWS-Übertragung
 - Terminplanung (Generator mit Pausen und parallelen Gesprächen, Entwürfe, Veröffentlichen)
-- Verfahren, Formulare (Import mit Schema-Prüfung), Dateien (Logo, Kataloge, PDF-Vorlage)
+- Verfahren (Löschen entfernt auch Termine, Anmeldungen und Uploads, nicht die Formulare), Formulare (Designer mit Vorschau als Arbeitsfläche, Import mit Schema-Prüfung, Löschen nur ohne verwendende Verfahren), Dateien (Logo, Kataloge, PDF-Vorlage)
 - Einstellungen: SharePoint-Provisionierung, Konfigurationsliste, Browser-Konfiguration (Import/Export)
 
 **Öffentlicher Server** (`server`, Rust)
@@ -65,14 +65,18 @@ packages/form-ui      Svelte-Formular-Renderer (öffentlich / Sekretariat)
 packages/pdf          Anmeldebogen: Vorlagen-Generator und Befüllung (pdf-lib)
 packages/svws         SVWS-Adapter: Transportwege, Kataloge, Mapping, Übertragung
 server                öffentlicher Server (Rust: tiny_http, ureq)
+desktop               Sekretariat als Desktop-App (Tauri) mit SVWS-Proxy
 tests                 Integrations-, Browser-, SVWS- und Mailtests (Vitest)
 scripts               daemon-permissions: Listenrechte der Daemon-App
+scripts/tenant        setup-tenant.ps1: Einrichtung eines Tenants; sharepoint-schema.json
 docs                  Sprint-Reviews, bisheriges Anmeldeformular (Word)
 ```
 
 ## Voraussetzungen
 
 - Node.js 24, pnpm, Rust (rustup), GNU Make
+- Debian/Ubuntu: `make system-deps` (musl-tools für den statischen Server,
+  WebKitGTK u. a. für die Desktop-App); Rust-Ziel `rustup target add x86_64-unknown-linux-musl`
 - für `make test-svws`: ein erreichbarer SVWS-Server mit der Testschule (siehe unten)
 - Microsoft-365-Tenant mit einer SharePoint-Site und zwei App-Registrierungen (siehe unten)
 
@@ -81,7 +85,10 @@ docs                  Sprint-Reviews, bisheriges Anmeldeformular (Word)
 **Windows:** Das Makefile braucht bash und GNU-Werkzeuge, also WSL (oder Git Bash
 mit make). Ohne Make baut `pnpm build` alles in der richtigen Reihenfolge
 (SPAs, dann `server/target/release/anmeldung-server.exe` mit eingebetteter
-Anmeldeseite; Rust mit MSVC-Toolchain). Ebenso laufen `pnpm dev:server`, `pnpm dev:public`,
+Anmeldeseite und `desktop/target/release/anmeldung-desktop.exe` mit eingebettetem
+Sekretariat; Rust mit MSVC-Toolchain). `.cargo/config.toml` linkt die C-Laufzeit
+statisch, beide sind einzelne `.exe` ohne weitere Dateien (die Desktop-App nutzt
+das in Windows 10/11 enthaltene WebView2). Ebenso laufen `pnpm dev:server`, `pnpm dev:public`,
 `pnpm dev:secretariat` sowie die Tests (`pnpm exec vitest run --config
 tests/vitest.config.ts tests/…`) auch direkt unter Windows. Der Server läuft dort
 in der Zeitzone des Systems (`TZ` wird unter Windows nicht beachtet).
@@ -104,7 +111,7 @@ ein Verfahren anlegen, unter „Termine“ Termine erzeugen und veröffentlichen
 
 | Target | Zweck |
 |---|---|
-| `make build` / `make dist` | Sekretariat und Server mit eingebetteter Anmeldeseite bauen / nach `dist/` |
+| `make build` / `make dist` | Sekretariat, Server (mit Anmeldeseite) und Desktop-App bauen / nach `dist/` |
 | `make check` | Typprüfung, Rust-Lints, Formatierung |
 | `make test` | Unit-Tests (TypeScript, Rust) |
 | `make test-integration` | gegen die SharePoint-Test-Site |
@@ -148,17 +155,49 @@ darf, Standard `'self'`, z. B. `'self' https://www.schule.de`), `MAIL_DISABLED`,
 `MAIL_REDIRECT` (Tests). Der Server muss in der Zeitzone der Schule laufen
 (z. B. `TZ=Europe/Berlin`).
 
-**Bau und Betrieb:** `make dist` erzeugt `dist/anmeldung-server` und
-`dist/secretariat/`. Beim Bau des Servers wird `apps/public/dist` in das Binary
+**Bau und Betrieb:** `make dist` erzeugt `dist/anmeldung-server` (unter Linux
+statisch gegen musl gelinkt, läuft auf jeder Distribution), `dist/anmeldung-desktop`
+und `dist/secretariat/`. Beim Bau des Servers wird `apps/public/dist` in das Binary
 eingebettet (`server/build.rs`); im Betrieb braucht es keine weiteren Dateien.
 Der Server liefert die Seite mit CSP, `nosniff` und `no-referrer`, `index.html`
 ohne Cache, die gehashten Dateien unter `/assets/` dauerhaft cachebar.
 Unbekannte Pfade ohne Dateiendung bekommen `index.html`. Ein reines
 `cargo build` ohne gebaute Seite liefert nur die API (Entwicklung über Vite).
 
+## Desktop-App (Sekretariat)
+
+`desktop/` ist eine Tauri-App: Sie startet einen lokalen Server auf
+**http://localhost:8964** mit dem eingebetteten Sekretariat und öffnet ihn in
+einem Fenster. Unter `/svws-proxy` leitet sie SVWS-Anfragen an die Adresse aus
+`X-SVWS-Target` weiter und akzeptiert selbstsignierte Zertifikate – damit
+entfällt CORS im SVWS-Server. Alle Einstellungen bleiben in der App unter
+„Einstellungen“ (SVWS: Verbindung „Browser → CORS-Proxy“, Proxy-Adresse
+`http://localhost:8964/svws-proxy`). Der Server nimmt nur Anfragen mit Host
+`localhost:8964` an. Für die Anmeldung muss `http://localhost:8964` als
+Redirect-URI der SPA-App eingetragen sein. Die Werte liegen im Speicher des
+WebViews, getrennt vom Browser.
+
+`make dev-desktop` startet sie (braucht einen Bildschirm). Unter Windows ist sie
+eine einzelne `.exe`; unter Linux braucht sie WebKitGTK (glibc), kann daher
+nicht statisch gebaut werden.
+
 ## Microsoft 365
 
-- **App „Anmeldesystem“** (Sekretariats-SPA): SPA-Plattform mit Redirect-URI,
+Einrichtung eines neuen Systems mit PowerShell 7 als Admin (Anmeldung mit Gerätecode):
+
+```sh
+pwsh scripts/tenant/setup-tenant.ps1 init       # Gruppe, Site, Listen, App-Registrierungen, Mailversand
+pwsh scripts/tenant/setup-tenant.ps1 refresh    # neues Client-Secret für den Server
+pwsh scripts/tenant/setup-tenant.ps1 remove -File <name>_config.json   # alles wieder entfernen (Papierkorb)
+```
+
+`init` legt `<name>.env` (Server, mit Secret) und `<name>_config.json`
+(Import im Sekretariat) an. Das Schema kommt aus `scripts/tenant/sharepoint-schema.json`;
+jede Schema-Änderung braucht einen neuen Eintrag in `SCHEMA_HISTORY`
+(`packages/sharepoint/src/schema.ts`), danach `make tenant-schema`.
+
+- **App „Anmeldesystem“** (Sekretariats-SPA): SPA-Plattform mit Redirect-URI
+  (Adresse des Sekretariats; Desktop-App: `http://localhost:8964`),
   delegierte Graph-Berechtigungen für SharePoint. Benutzer brauchen Zugriff auf die Site.
 - **App „Anmeldesystem Public Daemon“** (Rust-Server): Client Credentials,
   `Lists.SelectedOperations.Selected` mit Rechten nur auf die benötigten Listen
@@ -178,7 +217,8 @@ Standard ist `https://localhost:8443`; abweichend in `.env`: `SVWS_URL`,
 
 - Für den Weg „Browser → SVWS“ muss im SVWS-Server CORS erlaubt sein
   (`UseCORSHeader` in `svwsconfig.json`), sonst „Browser → CORS-Proxy → SVWS“ wählen.
-  Der Entwicklungsserver des Sekretariats leitet `/svws-proxy` an `SVWS_URL` weiter.
+  Der Entwicklungsserver des Sekretariats leitet `/svws-proxy` an `SVWS_URL` weiter,
+  die Desktop-App bringt einen eigenen Proxy mit (`http://localhost:8964/svws-proxy`).
 
 **Übertragung aus dem Sekretariat** (SVWS-Adapter):
 1. Einstellungen → SVWS: Adresse, Verbindung und **Datenbank-Schema** der Schule
@@ -192,7 +232,7 @@ Standard ist `https://localhost:8443`; abweichend in `.env`: `SVWS_URL`,
    übertragene Anmeldungen erhalten den Status „In SVWS übernommen“ und die Schüler-ID;
    eine zweite Übertragung wird verhindert.
 
-`make test-svws` prüft den Adapter gegen den SVWS-Server aus `.env`.
+`make test-svws` prüft den Adapter und den Proxy der Desktop-App gegen den SVWS-Server aus `.env`.
 
 ## Sicherheit und Datenschutz
 

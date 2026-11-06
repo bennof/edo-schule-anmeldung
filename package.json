@@ -3,13 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm -r build && pnpm build:server",
+    "build": "pnpm -r build && pnpm build:server && pnpm build:desktop",
     "build:server": "cargo build --release --manifest-path server/Cargo.toml",
+    "build:desktop": "cargo build --release --manifest-path desktop/Cargo.toml",
     "check": "pnpm -r check",
     "test": "pnpm -r test",
     "dev:public": "pnpm --filter @anmeldung/public dev",
     "dev:secretariat": "pnpm --filter @anmeldung/secretariat dev",
-    "dev:server": "cd server && cargo run"
+    "dev:server": "cd server && cargo run",
+    "dev:desktop": "pnpm --filter @anmeldung/secretariat build && cd desktop && cargo run"
   },
   "devDependencies": {
     "@napi-rs/canvas": "^1.0.10",

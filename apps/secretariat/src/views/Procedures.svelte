@@ -1,9 +1,9 @@
-<!-- Procedure management (backlog D1): create, list and edit procedures. -->
+<!-- Procedure management (backlog D1): create, list, edit and delete procedures. -->
 <script lang="ts">
     import type { Procedure } from '@anmeldung/domain';
     import type { FormJson } from '@anmeldung/forms';
-    import type { FormVersion } from '@anmeldung/sharepoint';
-    import { errorText, formService, procedures } from '../services.ts';
+    import { deleteProcedure, type FormVersion } from '@anmeldung/sharepoint';
+    import { errorText, formService, procedures, site } from '../services.ts';
 
     interface Draft {
         id?: string;
@@ -77,6 +77,25 @@
         }
     }
 
+    /** Deletes the procedure with its appointments, applications and uploads; forms stay. */
+    async function remove(p: Procedure): Promise<void> {
+        const question =
+            `Verfahren „${p.info.title}“ endgültig löschen?\n\n` +
+            'Alle Termine, Anmeldungen und hochgeladenen Dateien dieses Verfahrens werden mitgelöscht. Die Formulare bleiben erhalten.';
+        if (!confirm(question)) return;
+        busy = true;
+        message = '';
+        try {
+            const n = await deleteProcedure(site, p.id);
+            message = `Verfahren „${p.info.title}“ gelöscht, mit ${n.applications} Anmeldung(en) und ${n.appointments} Termin(en).`;
+            await load();
+        } catch (err) {
+            message = `Fehler: ${errorText(err)}`;
+        } finally {
+            busy = false;
+        }
+    }
+
     load().catch((e) => (message = `Fehler: ${errorText(e)}`));
 </script>
 
@@ -121,7 +140,10 @@
                         {formTitle(p.formId)}
                         {#if newerVersion(p.formId)}<br /><small class="muted">Neuere Version {newerVersion(p.formId)?.version} vorhanden – über „Bearbeiten“ wählbar</small>{/if}
                     </td>
-                    <td><button onclick={() => edit(p)} disabled={!!draft}>Bearbeiten</button></td>
+                    <td class="actions">
+                        <button onclick={() => edit(p)} disabled={!!draft || busy}>Bearbeiten</button>
+                        <button class="danger" onclick={() => remove(p)} disabled={!!draft || busy}>Löschen</button>
+                    </td>
                 </tr>
             {:else}
                 <tr><td colspan="4" class="muted">Noch keine Verfahren.</td></tr>
@@ -147,5 +169,14 @@
     .row {
         display: flex;
         gap: 1rem;
+    }
+    .actions {
+        white-space: nowrap;
+    }
+    .actions button + button {
+        margin-left: 0.25rem;
+    }
+    button.danger {
+        color: var(--danger);
     }
 </style>

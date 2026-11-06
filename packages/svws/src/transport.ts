@@ -1,8 +1,7 @@
-// How the secretariat reaches SVWS (backlog N2). The architecture must allow
-//   Browser -> SVWS, Browser -> CORS proxy -> SVWS, Tauri -> SVWS.
-// No concrete SVWS endpoints are called yet (see M1).
+// How the secretariat reaches SVWS: directly from the browser, or through a
+// CORS proxy (the desktop app brings one on http://localhost:8964/svws-proxy).
 
-export type TransportKind = 'direct' | 'proxy' | 'tauri';
+export type TransportKind = 'direct' | 'proxy';
 
 export interface SvwsEndpoint {
     /** base URL of the SVWS server, e.g. https://svws.schule.local:8443 */
@@ -26,19 +25,15 @@ export interface SvwsTransport {
     request(method: string, path: string, body?: unknown, headers?: Record<string, string>): Promise<SvwsResponse>;
 }
 
-/** Tauri command bridge, injected by a desktop shell (window.__TAURI__.core.invoke). */
-export type TauriInvoke = (command: string, args: Record<string, unknown>) => Promise<SvwsResponse>;
-
 export interface TransportDeps {
     fetch?: typeof fetch;
-    tauriInvoke?: TauriInvoke;
 }
 
 /** Problems with an endpoint configuration; empty when valid. */
 export function checkEndpoint(e: SvwsEndpoint): string[] {
     const errors: string[] = [];
     if (!isHttpUrl(e.url)) errors.push('SVWS-Adresse muss mit https:// oder http:// beginnen');
-    if (!['direct', 'proxy', 'tauri'].includes(e.transport)) errors.push(`Unbekannter Transportweg "${e.transport}"`);
+    if (!['direct', 'proxy'].includes(e.transport)) errors.push(`Unbekannter Transportweg "${e.transport}"`);
     if (e.transport === 'proxy' && !isHttpUrl(e.proxyUrl ?? '')) errors.push('Für den Proxy-Weg wird die Proxy-Adresse benötigt');
     if (e.schema !== undefined && !/^[A-Za-z0-9_]+$/.test(e.schema)) errors.push('Das SVWS-Schema darf nur Buchstaben, Ziffern und _ enthalten');
     if (e.schuljahr !== undefined && !(Number.isInteger(e.schuljahr) && e.schuljahr >= 2000 && e.schuljahr <= 2100)) errors.push('Schuljahr als Jahreszahl angeben, z. B. 2026');
@@ -82,14 +77,6 @@ export function createTransport(endpoint: SvwsEndpoint, deps: TransportDeps = {}
                 url: endpoint.proxyUrl!.replace(/\/+$/, '') + path,
                 headers: { 'X-SVWS-Target': base },
             }));
-        case 'tauri':
-            return {
-                kind: 'tauri',
-                async request(method, path, body, headers) {
-                    if (!deps.tauriInvoke) throw new Error('Tauri-Umgebung nicht verfügbar');
-                    return deps.tauriInvoke('svws_request', { method, url: base + path, body, headers });
-                },
-            };
     }
 }
 

@@ -35,16 +35,6 @@ describe('svws transport (N2)', () => {
         expect(calls[0].init?.body).toBe('{"a":1}');
     });
 
-    it('tauri: delegates to the desktop shell', async () => {
-        const seen: unknown[] = [];
-        const t = createTransport(
-            { url: 'https://svws.local', transport: 'tauri' },
-            { tauriInvoke: async (cmd, args) => (seen.push([cmd, args]), { status: 204, body: undefined }) },
-        );
-        expect((await t.request('GET', '/a')).status).toBe(204);
-        expect(seen).toEqual([['svws_request', { method: 'GET', url: 'https://svws.local/a', body: undefined, headers: undefined }]]);
-        await expect(createTransport({ url: 'https://svws.local', transport: 'tauri' }).request('GET', '/a')).rejects.toThrow(/Tauri/);
-    });
 });
 
 describe('svws adapter boundary (M1)', () => {

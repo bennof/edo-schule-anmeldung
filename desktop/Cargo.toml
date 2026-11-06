@@ -1,0 +1,17 @@
+[package]
+name = "anmeldung-desktop"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "MIT"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tiny_http = "0.12"
+ureq = "3"
+
+[profile.release]
+strip = true

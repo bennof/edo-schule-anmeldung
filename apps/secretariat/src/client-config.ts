@@ -15,18 +15,20 @@ export interface ClientConfig {
     siteUrl: string;
     /** later SVWS integration (N2), optional */
     svws?: SvwsEndpoint;
+    /** expiry of the server's client secret (YYYY-MM-DD), written by scripts/tenant/setup-tenant.ps1 */
+    daemonSecretExpires?: string;
 }
 
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const KNOWN_KEYS = new Set(['schemaVersion', 'tenantId', 'clientId', 'redirectUri', 'siteId', 'siteUrl', 'svws']);
+const KNOWN_KEYS = new Set(['schemaVersion', 'tenantId', 'clientId', 'redirectUri', 'siteId', 'siteUrl', 'svws', 'daemonSecretExpires']);
 
 /** Validates parsed JSON; returns the config or the problems found. */
 export function parseClientConfig(value: unknown): { config?: ClientConfig; errors: string[] } {
     const errors: string[] = [];
     if (!value || typeof value !== 'object' || Array.isArray(value)) return { errors: ['Kein JSON-Objekt'] };
     const v = value as Record<string, unknown>;
-    // never accept secrets in browser configuration
-    const secretKeys = Object.keys(v).filter((k) => /secret|password|passwort|token/i.test(k));
+    // never accept secrets in browser configuration (the expiry date of the server secret is no secret)
+    const secretKeys = Object.keys(v).filter((k) => k !== 'daemonSecretExpires' && /secret|password|passwort|token/i.test(k));
     if (secretKeys.length) errors.push(`Geheimnisse gehören nicht in die Browser-Konfiguration: ${secretKeys.join(', ')}`);
     const unknown = Object.keys(v).filter((k) => !KNOWN_KEYS.has(k) && !secretKeys.includes(k));
     if (unknown.length) errors.push(`Unbekannte Einträge: ${unknown.join(', ')}`);
@@ -37,6 +39,9 @@ export function parseClientConfig(value: unknown): { config?: ClientConfig; erro
     if (!str('siteId')) errors.push('siteId fehlt');
     if (!/^https:\/\//.test(str('siteUrl'))) errors.push('siteUrl muss mit https:// beginnen');
     if (v.redirectUri !== undefined && !/^https?:\/\//.test(str('redirectUri'))) errors.push('redirectUri muss eine URL sein');
+    if (v.daemonSecretExpires !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(str('daemonSecretExpires'))) {
+        errors.push('daemonSecretExpires muss ein Datum (JJJJ-MM-TT) sein');
+    }
     let svws: SvwsEndpoint | undefined;
     if (v.svws !== undefined) {
         const s = v.svws as Record<string, unknown>;
@@ -57,6 +62,7 @@ export function parseClientConfig(value: unknown): { config?: ClientConfig; erro
             siteId: str('siteId'),
             siteUrl: str('siteUrl'),
             ...(svws && { svws }),
+            ...(str('daemonSecretExpires') && { daemonSecretExpires: str('daemonSecretExpires') }),
         },
     };
 }

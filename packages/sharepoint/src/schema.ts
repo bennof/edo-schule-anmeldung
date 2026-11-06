@@ -2,8 +2,27 @@
 // lists and columns; it never removes or changes existing ones.
 import { APPLICATION_STATES, APPOINTMENT_STATES } from '@anmeldung/domain';
 
-/** Bump when lists or columns are added. Stored in Config as `schemaVersion`. */
-export const SCHEMA_VERSION = 6;
+/**
+ * Every schema change gets a new entry here (next version, date, what
+ * changed), then `make tenant-schema` writes scripts/tenant/sharepoint-schema.json.
+ * The last entry is the current version, stored in Config as `schemaVersion`.
+ */
+export const SCHEMA_HISTORY = [
+    { version: 1, date: '2026-10-03', changes: 'Listen Config, Assets, Appointments, Applications, Forms, Procedures' },
+    { version: 2, date: '2026-10-03', changes: 'Appointments.RequestIp; Config: consentText, maxBookingsPerIp' },
+    { version: 3, date: '2026-10-04', changes: 'Applications.SubmittedAt, Applications.AccessTokenHash' },
+    {
+        version: 4,
+        date: '2026-10-04',
+        changes:
+            'Applications.ChildName, Applications.ContactName, Applications.ContactEmail; ' +
+            'nachträglich ohne eigene Version: Config mailSender, confirmationMailSubject, confirmationMailText, publicUrl',
+    },
+    { version: 5, date: '2026-10-04', changes: 'Forms.FormKey, Forms.FormVersion; Bibliothek Uploads' },
+    { version: 6, date: '2026-10-04', changes: 'Applications.SvwsId' },
+] as const;
+
+export const SCHEMA_VERSION: number = SCHEMA_HISTORY[SCHEMA_HISTORY.length - 1].version;
 
 export type ColumnType = 'text' | 'note' | 'json' | 'boolean' | 'choice';
 
@@ -145,6 +164,24 @@ export const DEFAULT_CONFIG = [
     // address of the public SPA, used for links in mails
     { key: 'publicUrl', value: '', isPublic: false },
 ] as const;
+
+/**
+ * The schema as Graph request bodies for scripts/tenant/setup-tenant.ps1,
+ * stored in scripts/tenant/sharepoint-schema.json (`make tenant-schema`).
+ */
+export function schemaExport() {
+    return {
+        schemaVersion: SCHEMA_VERSION,
+        history: SCHEMA_HISTORY,
+        lists: (Object.values(LISTS) as ListSpec[]).map((spec) => ({
+            name: spec.name,
+            template: spec.template,
+            columns: spec.columns.filter((c) => c.name !== 'Title').map(columnDefinition),
+            indexTitle: spec.columns.some((c) => c.name === 'Title' && c.indexed),
+        })),
+        config: DEFAULT_CONFIG.map((e) => ({ Title: e.key, Value: e.value, IsPublic: e.isPublic })),
+    };
+}
 
 /** Graph columnDefinition for a column spec. */
 export function columnDefinition(col: ColumnSpec): Record<string, unknown> {

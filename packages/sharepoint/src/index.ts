@@ -6,4 +6,5 @@ export { provision, type ProvisionReport } from './provision.ts';
 export { DEFAULT_CONFIG, LISTS, SCHEMA_VERSION, type ListKey } from './schema.ts';
 export { AppointmentError, AppointmentService, sortAppointments } from './appointments.ts';
 export { ApplicationError, ApplicationService, ConflictError, childNameOf, type ApplicationSummary, type EditableFields } from './applications.ts';
-export { FormService, newFormKey, type FormFamily, type FormVersion } from './forms.ts';
+export { FormInUseError, FormService, newFormKey, type FormFamily, type FormVersion } from './forms.ts';
+export { deleteProcedure, type ProcedureDeletion } from './procedures.ts';

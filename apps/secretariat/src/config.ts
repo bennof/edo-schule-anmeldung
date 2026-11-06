@@ -13,10 +13,19 @@ function buildDefaults(): unknown {
         schemaVersion: 1,
         tenantId: c.TENANT_ID,
         clientId: c.APP_CLIENT_ID,
-        ...(c.APP_REDIRECT_URI && { redirectUri: c.APP_REDIRECT_URI }),
+        // only for this origin: the same build also runs in the desktop app (localhost:8964)
+        ...(sameOrigin(c.APP_REDIRECT_URI) && { redirectUri: c.APP_REDIRECT_URI }),
         siteId: c.SHAREPOINT_ID,
         siteUrl: c.SHAREPOINT_URL,
     };
+}
+
+function sameOrigin(url: string | undefined): boolean {
+    try {
+        return !!url && new URL(url).origin === location.origin;
+    } catch {
+        return false;
+    }
 }
 
 function stored(): unknown {

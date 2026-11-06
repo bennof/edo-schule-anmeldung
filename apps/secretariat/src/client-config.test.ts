@@ -23,6 +23,14 @@ describe('client configuration (N1, N2)', () => {
         expect(errors.join(' ')).toMatch(/schemaVersion/);
     });
 
+    it('accepts the expiry date of the server secret, not the secret', () => {
+        const { config, errors } = parseClientConfig({ ...valid, daemonSecretExpires: '2028-11-06' });
+        expect(errors).toEqual([]);
+        expect(config?.daemonSecretExpires).toBe('2028-11-06');
+        expect(parseClientConfig({ ...valid, daemonSecretExpires: 'bald' }).errors.join(' ')).toMatch(/Datum/);
+        expect(parseClientConfig({ ...valid, daemonSecret: 'x' }).errors.join(' ')).toMatch(/Geheimnisse/);
+    });
+
     it('checks ids and urls', () => {
         expect(parseClientConfig({ ...valid, tenantId: 'abc', siteUrl: 'http://x' }).errors).toHaveLength(2);
         expect(parseClientConfig(null).errors).toEqual(['Kein JSON-Objekt']);

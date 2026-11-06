@@ -10,6 +10,8 @@ interface FakeList {
 export class FakeGraph {
     lists: FakeList[] = [];
     requests: string[] = [];
+    /** folders in document libraries (file contents are not simulated) */
+    folders: string[] = [];
     private nextId = 1;
 
     readonly fetch: typeof fetch = async (input, init) => {
@@ -37,6 +39,12 @@ export class FakeGraph {
 
         const list = this.lists.find((l) => l.id === parts[1]);
         if (!list) return reply(404, { error: { code: 'itemNotFound', message: 'list' } });
+
+        if (parts[2] === 'drive') {
+            if (method === 'GET' && path.endsWith('/drive/root/children')) return reply(200, { value: this.folders.map((name) => ({ name, folder: {} })) });
+            if (method === 'DELETE' && this.folders.includes(path.split('root:/')[1]?.replace(/:$/, '') ?? '')) return new Response(null, { status: 204 });
+            return reply(404, { error: { code: 'itemNotFound', message: path } });
+        }
 
         if (parts[2] === 'columns') {
             if (parts.length === 3 && method === 'GET') return reply(200, { value: list.columns });

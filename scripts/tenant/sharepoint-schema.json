@@ -1,0 +1,355 @@
+{
+  "schemaVersion": 6,
+  "history": [
+    {
+      "version": 1,
+      "date": "2026-10-03",
+      "changes": "Listen Config, Assets, Appointments, Applications, Forms, Procedures"
+    },
+    {
+      "version": 2,
+      "date": "2026-10-03",
+      "changes": "Appointments.RequestIp; Config: consentText, maxBookingsPerIp"
+    },
+    {
+      "version": 3,
+      "date": "2026-10-04",
+      "changes": "Applications.SubmittedAt, Applications.AccessTokenHash"
+    },
+    {
+      "version": 4,
+      "date": "2026-10-04",
+      "changes": "Applications.ChildName, Applications.ContactName, Applications.ContactEmail; nachträglich ohne eigene Version: Config mailSender, confirmationMailSubject, confirmationMailText, publicUrl"
+    },
+    {
+      "version": 5,
+      "date": "2026-10-04",
+      "changes": "Forms.FormKey, Forms.FormVersion; Bibliothek Uploads"
+    },
+    {
+      "version": 6,
+      "date": "2026-10-04",
+      "changes": "Applications.SvwsId"
+    }
+  ],
+  "lists": [
+    {
+      "name": "Config",
+      "template": "genericList",
+      "columns": [
+        {
+          "name": "Value",
+          "indexed": false,
+          "text": {
+            "allowMultipleLines": true,
+            "textType": "plain"
+          }
+        },
+        {
+          "name": "IsPublic",
+          "indexed": false,
+          "boolean": {}
+        }
+      ],
+      "indexTitle": true
+    },
+    {
+      "name": "Assets",
+      "template": "documentLibrary",
+      "columns": [],
+      "indexTitle": false
+    },
+    {
+      "name": "Appointments",
+      "template": "genericList",
+      "columns": [
+        {
+          "name": "ProcedureId",
+          "indexed": true,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "ApplicationId",
+          "indexed": true,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "VerantwortlicherId",
+          "indexed": false,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "SlotDatetime",
+          "indexed": true,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "State",
+          "indexed": true,
+          "choice": {
+            "choices": [
+              "draft",
+              "available",
+              "booked",
+              "done"
+            ],
+            "allowTextEntry": false,
+            "displayAs": "dropDownMenu"
+          }
+        },
+        {
+          "name": "EmailCustomer",
+          "indexed": false,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "NameCustomer",
+          "indexed": false,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "RequestTime",
+          "indexed": false,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "RequestIp",
+          "indexed": true,
+          "text": {
+            "maxLength": 255
+          }
+        }
+      ],
+      "indexTitle": false
+    },
+    {
+      "name": "Applications",
+      "template": "genericList",
+      "columns": [
+        {
+          "name": "ProcedureId",
+          "indexed": true,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "FormId",
+          "indexed": false,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "Data",
+          "indexed": false,
+          "text": {
+            "allowMultipleLines": true,
+            "textType": "plain"
+          }
+        },
+        {
+          "name": "State",
+          "indexed": true,
+          "choice": {
+            "choices": [
+              "created",
+              "form_in_progress",
+              "submitted",
+              "interview",
+              "in_review",
+              "checked",
+              "ready_for_svws",
+              "imported"
+            ],
+            "allowTextEntry": false,
+            "displayAs": "dropDownMenu"
+          }
+        },
+        {
+          "name": "SecretariatComment",
+          "indexed": false,
+          "text": {
+            "allowMultipleLines": true,
+            "textType": "plain"
+          }
+        },
+        {
+          "name": "InterviewerComment",
+          "indexed": false,
+          "text": {
+            "allowMultipleLines": true,
+            "textType": "plain"
+          }
+        },
+        {
+          "name": "SubmittedAt",
+          "indexed": false,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "ChildName",
+          "indexed": true,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "ContactName",
+          "indexed": true,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "ContactEmail",
+          "indexed": false,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "SvwsId",
+          "indexed": true,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "AccessTokenHash",
+          "indexed": false,
+          "text": {
+            "maxLength": 255
+          }
+        }
+      ],
+      "indexTitle": false
+    },
+    {
+      "name": "Forms",
+      "template": "genericList",
+      "columns": [
+        {
+          "name": "FormJson",
+          "indexed": false,
+          "text": {
+            "allowMultipleLines": true,
+            "textType": "plain"
+          }
+        },
+        {
+          "name": "DateLastUpdate",
+          "indexed": false,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "FormKey",
+          "indexed": true,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "FormVersion",
+          "indexed": false,
+          "text": {
+            "maxLength": 255
+          }
+        }
+      ],
+      "indexTitle": false
+    },
+    {
+      "name": "Uploads",
+      "template": "documentLibrary",
+      "columns": [],
+      "indexTitle": false
+    },
+    {
+      "name": "Procedures",
+      "template": "genericList",
+      "columns": [
+        {
+          "name": "FormId",
+          "indexed": false,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "Info",
+          "indexed": false,
+          "text": {
+            "allowMultipleLines": true,
+            "textType": "plain"
+          }
+        },
+        {
+          "name": "StartDate",
+          "indexed": true,
+          "text": {
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "EndDate",
+          "indexed": true,
+          "text": {
+            "maxLength": 255
+          }
+        }
+      ],
+      "indexTitle": false
+    }
+  ],
+  "config": [
+    {
+      "Title": "consentText",
+      "Value": "Ich bin einverstanden, dass meine Angaben zur Terminvergabe und Anmeldung gespeichert werden. (Platzhalter – Text in der Config-Liste anpassen.)",
+      "IsPublic": true
+    },
+    {
+      "Title": "maxBookingsPerIp",
+      "Value": "3",
+      "IsPublic": false
+    },
+    {
+      "Title": "mailSender",
+      "Value": "",
+      "IsPublic": false
+    },
+    {
+      "Title": "confirmationMailSubject",
+      "Value": "Ihr Termin zur Schulanmeldung",
+      "IsPublic": false
+    },
+    {
+      "Title": "confirmationMailText",
+      "Value": "Guten Tag {name},\n\nvielen Dank für Ihre Terminbuchung.\n\nVerfahren: {verfahren}\nTermin: {datum}, {uhrzeit} Uhr\n\nBitte füllen Sie vor dem Termin das Anmeldeformular aus. Über diesen Link können Sie es auch auf einem anderen Gerät fortsetzen:\n{link}\n\nBei Fragen oder für eine Absage wenden Sie sich bitte telefonisch an das Sekretariat.\n\nMit freundlichen Grüßen\nIhr Sekretariat",
+      "IsPublic": false
+    },
+    {
+      "Title": "publicUrl",
+      "Value": "",
+      "IsPublic": false
+    }
+  ]
+}

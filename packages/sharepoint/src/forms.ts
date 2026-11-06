@@ -1,7 +1,7 @@
 // Form versions (backlog D3): a saved version is never changed. Saving a
 // change creates a new item with the same formKey and the next version, so
 // applications keep the exact definition they were created with.
-import type { FormDefinition } from '@anmeldung/domain';
+import type { FormDefinition, Procedure } from '@anmeldung/domain';
 import { Repository } from './repository.ts';
 import type { SharePointSite } from './site.ts';
 
@@ -32,11 +32,46 @@ export function newFormKey(title: string): string {
     return `${slug || 'formular'}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
+/** The form is still used; `procedureIds` names the procedures. */
+export class FormInUseError extends Error {
+    readonly procedureIds: string[];
+
+    constructor(procedureIds: string[]) {
+        super('Das Formular wird noch verwendet');
+        this.procedureIds = procedureIds;
+    }
+}
+
 export class FormService {
     readonly repo: Repository<FormDefinition>;
+    private readonly site: SharePointSite;
 
     constructor(site: SharePointSite) {
+        this.site = site;
         this.repo = new Repository<FormDefinition>(site, 'forms');
+    }
+
+    /**
+     * Procedures that use a version of the form: as their form, or through
+     * applications created with it (a procedure may have switched versions).
+     */
+    async usedBy(formKey: string): Promise<string[]> {
+        const ids = (await this.listVersions()).filter((v) => v.formKey === formKey).map((v) => v.id);
+        const procedures = await new Repository<Procedure>(this.site, 'procedures').list();
+        const used = new Set(procedures.filter((p) => ids.includes(p.formId)).map((p) => p.id));
+        // FormId is not indexed: read both columns of all applications and filter here
+        for (const a of await this.site.listItems('applications', undefined, ['ProcedureId', 'FormId'])) {
+            if (ids.includes(String(a.fields.FormId))) used.add(String(a.fields.ProcedureId));
+        }
+        return [...used];
+    }
+
+    /** Deletes all versions of a form; refused while a procedure uses it. */
+    async deleteFamily(formKey: string): Promise<void> {
+        const used = await this.usedBy(formKey);
+        if (used.length) throw new FormInUseError(used);
+        const ids = (await this.listVersions()).filter((v) => v.formKey === formKey).map((v) => v.id);
+        if (ids.length) await this.site.deleteItems('forms', ids);
     }
 
     /** All versions; forms saved before versioning count as version 1 of their own key. */

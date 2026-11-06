@@ -1,6 +1,6 @@
 <!-- Forms with versions (backlog D2, D3): list form families and versions,
      open a version in the designer (saves a new version), import/export JSON,
-     preview. Saved versions are never changed. -->
+     preview, delete forms no procedure uses. Saved versions are never changed. -->
 <script lang="ts">
     import type { Procedure } from '@anmeldung/domain';
     import { FormRenderer } from '@anmeldung/form-ui';
@@ -26,6 +26,8 @@
     let families: FormFamily[] = $state([]);
     let procedureList: Procedure[] = $state([]);
     let message = $state('');
+    /** why a form cannot be deleted: the procedures using it */
+    let warning = $state('');
     let problems: string[] = $state([]);
     let busy = $state(false);
     let preview: FormVersion | undefined = $state();
@@ -101,6 +103,33 @@
         setTimeout(() => URL.revokeObjectURL(url), 60_000);
     }
 
+    /** Deletes all versions; refused with the names of the procedures still using the form. */
+    async function removeFamily(family: FormFamily): Promise<void> {
+        message = '';
+        warning = '';
+        problems = [];
+        busy = true;
+        try {
+            const used = await formService.usedBy(family.formKey);
+            if (used.length) {
+                const names = used.map((id) => `„${procedureList.find((p) => p.id === id)?.info.title ?? `Verfahren ${id}`}“`);
+                warning =
+                    `Das Formular „${family.title}“ kann nicht gelöscht werden. Es wird noch verwendet von: ${names.join(', ')}. ` +
+                    'Dort zuerst ein anderes Formular wählen oder das Verfahren löschen.';
+                return;
+            }
+            const n = family.versions.length;
+            if (!confirm(`Formular „${family.title}“ mit ${n === 1 ? 'seiner Version' : `allen ${n} Versionen`} endgültig löschen?`)) return;
+            await formService.deleteFamily(family.formKey);
+            message = `Formular „${family.title}“ gelöscht.`;
+            await load();
+        } catch (e) {
+            message = `Fehler: ${errorText(e)}`;
+        } finally {
+            busy = false;
+        }
+    }
+
     function showPreview(v: FormVersion): void {
         preview = v;
         previewData = initialData(v.formJson as FormJson);
@@ -138,6 +167,7 @@
             <button class="secondary" onclick={() => importJson(schoolForm)} disabled={busy}>Schulformular anlegen</button>
             <button class="secondary" onclick={() => importJson(testForm)} disabled={busy}>Testformular anlegen</button>
         </p>
+        {#if warning}<p class="warning" role="alert">{warning}</p>{/if}
         {#if message}
             <p role="status">{message}</p>
             {#if problems.length}<ul class="error">{#each problems as p}<li>{p}</li>{/each}</ul>{/if}
@@ -145,7 +175,10 @@
 
         {#each families as family (family.formKey)}
             <div class="family" data-form-key={family.formKey}>
-                <h3>{family.title} <small class="muted">{family.formKey}</small></h3>
+                <div class="head">
+                    <h3>{family.title} <small class="muted">{family.formKey}</small></h3>
+                    <button class="secondary danger" onclick={() => removeFamily(family)} disabled={busy}>Formular löschen</button>
+                </div>
                 <table>
                     <thead><tr><th>Version</th><th>ID</th><th>Stand</th><th>Verwendet von</th><th></th></tr></thead>
                     <tbody>
@@ -190,7 +223,22 @@
         margin: 1rem 0;
     }
     .family h3 {
-        margin-bottom: 0;
+        margin: 0;
+    }
+    .head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.25rem;
+    }
+    .warning {
+        background: var(--warn-bg);
+        border-radius: var(--radius);
+        padding: 0.6rem 0.9rem;
+    }
+    button.danger {
+        color: var(--danger);
     }
     .tools {
         white-space: nowrap;

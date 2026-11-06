@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { FakeGraph } from './fake-graph.ts';
-import { FormService, newFormKey } from './forms.ts';
+import { FormInUseError, FormService, newFormKey } from './forms.ts';
 import { GraphClient } from './graph.ts';
 import { provision } from './provision.ts';
 import { SharePointSite } from './site.ts';
 
 let service: FormService;
+let site: SharePointSite;
 
 beforeEach(async () => {
-    const site = new SharePointSite(new GraphClient(async () => 't', new FakeGraph().fetch), 'site');
+    site = new SharePointSite(new GraphClient(async () => 't', new FakeGraph().fetch), 'site');
     await provision(site);
     service = new FormService(site);
 });
@@ -38,5 +39,27 @@ describe('form versions (D3)', () => {
         const [v] = await service.listVersions();
         expect(v).toMatchObject({ id: legacy.id, formKey: `form-${legacy.id}`, version: '1' });
         expect((await service.saveVersion({ title: 'Alt 2' }, v.formKey)).version).toBe('2');
+    });
+});
+
+describe('deleting forms', () => {
+    it('deletes all versions of an unused form', async () => {
+        const v1 = await service.saveVersion({ title: 'Alt' });
+        await service.saveVersion({ title: 'Alt' }, v1.formKey);
+        const other = await service.saveVersion({ title: 'Anderes' });
+        await service.deleteFamily(v1.formKey);
+        expect((await service.listVersions()).map((v) => v.id)).toEqual([other.id]);
+    });
+
+    it('refuses while a procedure uses a version, directly or through applications', async () => {
+        const v1 = await service.saveVersion({ title: 'Anmeldung' });
+        const v2 = await service.saveVersion({ title: 'Anmeldung' }, v1.formKey);
+        const [p1, p2] = await site.createItems('procedures', [{ FormId: v2.id }, { FormId: 'other' }]);
+        // p2 switched to another form, but its applications still use version 1
+        await site.createItems('applications', [{ ProcedureId: p2!.id, FormId: v1.id }]);
+        const error = await service.deleteFamily(v1.formKey).catch((e) => e);
+        expect(error).toBeInstanceOf(FormInUseError);
+        expect((error as FormInUseError).procedureIds.sort()).toEqual([p1!.id, p2!.id].sort());
+        expect(await service.listVersions()).toHaveLength(2);
     });
 });

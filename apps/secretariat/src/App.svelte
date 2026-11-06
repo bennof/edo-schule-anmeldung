@@ -36,6 +36,8 @@
     let route = $state(location.hash);
     let menuOpen = $state(false);
     let accountOpen = $state(false);
+    // gear on the sign-in screen: edit tenant and site of this browser
+    let configOpen = $state(false);
     let photo: string | undefined = $state();
     window.addEventListener('hashchange', () => {
         route = location.hash;
@@ -157,9 +159,14 @@
     </div>
 {:else}
     <main class="center">
-        <div class="card" class:wide={status === 'setup'}>
+        <div class="card" class:wide={status === 'setup' || configOpen}>
             <div class="brand"><img src="/icon.png" alt="" />Sekretariat</div>
-            {#if status === 'loading'}
+            {#if configOpen}
+                <h2>Anmeldung einrichten</h2>
+                <p class="muted">Tenant und App-Registrierung für diesen Browser.</p>
+                <ConfigEditor signIn />
+                <button class="secondary back" onclick={() => (configOpen = false)}>Zurück zur Anmeldung</button>
+            {:else if status === 'loading'}
                 <p class="muted">Wird geladen …</p>
             {:else if status === 'setup'}
                 <h2>Einrichtung dieses Browsers</h2>
@@ -180,6 +187,11 @@
                 <p class="error">{message}</p>
             {/if}
         </div>
+        {#if status !== 'setup' && !configOpen}
+            <button class="gear" aria-label="Anmeldung einrichten" title="Anmeldung einrichten" onclick={() => (configOpen = true)}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d={SETUP[1]!.icon} /></svg>
+            </button>
+        {/if}
     </main>
 {/if}
 
@@ -393,6 +405,38 @@
     }
     .card p {
         margin: 0 0 1rem;
+    }
+    .card .back {
+        justify-self: start;
+        margin-top: 1rem;
+    }
+    .gear {
+        position: fixed;
+        bottom: 1.25rem;
+        left: 50%;
+        transform: translateX(-50%);
+        display: grid;
+        place-items: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--text-muted);
+    }
+    .gear:hover {
+        background: var(--surface-2);
+        color: var(--text);
+    }
+    .gear svg {
+        width: 1.25rem;
+        height: 1.25rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
     }
     /* tablets: narrower sidebar and content padding */
     @media (max-width: 1100px) {

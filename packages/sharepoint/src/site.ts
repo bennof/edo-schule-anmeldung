@@ -214,6 +214,15 @@ export class SharePointSite {
         return this.deleteFile('uploads', id);
     }
 
+    /** Applications that have files: the folder names in the Uploads library. */
+    async uploadFolders(): Promise<string[]> {
+        const listId = await this.listId('uploads');
+        const items = await this.graph.collect<{ name: string; folder?: unknown }>(
+            `${this.base}/lists/${listId}/drive/root/children?$select=name,folder`,
+        );
+        return items.filter((i) => i.folder).map((i) => i.name);
+    }
+
     /** Removes all files of an application (its folder in the Uploads library). */
     async deleteUploads(applicationId: string): Promise<void> {
         if (!isAssetKey(applicationId)) throw new Error(`Invalid application id "${applicationId}"`);
