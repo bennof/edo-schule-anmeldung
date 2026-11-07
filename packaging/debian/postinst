@@ -7,6 +7,19 @@ if [ "$1" = configure ]; then
     fi
     chown root:root /etc/edo-anmeldung-server/config.env
     chmod 600 /etc/edo-anmeldung-server/config.env
+    # nginx snippet: only when nginx is installed; a changed snippet is kept,
+    # the new version is placed next to it as .dpkg-dist
+    snippet=/usr/share/edo-anmeldung-server/nginx/edo-anmeldung.conf
+    target=/etc/nginx/snippets/edo-anmeldung.conf
+    if [ -d /etc/nginx/snippets ]; then
+        if [ ! -e "$target" ]; then
+            install -m 644 "$snippet" "$target"
+            echo "edo-anmeldung-server: nginx snippet installed: $target"
+        elif ! cmp -s "$snippet" "$target"; then
+            install -m 644 "$snippet" "$target.dpkg-dist"
+            echo "edo-anmeldung-server: $target was changed, new version in $target.dpkg-dist"
+        fi
+    fi
     if [ -d /run/systemd/system ]; then
         systemctl daemon-reload >/dev/null || true
         # an update restarts a running server, a new install does not start it

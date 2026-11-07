@@ -173,7 +173,7 @@
         try {
             const [{ fillRegistrationPdf, saveAs, pdfFileName }, template, font] = await Promise.all([
                 import('@anmeldung/pdf'),
-                fetch(`/api/assets/anmeldebogen.pdf`).then((r) => (r.ok ? r.arrayBuffer() : undefined)),
+                fetch(`api/assets/anmeldebogen.pdf`).then((r) => (r.ok ? r.arrayBuffer() : undefined)),
                 fetch(fontUrl).then((r) => r.arrayBuffer()),
             ]);
             if (!template) {

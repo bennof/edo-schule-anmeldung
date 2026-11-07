@@ -216,6 +216,13 @@ function Write-ServerEnv([string] $Path, $Values, [string] $Expires) {
         "# $Name – Server (setup-tenant.ps1, $(Get-Date -Format yyyy-MM-dd))"
         "# Secret gültig bis $Expires; erneuern: ./setup-tenant.ps1 refresh -Name `"$Name`""
         foreach ($k in $Values.Keys) { "$k=$($Values[$k])" }
+        ''
+        '# Address and port to listen on; behind a reverse proxy keep 127.0.0.1'
+        'BIND_ADDR=127.0.0.1:23180'
+        '# 1 behind a reverse proxy: client IP from X-Forwarded-For (IP limit per booking)'
+        'TRUST_PROXY=0'
+        '# Who may embed the registration page in a frame (CSP frame-ancestors), e.g.'
+        '# FRAME_ANCESTORS="''self'' https://www.schule.de"'
     )
     Set-Content -Path $Path -Value $lines -Encoding utf8NoBOM
     if ($IsLinux -or $IsMacOS) { chmod 600 $Path }

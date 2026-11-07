@@ -12,6 +12,8 @@ trap 'rm -rf "$root"' EXIT
 install -D -m 755 "$bin" "$root/usr/bin/edo-anmeldung-server"
 install -D -m 644 "$here/edo-anmeldung-server.service" "$root/usr/lib/systemd/system/edo-anmeldung-server.service"
 install -D -m 600 "$here/config.env" "$root/etc/edo-anmeldung-server/config.env"
+# nginx snippet; postinst copies it to /etc/nginx/snippets when nginx is installed
+install -D -m 644 "$here/nginx/edo-anmeldung.conf" "$root/usr/share/edo-anmeldung-server/nginx/edo-anmeldung.conf"
 install -d "$root/DEBIAN"
 for script in postinst prerm postrm; do install -m 755 "$here/debian/$script" "$root/DEBIAN/$script"; done
 echo /etc/edo-anmeldung-server/config.env > "$root/DEBIAN/conffiles"

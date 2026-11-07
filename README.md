@@ -1,3 +1,5 @@
+<img src="docs/brand/symbol-512.png" alt="Anmeldesystem" width="128">
+
 # Anmeldesystem
 
 Online-Anmeldung für weiterführende Schulen in NRW: Familien buchen einen
@@ -69,7 +71,7 @@ desktop               Sekretariat als Desktop-App (Tauri) mit SVWS-Proxy
 tests                 Integrations-, Browser-, SVWS- und Mailtests (Vitest)
 scripts               daemon-permissions (Listenrechte der Daemon-App), check-version (Release)
 scripts/tenant        setup-tenant.ps1: Einrichtung eines Tenants; sharepoint-schema.json
-packaging             Debian-Paket des Servers: systemd-Dienst, config.env, build-deb.sh
+packaging             Debian-Paket des Servers: systemd-Dienst, config.env, build-deb.sh; nginx-Snippet
 .github/workflows     CI (jeder Push) und Release (Tag vX.Y.Z)
 docs                  Sprint-Reviews, Logo; bisheriges Anmeldeformular (Word) nur lokal in docs/reference/
 ```
@@ -186,7 +188,7 @@ Der Dienst wird **nicht** automatisch aktiviert. Die Einstellungen stehen in
 `TZ=Europe/Berlin` ist voreingestellt. Ein Update behält die Einstellungen und
 startet einen laufenden Dienst neu; `apt purge` entfernt Einstellungen und Benutzer.
 Der Dienst läuft ohne Rechte und mit systemd-Härtung (kein Schreibzugriff aufs
-System, keine Capabilities); für Port 80/443 einen Reverse-Proxy davorsetzen.
+System, keine Capabilities); für Port 80/443 nginx mit dem mitgelieferten Snippet davorsetzen, Details und `TRUST_PROXY`: [`server/README.md`](server/README.md).
 
 ## Desktop-App (Sekretariat)
 

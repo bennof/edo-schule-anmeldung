@@ -51,7 +51,7 @@ export class ApiError extends Error {
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
     let res: Response;
     try {
-        res = await fetch(`/api${path}`, init);
+        res = await fetch(`api${path}`, init);
     } catch {
         throw new ApiError(0, 'network', 'Keine Verbindung zum Server. Bitte später erneut versuchen.');
     }
@@ -83,7 +83,7 @@ export const api = {
             body: file,
         }),
     openUpload: async (id: string, token: string, ref: FileRef): Promise<Blob | undefined> => {
-        const res = await fetch(`/api/applications/${id}/uploads/${ref.id.split('/')[1]}`, { headers: bearer(token) });
+        const res = await fetch(`api/applications/${id}/uploads/${ref.id.split('/')[1]}`, { headers: bearer(token) });
         return res.ok ? res.blob() : undefined;
     },
     deleteUpload: (id: string, token: string, ref: FileRef) =>
@@ -98,11 +98,11 @@ export const api = {
 
 /** Option lists (optionsSource) are public assets of active forms. */
 export async function loadOptions(source: string): Promise<Option[]> {
-    const res = await fetch(`/api/assets/${encodeURIComponent(source)}`);
+    const res = await fetch(`api/assets/${encodeURIComponent(source)}`);
     return res.ok ? res.json() : [];
 }
 
-export const LOGO_URL = '/api/assets/logo';
+export const LOGO_URL = 'api/assets/logo';
 
 export function formatDay(date: string): string {
     return new Date(`${date}T12:00`).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
