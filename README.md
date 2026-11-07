@@ -10,10 +10,7 @@ und gibt sie für die Übernahme nach SVWS/SchILD-NRW frei.
 Datenhaltung ist **SharePoint (Microsoft 365)** der Schule. Der öffentliche
 Server speichert keine personenbezogenen Daten.
 
-Fachlicher Umfang und Architekturentscheidungen: [`backlog.md`](backlog.md).
 Offene Punkte und Betriebsvarianten: [`todo.md`](todo.md).
-Zugänge und Testumgebung: [`info.md`](info.md). Verlauf und Entscheidungen je
-Sprint: [`docs/sprint-reviews/`](docs/sprint-reviews/).
 
 ## Funktionen
 
@@ -73,7 +70,7 @@ scripts               daemon-permissions (Listenrechte der Daemon-App), check-ve
 scripts/tenant        setup-tenant.ps1: Einrichtung eines Tenants; sharepoint-schema.json
 packaging             Debian-Paket des Servers: systemd-Dienst, config.env, build-deb.sh; nginx-Snippet
 .github/workflows     CI (jeder Push) und Release (Tag vX.Y.Z)
-docs                  Sprint-Reviews, Logo; bisheriges Anmeldeformular (Word) nur lokal in docs/reference/
+docs                  Logo; bisheriges Anmeldeformular (Word) nur lokal in docs/reference/
 ```
 
 ## Voraussetzungen
@@ -100,7 +97,7 @@ in der Zeitzone des Systems (`TZ` wird unter Windows nicht beachtet).
 ## Schnellstart
 
 ```sh
-cp .env.example .env        # Werte eintragen (siehe info.md)
+cp .env.example .env        # Werte eintragen (siehe Konfiguration)
 make install
 make dev                    # Server :23180, Public :8954, Sekretariat :8944
 ```
@@ -135,7 +132,8 @@ Vitest gegen die echten Systeme, nacheinander statt parallel.
 **`.env`** (nur Entwicklung und Tests, nie einchecken): Tenant, SharePoint-Site,
 App-Registrierungen, Testbenutzer. Nur die in
 `apps/secretariat/vite.config.ts` freigegebenen, nicht geheimen Werte
-gelangen als Entwicklungs-Vorgabe in den Browser.
+gelangen als Entwicklungs-Vorgabe in den Browser. Passwörter und Secrets aus
+`.env` erscheinen nie in Code, Logs, Screenshots oder Dokumentation.
 
 **Konfigurationsliste in SharePoint** (`Config`, im Sekretariat unter „Einstellungen“):
 

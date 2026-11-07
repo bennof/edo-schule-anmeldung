@@ -1,23 +1,24 @@
 # TODO – Anmeldesystem
 
-Offene und angedachte Punkte nach Sprint 8 (Stand 04.10.2026). Herkunft in
-Klammern: Sprint-Review (S1–S8), Backlog (BL) oder Gespräch.
+Offene und angedachte Punkte (Stand 07.11.2026). Herkunft in Klammern: Sprint
+(S1–S8), Backlog (BL) oder Gespräch. Backlog und Sprint-Reviews sind abgearbeitet
+und entfernt (in der Git-Historie); Kennungen wie C5 oder J2 im Code stammen
+daraus. Erledigtes wird gelöscht.
 
 ## 1. Vor den Testrunden / vor dem Betrieb (Schule, Konfiguration)
 
 - [ ] `publicUrl` in der Config-Liste auf die echte Adresse der öffentlichen Seite setzen (S6)
-- [ ] Texte prüfen lassen: Einverständnisse, Kenntnisnahmen, Platzhalter Klassenfahrt (ca. 180 €), `consentText`, Mail-Vorlage (S4, S6)
-- [ ] Auswahllisten prüfen: Religion, Religionsunterricht, Rollen der Erziehungsberechtigten, Förderschwerpunkte (S4)
+- [ ] Texte prüfen lassen: Einverständnisse, Kenntnisnahmen, `consentText`, Mail-Vorlage (S4, S6). Im Schulformular (`private/anmeldebogen-2026-27.json`): Termine Klassenfahrt und Bildung und Teilhabe stehen noch auf 2025; der Vortext nennt „Microsoft Forms“ (Gespräch)
+- [ ] Auswahllisten prüfen: Religion, Religionsunterricht, Rollen der Erziehungsberechtigten, Förderschwerpunkte (S4); Länder, Sprachen, Staatsangehörigkeiten unter „Aus SVWS“ erzeugen
 - [ ] PDF: vollständige Belehrungstexte (DS-GVO, § 34 IfSG) beilegen oder eigene Vorlage mit denselben Feldnamen hochladen (S6)
 - [ ] SharePoint, Liste Applications: Berechtigungen auf Elementebene auf „Nur eigene Elemente lesen“ setzen (S3, S4)
-- [ ] Entra: `Sites.Selected` beim Daemon entfernen; er braucht nur `Lists.SelectedOperations.Selected` (S3)
-- [ ] Hosting des Rust-Servers (Bare Metal, siehe 5.1): Reverse-Proxy mit TLS, `TRUST_PROXY=1`, `TZ=Europe/Berlin` (S3)
-- [ ] SVWS produktiv: CORS im SVWS-Server mit vertrauenswürdigem Zertifikat **oder** CORS-Proxy; Schuljahr der Neuaufnahmen in den Einstellungen setzen (S8)
-- [ ] Git-Remote einrichten und das Repository sichern (Gespräch)
+- [ ] Server der Schule einrichten: Debian-Paket, `config.env` aus `schulanmeldung.env`, nginx-Snippet, `TRUST_PROXY=1` (siehe `server/README.md`) (S3)
+- [ ] Client-Secret von „Schulanmeldung Server“ erneuern (`setup-tenant.ps1 refresh`), es stand im Chat (Gespräch)
+- [ ] SVWS produktiv: Schuljahr der Neuaufnahmen in den Einstellungen setzen (S8)
 
 ## 2. Testrunden und UI/UX
 
-- [ ] Testrunden mit dem Sekretariat (Woche ab 05.10.2026); Rückmeldungen als Backlog-Tasks erfassen
+- [ ] Testrunden mit dem Sekretariat (laufen seit November 2026); Rückmeldungen als Backlog-Tasks erfassen
 - [ ] UI/UX-Überarbeitung beider SPAs nach den Testrunden
 - [ ] Stabile `data-testid` statt sichtbarer Texte in den Browser-Tests (überstehen Textänderungen)
 - [ ] Suchauswahl mit Pfeiltasten bedienbar machen (S2)
@@ -26,8 +27,9 @@ Klammern: Sprint-Review (S1–S8), Backlog (BL) oder Gespräch.
 ## 3. Tests und Entwicklungsumgebung
 
 - [ ] **Vor dem Entfernen von `APP_CLIENT_SECRET`:** eigene Test-App-Registrierung nur für die Test-Site (`Sites.Selected`), Zugangsdaten in `.env.test`; `tests/support/env.ts` liest zuerst `.env.test`, dann `.env` (Gespräch)
-- [ ] Danach `APP_CLIENT_SECRET` aus der App „Anmeldesystem“ entfernen (info.md)
-- [ ] CI-Pipeline (z. B. GitHub Actions): `make check test` bei jedem Push; Integrations- und Browser-Tests gegen die Test-Site mit Secrets der Test-App
+- [ ] Danach `APP_CLIENT_SECRET` aus der App „Anmeldesystem“ entfernen
+- [ ] CI: Integrations- und Browser-Tests gegen die Test-Site mit Secrets der Test-App (`make check test` läuft schon bei jedem Push)
+- [ ] `setup-tenant.ps1 refresh` im Test-Tenant ausprobieren (Gespräch)
 - [ ] Login-Wartezeiten in den Browser-Tests beobachten (gelegentlich langsame Microsoft-Anmeldung) (S8)
 
 ## 4. Funktionen und Technik
@@ -41,16 +43,19 @@ Klammern: Sprint-Review (S1–S8), Backlog (BL) oder Gespräch.
 - [ ] Telefonnummern der Erziehungsberechtigten im Sekretariat als eigene Felder pflegen (S5/S8)
 - [ ] Nach einer Absage: Umgang mit Uploads der weiterhin bestehenden Anmeldung festlegen (S7)
 
+### Tenant-Skript (`scripts/tenant/setup-tenant.ps1`)
+
+- [ ] Zertifikat statt Client-Secret für den Server (der Server kann bisher nur Secrets)
+- [ ] Testen, ob das Recht `fullcontrol` der Sekretariats-App auf der Site auf `write` reduziert werden kann (Schema-Änderungen brauchen evtl. wieder `fullcontrol`)
+
 ### SVWS-Adapter, nächste Schritte (S8)
 
+- [ ] **Mapping editierbar machen:** Zuordnung Formularfeld (Datenname) → SVWS-Feld und die Übersetzungstabellen (Geschlecht, Religion, Erzieherart, Anrede) im Sekretariat pflegen statt fest in `packages/svws/src/mapping.ts`. Auch der Kindname in den Listen kommt fest aus `nachname`/`vorname` (Gespräch 07.11.2026, S5)
+- [ ] Listen aus „Aus SVWS“ beim Übertragen direkt verstehen: Religionen mit SVWS-Kürzel (`KR`) und Erzieherarten mit SVWS-ID als Schlüssel; heute erwartet die Übertragung die Formular-Schlüssel (`rk`, `mutter`) (Gespräch 07.11.2026)
 - [ ] Telefonnummern als SVWS-Telefoneinträge statt als Bemerkung
 - [ ] Mit dem Sekretariat klären und ggf. übertragen: Förderschwerpunkte, LRS/Autismus, bisherige Schulen, Notfallkontakte, Einverständnisse (Vermerke), Klassenwunsch, Religionsunterricht
 - [ ] Fehlende Orte/Ortsteile optional im SVWS-Katalog anlegen statt nur zu warnen
 - [ ] Prüfung auf vorhandene Schüler (Name + Geburtsdatum) vor dem Anlegen
-
-### Offen gehalten
-
-- [ ] **SVWS-/SchILD-Kataloge:** Ablage in SharePoint entscheiden; danach die erzeugten ISO-Kataloge durch SVWS-Schlüssel ersetzen oder abbilden (BL Future, Gespräch)
 
 ## 5. Betriebsvarianten je nach Umgebung der Schule
 
@@ -66,16 +71,12 @@ Funktion des Public Servers läuft. Die Umgebungen der Schulen sind verschieden:
 
 Gemeinsame Grundlage für alle Varianten:
 
-- [x] Rust-Server liefert die Public SPA mit aus (beim Bau eingebettet) und die API unter `/api` – ein Dienst für alles Öffentliche; SPA-Fallback, Cache- und Sicherheits-Header (CSP, `FRAME_ANCESTORS`), kein Dateisystemzugriff
 - [ ] **API-Vertrag** (OpenAPI für alle `/api/...`-Routen) als verbindliche Beschreibung der Serverfunktion
 - [ ] **Konformitätstest:** `integration-public-api` gegen eine beliebige Basis-URL lauffähig machen; jede Umsetzung (Rust, PHP) muss ihn bestehen
 
 ### 5.1 Bare Metal: Rust-Server als Dienst
 
-- [x] `make dist` liefert ein Binary mit eingebetteter Anmeldeseite
-- [ ] Installationsanleitung
-- [ ] systemd-Unit (eigener Benutzer, Härtung: `ProtectSystem`, `NoNewPrivileges`, …), Konfiguration über Env-Datei
-- [ ] Hinter vorhandenem Reverse-Proxy (nginx/Apache/Caddy) mit TLS; `TRUST_PROXY=1`, `TZ=Europe/Berlin`; Beispielkonfigurationen
+- [ ] Beispiele für Apache und Caddy (nginx gibt es)
 
 ### 5.2 Containersysteme: Rust-Server als Image
 
@@ -114,18 +115,16 @@ ist**, wird sie in PHP umgesetzt – gegen denselben API-Vertrag und Konformitä
 
 ## 6. Sekretariat als Desktop-App (Tauri)
 
-- [x] Tauri-App `desktop/` mit eingebettetem Sekretariat auf http://localhost:8964; Build über `make` (einzelne Datei)
-- [x] SVWS über den eingebauten Proxy `/svws-proxy` (selbstsignierte Zertifikate), Einstellungen bleiben in der App
-- [ ] Microsoft-365-Login in der Desktop-App ausprobieren (Redirect-URI `http://localhost:8964`)
-- [ ] Desktop-App unter Windows bauen und testen
-- [ ] Automatische Updates und Code-Signierung festlegen
-- [ ] Die Web-Variante des Sekretariats bleibt parallel nutzbar
+- [ ] Desktop-App unter Windows und macOS testen (gebaut wird sie im Release)
+- [ ] Automatische Updates und Code-Signierung festlegen (Windows warnt, macOS ist unsigniert)
+- [ ] Debian-Paket der Desktop-App (Gespräch)
+- [ ] Erinnerung an das Ablaufdatum des Server-Secrets (`daemonSecretExpires`) (Gespräch)
+- [ ] `setup-tenant.ps1` aus der Desktop-App herunterladen können (Gespräch)
 
-## 7. Future Releases aus dem Backlog (noch offen)
+## 7. Spätere Ausbaustufen (aus dem Backlog)
 
-- [ ] Terminverschiebung: Termin freigeben, neuen buchen, Anmeldung sicher übertragen (BL)
-- [ ] Ansicht für die Gesprächsführung: eigene Termine, Anmeldungen lesen und korrigieren, `interviewerComment` (BL)
-- [ ] PDF-Design-Engine: Formular-JSON → Layout → pdf-lib → AcroForm (BL)
+- [ ] Terminverschiebung: Termin freigeben, neuen buchen und die vorhandene Anmeldung sicher übertragen (BL)
+- [ ] Ansicht für die Gesprächsführung: eigene Termine mit Uhrzeit, verbleibende Gespräche, zugehörige Anmeldungen lesen und korrigieren, `secretariatComment` anzeigen, `interviewerComment` bearbeiten (BL)
+- [ ] PDF-Design-Engine: Formular-JSON → Layout → pdf-lib → AcroForm; einheitliche Bausteine für Abschnitte, Textfelder, Auswahlen, Checkboxen, Gruppen, Tabellen, Unterschriftsbereiche, Infotexte; Web und PDF nutzen dieselbe Formulardefinition, aber eigene Layouts (BL)
 - [ ] Flexible PDF-Vorlagen: mehrere Dokumenttypen, Layouts, Versionierung (BL)
-
-Erledigt aus den Future Releases: Uploads (Sprint 7), SVWS-Adapter (Sprint 8).
+- [ ] Weitere SVWS-/SchILD-Schlüssel (statistische Kataloge) bei Bedarf über „Aus SVWS“ bereitstellen (BL)
