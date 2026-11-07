@@ -9,6 +9,10 @@
   "properties": {
     "formatVersion": { "const": 1 },
     "title": { "type": "string", "minLength": 1 },
+    "description": {
+      "description": "Intro text shown above the first section of the online form (plain text, blank lines separate paragraphs).",
+      "type": "string"
+    },
     "groups": {
       "description": "Reusable group definitions, referenced by group items.",
       "type": "object",
@@ -65,6 +69,7 @@
         "id": { "$ref": "#/$defs/id" },
         "group": { "$ref": "#/$defs/id" },
         "label": { "$ref": "#/$defs/text" },
+        "help": { "description": "Info text shown below the group heading.", "type": "string" },
         "visibleIf": { "$ref": "#/$defs/condition" },
         "repeat": {
           "type": "object",

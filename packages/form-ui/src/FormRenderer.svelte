@@ -57,6 +57,7 @@
 </script>
 
 <div class="form" class:secretariat={mode === 'secretariat'} class:design={!!design}>
+    {#if form.description && (mode === 'public' || design)}<p class="intro" data-testid="form-intro">{form.description}</p>{/if}
     {#each form.sections as section, index (design ? index : section.id)}
         {@const visible = isVisible(section, { local: data, root: data })}
         {@const target = { kind: 'section', index } as const}
@@ -104,6 +105,11 @@
     }
     .description {
         color: var(--form-muted, #555);
+        white-space: pre-line;
+    }
+    .intro {
+        margin: 0;
+        white-space: pre-line;
     }
     .hidden-public {
         border-style: dashed;

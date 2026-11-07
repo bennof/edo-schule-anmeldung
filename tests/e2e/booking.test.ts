@@ -7,7 +7,7 @@ import { afterAll, beforeAll, it } from 'vitest';
 import type { FormDefinition, Procedure } from '../../packages/domain/src/index.ts';
 import testForm from '../../packages/forms/examples/test-form.json' with { type: 'json' };
 import { AppointmentService, ConfigStore, Repository } from '../../packages/sharepoint/src/index.ts';
-import { launch, signIn, startApiServer, startDevServer, URLS, watchConsole, type ApiServer } from '../support/browser.ts';
+import { confirmDialog, launch, signIn, startApiServer, startDevServer, URLS, watchConsole, type ApiServer } from '../support/browser.ts';
 import { day, env, testSite } from '../support/env.ts';
 
 const site = testSite();
@@ -51,7 +51,6 @@ beforeAll(async () => {
     browser = await launch();
     page = await browser.newPage();
     problems = watchConsole(page);
-    page.on('dialog', (d) => d.accept());
     pub = await browser.newPage();
     pubProblems = watchConsole(pub);
     await page.goto(URLS.secretariat);
@@ -136,6 +135,7 @@ it('edit and delete drafts', async () => {
     await page.getByText('Termin geändert.').waitFor({ timeout: 20000 });
     assert((await appointments.repo.get(last.id))?.datetime === `${slotDay}T09:10`, 'time not changed');
     await page.locator(`tr[data-id="${last.id}"]`).getByRole('button', { name: 'Löschen' }).click();
+    await confirmDialog(page);
     await page.getByText('1 Entwürfe gelöscht.').waitFor({ timeout: 20000 });
     assert((await appointments.listForProcedure(procedure.id)).length === 5, 'not deleted');
 });

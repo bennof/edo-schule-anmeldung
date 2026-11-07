@@ -76,7 +76,6 @@ beforeAll(async () => {
     browser = await launch();
     admin = await (await browser.newContext()).newPage();
     problems = watchConsole(admin);
-    admin.on('dialog', (d) => d.accept());
     pub = await (await browser.newContext()).newPage();
     pubProblems = watchConsole(pub);
     await admin.goto(URLS.secretariat);
@@ -182,13 +181,13 @@ it('invalid definitions block saving', async () => {
     await select('geschwisterName');
     await props().getByLabel('ID (Datenname)').fill('nachname'); // duplicate id
     await admin.getByText(/Problem\(e\)/).waitFor();
-    assert(await admin.getByRole('button', { name: 'Als Version 1 speichern' }).isDisabled(), 'save enabled');
+    assert(await admin.getByRole('button', { name: 'Speichern', exact: true }).isDisabled(), 'save enabled');
     await props().getByLabel('ID (Datenname)').fill('geschwisterName');
-    await admin.getByRole('button', { name: 'Als Version 1 speichern' }).waitFor({ state: 'visible' });
+    await admin.getByRole('button', { name: 'Speichern', exact: true }).waitFor({ state: 'visible' });
 });
 
 it('save as version 1', async () => {
-    await admin.getByRole('button', { name: 'Als Version 1 speichern' }).click();
+    await admin.getByRole('button', { name: 'Speichern', exact: true }).click();
     await admin.getByText(/Neue Version gespeichert/).waitFor({ timeout: 20000 });
     const family = (await formService.families()).find((f) => f.title === title)!;
     created.formKey = family.formKey;
@@ -197,13 +196,15 @@ it('save as version 1', async () => {
 
 it('editing saves version 2, version 1 stays unchanged', async () => {
     const row = admin.locator(`[data-form-key="${created.formKey}"]`);
-    await row.getByRole('button', { name: 'Bearbeiten → Version 2' }).click();
+    await row.getByRole('button', { name: 'Bearbeiten → neue Version' }).click();
     await select('nachname');
     await props().getByLabel('Beschriftung').fill('Nachname des Kindes');
-    await admin.getByRole('button', { name: 'Als Version 2 speichern' }).click();
+    assert((await admin.getByLabel('Version', { exact: true }).inputValue()) === '2', 'next version not suggested');
+    await admin.getByLabel('Version', { exact: true }).fill('Entwurf 2');
+    await admin.getByRole('button', { name: 'Speichern', exact: true }).click();
     await admin.getByText(/Neue Version gespeichert/).waitFor({ timeout: 20000 });
     const [family] = (await formService.families()).filter((f) => f.formKey === created.formKey);
-    assert(family.versions.map((v) => v.version).join() === '2,1', 'versions');
+    assert(family.versions.map((v) => v.version).join() === 'Entwurf 2,1', 'versions');
     const first = family.versions[1].formJson as { sections: { items: { label: string }[] }[] };
     assert(first.sections[0].items[0].label === 'Name des Kindes', 'version 1 changed');
 });

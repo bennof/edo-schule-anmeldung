@@ -2,6 +2,7 @@
      all form fields, comments, autosave with conflict detection, explicit
      state transitions. -->
 <script lang="ts">
+    import { ask } from '../dialogs.svelte.ts';
     import type { Application, ApplicationState, Appointment } from '@anmeldung/domain';
     import { FormRenderer, type FileHandler } from '@anmeldung/form-ui';
     import { fileRefs, normalizeData, optionSources, withoutHidden, type FormData, type FormJson } from '@anmeldung/forms';
@@ -132,7 +133,7 @@
     async function advance(): Promise<void> {
         if (!application) return;
         const step = NEXT[application.state];
-        if (!step || (step.confirm && !confirm(step.confirm))) return;
+        if (!step || (step.confirm && !(await ask(step.confirm)))) return;
         busy = true;
         try {
             await save();
@@ -191,7 +192,7 @@
 
     async function close(): Promise<void> {
         if (saveStatus === 'pending') await save();
-        if ((saveStatus === 'error' || saveStatus === 'conflict') && !confirm('Änderungen sind nicht gespeichert. Trotzdem schließen?')) return;
+        if ((saveStatus === 'error' || saveStatus === 'conflict') && !(await ask('Änderungen sind nicht gespeichert. Trotzdem schließen?', 'Schließen'))) return;
         onclose();
     }
 

@@ -1,6 +1,7 @@
 <!-- Asset management (backlog B4): binary resources by key, e.g. the logo
      (key "logo") shown in the public SPA, images and PDF templates. -->
 <script lang="ts">
+    import { ask } from '../dialogs.svelte.ts';
     import { isAssetKey, type AssetInfo } from '@anmeldung/sharepoint';
     import { errorText, site, uploadDefaultTemplate } from '../services.ts';
 
@@ -48,7 +49,7 @@
         e.preventDefault();
         const formElement = e.currentTarget as HTMLFormElement;
         if (!file || !keyValid) return;
-        if (exists && !confirm(`„${key}“ ersetzen?`)) return;
+        if (exists && !(await ask(`„${key}“ ersetzen?`, 'Ersetzen'))) return;
         busy = true;
         try {
             await site.putAsset(key, file);
@@ -67,7 +68,7 @@
     }
 
     async function remove(asset: AssetInfo): Promise<void> {
-        if (!confirm(`„${asset.key}“ löschen?`)) return;
+        if (!(await ask(`„${asset.key}“ löschen?`, 'Löschen'))) return;
         busy = true;
         try {
             await site.deleteAsset(asset.key);
@@ -82,7 +83,7 @@
 
     async function uploadTemplate(): Promise<void> {
         const exists = list.some((a) => a.key === 'anmeldebogen.pdf');
-        if (exists && !confirm('Vorhandene Vorlage „anmeldebogen.pdf“ durch den Standard-Anmeldebogen ersetzen?')) return;
+        if (exists && !(await ask('Vorhandene Vorlage „anmeldebogen.pdf“ durch den Standard-Anmeldebogen ersetzen?', 'Ersetzen'))) return;
         busy = true;
         try {
             await uploadDefaultTemplate(true);

@@ -51,6 +51,7 @@
 
 <fieldset class="group" class:hidden-public={hiddenPublic} data-path={path}>
     <legend>{group.label}</legend>
+    {#if group.help}<p class="help">{group.help}</p>{/if}
     {#if hiddenPublic}<p class="hidden-note">Im Online-Formular ausgeblendet</p>{/if}
 
     {#if group.repeat}
@@ -99,6 +100,11 @@
     }
     .entry {
         background: var(--form-surface, #f8f8f8);
+    }
+    .help {
+        margin: 0;
+        color: var(--form-muted, #555);
+        white-space: pre-line;
     }
     .hidden-public {
         border-style: dashed;

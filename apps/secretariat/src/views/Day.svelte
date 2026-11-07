@@ -1,6 +1,7 @@
 <!-- Day view (backlog J2, J4, L1): appointments of one day across procedures,
      parallel slots side by side, with appointment and application state. -->
 <script lang="ts">
+    import { ask } from '../dialogs.svelte.ts';
     import type { Appointment, Procedure } from '@anmeldung/domain';
     import type { ApplicationSummary } from '@anmeldung/sharepoint';
     import ApplicationEditor from '../components/ApplicationEditor.svelte';
@@ -78,8 +79,8 @@
         });
 
     /** L1: phone cancellation; the application stays */
-    const cancel = (a: Appointment) => {
-        if (!confirm(`Termin ${a.datetime.slice(11, 16)} Uhr von ${a.nameCustomer ?? 'unbekannt'} freigeben? Die Anmeldung bleibt erhalten.`)) return;
+    const cancel = async (a: Appointment) => {
+        if (!(await ask(`Termin ${a.datetime.slice(11, 16)} Uhr von ${a.nameCustomer ?? 'unbekannt'} freigeben? Die Anmeldung bleibt erhalten.`, 'Freigeben'))) return;
         return run(() => appointments.cancelBooking(a.id));
     };
 </script>

@@ -127,3 +127,8 @@ export async function signIn(page: Page, user: string, password: string): Promis
         throw new Error(`login did not return to the app (stuck at ${new URL(page.url()).host})`);
     });
 }
+
+/** Confirms the secretariat's own confirmation dialog (it replaces window.confirm). */
+export async function confirmDialog(page: Page): Promise<void> {
+    await page.getByRole('dialog', { name: 'Bestätigung' }).getByRole('button').last().click({ timeout: 10000 });
+}

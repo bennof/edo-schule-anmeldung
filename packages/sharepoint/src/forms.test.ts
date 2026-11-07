@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { FakeGraph } from './fake-graph.ts';
-import { FormInUseError, FormService, newFormKey } from './forms.ts';
+import { FormInUseError, FormService, newFormKey, VersionExistsError } from './forms.ts';
 import { GraphClient } from './graph.ts';
 import { provision } from './provision.ts';
 import { SharePointSite } from './site.ts';
@@ -34,6 +34,16 @@ describe('form versions (D3)', () => {
         expect(family.versions.map((v) => v.version)).toEqual(['3', '2', '1']);
     });
 
+    it('takes a free version label, unique within the form; newest first by save time', async () => {
+        const v1 = await service.saveVersion({ title: 'Anmeldung' }, undefined, '2025/26');
+        const v2 = await service.saveVersion({ title: 'Anmeldung' }, v1.formKey, ' Entwurf Mai ');
+        const v3 = await service.saveVersion({ title: 'Anmeldung' }, v1.formKey);
+        expect([v1.version, v2.version, v3.version]).toEqual(['2025/26', 'Entwurf Mai', '3']);
+        await expect(service.saveVersion({ title: 'Anmeldung' }, v1.formKey, 'Entwurf Mai')).rejects.toBeInstanceOf(VersionExistsError);
+        const [family] = await service.families();
+        expect(family.versions.map((v) => v.version)).toEqual(['3', 'Entwurf Mai', '2025/26']);
+    });
+
     it('treats forms from before versioning as version 1', async () => {
         const legacy = await service.repo.create({ formJson: { title: 'Alt' }, dateLastUpdate: '2026-01-01' });
         const [v] = await service.listVersions();
@@ -49,6 +59,18 @@ describe('deleting forms', () => {
         const other = await service.saveVersion({ title: 'Anderes' });
         await service.deleteFamily(v1.formKey);
         expect((await service.listVersions()).map((v) => v.id)).toEqual([other.id]);
+    });
+
+    it('deletes a single version, refused while it is in use', async () => {
+        const v1 = await service.saveVersion({ title: 'Anmeldung' });
+        const v2 = await service.saveVersion({ title: 'Anmeldung' }, v1.formKey);
+        const v3 = await service.saveVersion({ title: 'Anmeldung' }, v1.formKey);
+        await site.createItems('procedures', [{ FormId: v3.id }]);
+        await site.createItems('applications', [{ ProcedureId: 'p', FormId: v2.id }]);
+        await service.deleteVersion(v1.id);
+        expect(await service.deleteVersion(v2.id).catch((e) => e)).toBeInstanceOf(FormInUseError);
+        expect(await service.deleteVersion(v3.id).catch((e) => e)).toBeInstanceOf(FormInUseError);
+        expect((await service.listVersions()).map((v) => v.id)).toEqual([v2.id, v3.id]);
     });
 
     it('refuses while a procedure uses a version, directly or through applications', async () => {

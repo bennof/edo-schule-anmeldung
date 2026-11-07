@@ -1,8 +1,9 @@
 <!-- Procedure management (backlog D1): create, list, edit and delete procedures. -->
 <script lang="ts">
+    import { ask } from '../dialogs.svelte.ts';
     import type { Procedure } from '@anmeldung/domain';
     import type { FormJson } from '@anmeldung/forms';
-    import { deleteProcedure, type FormVersion } from '@anmeldung/sharepoint';
+    import { deleteProcedure, newestFirst, type FormVersion } from '@anmeldung/sharepoint';
     import { errorText, formService, procedures, site } from '../services.ts';
 
     interface Draft {
@@ -27,7 +28,7 @@
     /** a newer version of the procedure's form exists (D3) */
     const newerVersion = (id: string) => {
         const f = formList.find((x) => x.id === id);
-        return f && formList.find((x) => x.formKey === f.formKey && Number(x.version) > Number(f.version));
+        return f && formList.find((x) => x.formKey === f.formKey && newestFirst(x, f) < 0);
     };
     const formatDate = (d: string) => d.split('-').reverse().join('.');
 
@@ -43,7 +44,7 @@
 
     async function load(): Promise<void> {
         [list, formList] = await Promise.all([procedures.list(), formService.listVersions()]);
-        formList.sort((a, b) => a.formKey.localeCompare(b.formKey) || Number(b.version) - Number(a.version));
+        formList.sort((a, b) => a.formKey.localeCompare(b.formKey) || newestFirst(a, b));
         list.sort((a, b) => b.startDate.localeCompare(a.startDate));
     }
 
@@ -82,7 +83,7 @@
         const question =
             `Verfahren „${p.info.title}“ endgültig löschen?\n\n` +
             'Alle Termine, Anmeldungen und hochgeladenen Dateien dieses Verfahrens werden mitgelöscht. Die Formulare bleiben erhalten.';
-        if (!confirm(question)) return;
+        if (!(await ask(question, 'Löschen'))) return;
         busy = true;
         message = '';
         try {

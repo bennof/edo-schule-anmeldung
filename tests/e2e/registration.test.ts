@@ -61,7 +61,6 @@ beforeAll(async () => {
     browser = await launch();
     admin = await browser.newPage();
     adminProblems = watchConsole(admin);
-    admin.on('dialog', (d) => d.accept());
     pub = await (await browser.newContext()).newPage();
     pubProblems = watchConsole(pub);
     await admin.goto(URLS.secretariat);
@@ -89,15 +88,22 @@ afterAll(async () => {
 
 it('secretariat imports the school form with its catalogs', async () => {
     await admin.getByRole('navigation').getByRole('link', { name: 'Formulare' }).click();
-    await admin.getByRole('button', { name: 'Schulformular anlegen' }).click();
+    await admin.locator('input[type=file]').setInputFiles(new URL('../../packages/forms/examples/anmeldung-klasse5.json', import.meta.url).pathname);
     const msg = (await admin.getByText(/Formular „Anmeldung Klasse 5.*angelegt \(ID \d+\)/).textContent({ timeout: 30000 }))!;
     created.form = /ID (\d+)/.exec(msg)![1];
     created.catalogs = CATALOGS.filter((c) => !existingAssets.has(c));
-    created.template = !existingAssets.has('anmeldebogen.pdf');
-    assert(!created.template || msg.includes('Anmeldebogen-Vorlage hochgeladen'), `template not uploaded: ${msg}`);
-    assert(msg.includes('Kataloge aktualisiert: laender.json, sprachen.json, staatsangehoerigkeiten.json'), msg);
+    // only missing catalogs are uploaded; existing ones (e.g. from SVWS) stay
+    assert(!created.catalogs.length || msg.includes(`Kataloge angelegt: ${created.catalogs.join(', ')}.`), msg);
     const row = admin.getByRole('row').filter({ has: admin.getByRole('cell', { name: created.form, exact: true }) });
     assert(!(await row.getByText('Fehlende Kataloge').isVisible()), 'catalogs reported missing');
+
+    // the PDF template comes from "Dateien" (only when the site has none yet)
+    created.template = !existingAssets.has('anmeldebogen.pdf');
+    if (created.template) {
+        await admin.getByRole('navigation').getByRole('link', { name: 'Dateien' }).click();
+        await admin.getByRole('button', { name: 'Standard-Anmeldebogen hochladen' }).click();
+        await admin.getByText('Standard-Anmeldebogen als „anmeldebogen.pdf“ gespeichert.').waitFor({ timeout: 30000 });
+    }
 });
 
 it('procedure with published appointments (via the adapter)', async () => {

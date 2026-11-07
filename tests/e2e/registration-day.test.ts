@@ -8,7 +8,7 @@ import { afterAll, beforeAll, it } from 'vitest';
 import type { Application, Appointment, FormDefinition, Procedure } from '../../packages/domain/src/index.ts';
 import testForm from '../../packages/forms/examples/test-form.json' with { type: 'json' };
 import { AppointmentService, Repository } from '../../packages/sharepoint/src/index.ts';
-import { launch, signIn, startApiServer, startDevServer, URLS, watchConsole, type ApiServer } from '../support/browser.ts';
+import { confirmDialog, launch, signIn, startApiServer, startDevServer, URLS, watchConsole, type ApiServer } from '../support/browser.ts';
 import { day, env, testSite } from '../support/env.ts';
 
 const site = testSite();
@@ -74,7 +74,6 @@ beforeAll(async () => {
     browser = await launch();
     page = await browser.newPage();
     problems = watchConsole(page);
-    page.on('dialog', (d) => d.accept());
     await page.goto(`${URLS.secretariat}/#tag/${testDay}`);
     await signIn(page, env.APP_TEST_USER, env.APP_TEST_USER_PWD);
 });
@@ -104,6 +103,7 @@ it('day view shows parallel slots with appointment and application state', async
 
 it('phone cancellation frees the slot, application stays', async () => {
     await slotCell(slots[2].id).getByRole('button', { name: 'Absage' }).click();
+    await confirmDialog(page);
     await slotCell(slots[2].id).getByText('Frei').waitFor({ timeout: 20000 });
     const freed = (await appointments.repo.get(slots[2].id))!;
     assert(freed.state === 'available' && !freed.applicationId && !freed.nameCustomer && !freed.requestIp, `freed ${JSON.stringify(freed)}`);
@@ -144,6 +144,7 @@ it('review flow up to the explicit SVWS release', async () => {
     await page.getByRole('button', { name: 'Als geprüft markieren' }).click();
     await page.getByTestId('application-state').getByText('Geprüft').waitFor({ timeout: 20000 });
     await page.getByRole('button', { name: 'Für SVWS freigeben' }).click();
+    await confirmDialog(page);
     await page.getByTestId('application-state').getByText('Freigegeben für SVWS').waitFor({ timeout: 20000 });
     assert((await applications.get(appA))?.state === 'ready_for_svws', `state ${await page.getByTestId('application-state').textContent()}`);
     assert(!(await page.getByRole('button', { name: /freigeben|Prüfung|geprüft/ }).isVisible()), 'further transition offered');

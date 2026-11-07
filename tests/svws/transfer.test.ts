@@ -118,6 +118,36 @@ it('settings: SVWS connection check through the proxy', async () => {
     await page.getByTestId('check-svws').getByText(/SVWS \d+\.\d+.*Albert Zweistein Gymnasium/).waitFor({ timeout: 20000 });
 });
 
+it('"Aus SVWS": a school table becomes an option list file', async () => {
+    const file = `test-religionen-${stamp}.json`;
+    await nav('Aus SVWS');
+    await page.getByLabel('Tabelle der Schule').check();
+    await page.getByRole('combobox', { name: /^Tabelle/ }).selectOption('religionen');
+    await page.getByTestId('svws-sample').waitFor({ timeout: 20000 });
+    assert((await page.getByLabel('Schlüssel (key)').inputValue()) === 'kuerzel', 'key column not suggested');
+    await page.getByLabel('Dateiname').fill(file);
+    await page.getByRole('button', { name: 'Lesen und speichern' }).click();
+    addedCatalogs.push(file);
+    await page.getByText(new RegExp(`„${file}“ mit \\d+ Einträgen`)).waitFor({ timeout: 20000 });
+    const saved = JSON.parse(await (await site.getAsset(file))!.text()) as { key: string; value: string }[];
+    const religionen = await svwsApi.get<{ kuerzel: string; bezeichnung: string; istSichtbar: boolean }[]>('/schule/religionen');
+    assert.deepEqual(saved.map((o) => o.key).sort(), religionen.filter((r) => r.istSichtbar).map((r) => r.kuerzel).sort());
+});
+
+it('"Aus SVWS": nationalities with ISO codes, expired ones left out', async () => {
+    const file = `test-laender-${stamp}.json`;
+    await page.getByLabel('Nationalitäten').check();
+    await page.getByTestId('svws-sample').waitFor({ timeout: 20000 });
+    await page.getByLabel('Dateiname').fill(file);
+    await page.getByRole('button', { name: 'Lesen und speichern' }).click();
+    addedCatalogs.push(file);
+    await page.getByText(new RegExp(`„${file}“ mit \\d+ Einträgen`)).waitFor({ timeout: 20000 });
+    const saved = JSON.parse(await (await site.getAsset(file))!.text()) as { key: string; value: string }[];
+    assert(saved.some((o) => o.key === 'DE' && o.value === 'Deutschland'), 'DE missing');
+    assert(saved.some((o) => o.key === 'XA' && o.value === 'staatenlos'), 'stateless missing');
+    assert(!saved.some((o) => o.key === 'DD'), 'expired entry kept');
+});
+
 const openTransferDialog = async () => {
     await nav('Anmeldungen');
     await page.locator(`tr[data-id="${app!.id}"]`).getByRole('checkbox').check();

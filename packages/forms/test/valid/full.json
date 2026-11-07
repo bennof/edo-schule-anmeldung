@@ -1,6 +1,7 @@
 {
   "formatVersion": 1,
   "title": "Anmeldung Klasse 5 (Test)",
+  "description": "Willkommen.\n\nBitte füllen Sie alle Pflichtfelder aus.",
   "groups": {
     "adresse": {
       "items": [
@@ -65,7 +66,7 @@
             { "key": "es", "value": "Spanisch" }
           ]
         },
-        { "kind": "group", "id": "adresse", "group": "adresse", "label": "Wohnadresse" }
+        { "kind": "group", "id": "adresse", "group": "adresse", "label": "Wohnadresse", "help": "Die Adresse, unter der das Kind gemeldet ist." }
       ]
     },
     {

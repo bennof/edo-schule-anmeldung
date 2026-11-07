@@ -2,19 +2,19 @@
      open a version in the designer (saves a new version), import/export JSON,
      preview, delete forms no procedure uses. Saved versions are never changed. -->
 <script lang="ts">
+    import { ask } from '../dialogs.svelte.ts';
     import type { Procedure } from '@anmeldung/domain';
     import { FormRenderer } from '@anmeldung/form-ui';
     import { initialData, optionSources, type FormJson } from '@anmeldung/forms';
-    import schoolForm from '@anmeldung/forms/examples/anmeldung-klasse5.json';
     import testForm from '@anmeldung/forms/examples/test-form.json';
     import laender from '@anmeldung/forms/catalogs/laender.json';
     import sprachen from '@anmeldung/forms/catalogs/sprachen.json';
     import staatsangehoerigkeiten from '@anmeldung/forms/catalogs/staatsangehoerigkeiten.json';
     import { validateFormDefinition } from '@anmeldung/forms/validate';
-    import type { FormFamily, FormVersion } from '@anmeldung/sharepoint';
+    import { nextVersionLabel, type FormFamily, type FormVersion } from '@anmeldung/sharepoint';
     import FormDesigner from '../components/designer/FormDesigner.svelte';
     import { emptyForm } from '../components/designer/designer.ts';
-    import { errorText, formService, loadOptions, procedures, site, uploadDefaultTemplate } from '../services.ts';
+    import { errorText, formService, loadOptions, procedures, site } from '../services.ts';
 
     /** Catalogs bundled with the app (generated, see packages/forms/scripts). */
     const CATALOGS: Record<string, unknown> = {
@@ -33,7 +33,7 @@
     let preview: FormVersion | undefined = $state();
     let previewData = $state({});
     let assetKeys: Set<string> = $state(new Set());
-    let designer: { initial: FormJson; formKey?: string; nextVersion: number } | undefined = $state();
+    let designer: { initial: FormJson; formKey?: string; nextVersion: string } | undefined = $state();
 
     const usedBy = (formId: string) => procedureList.filter((p) => p.formId === formId).map((p) => p.info.title);
     const missingAssets = (v: FormVersion) => optionSources(v.formJson).filter((k) => !assetKeys.has(k));
@@ -49,7 +49,8 @@
     async function uploadCatalogs(keys: string[]): Promise<string[]> {
         const uploaded: string[] = [];
         for (const key of keys) {
-            if (!CATALOGS[key]) continue;
+            // only missing files: lists made under "Aus SVWS" are kept
+            if (!CATALOGS[key] || assetKeys.has(key)) continue;
             await site.putAsset(key, new Blob([JSON.stringify(CATALOGS[key])], { type: 'application/json' }));
             uploaded.push(key);
         }
@@ -69,11 +70,9 @@
             const family = families.find((f) => f.title === title);
             const saved = await formService.saveVersion(json, family?.formKey);
             const catalogs = await uploadCatalogs(optionSources(json));
-            const template = json === schoolForm && (await uploadDefaultTemplate());
             message =
                 `Formular „${title}“ als Version ${saved.version} angelegt (ID ${saved.id}).` +
-                (catalogs.length ? ` Kataloge aktualisiert: ${catalogs.join(', ')}.` : '') +
-                (template ? ' Anmeldebogen-Vorlage hochgeladen.' : '');
+                (catalogs.length ? ` Kataloge angelegt: ${catalogs.join(', ')}.` : '');
             await load();
         } catch (e) {
             message = `Fehler: ${errorText(e)}`;
@@ -96,32 +95,33 @@
 
     function exportJson(v: FormVersion): void {
         const url = URL.createObjectURL(new Blob([JSON.stringify(v.formJson, null, 2)], { type: 'application/json' }));
-        const a = Object.assign(document.createElement('a'), { href: url, download: `${v.formKey}-v${v.version}.json` });
+        const a = Object.assign(document.createElement('a'), { href: url, download: `${v.formKey}-${v.version.replace(/[^A-Za-z0-9._-]+/g, '-')}.json` });
         document.body.append(a);
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 60_000);
     }
 
-    /** Deletes all versions; refused with the names of the procedures still using the form. */
-    async function removeFamily(family: FormFamily): Promise<void> {
+    /** Deletes one version; refused with the names of the procedures still using it. */
+    async function removeVersion(family: FormFamily, v: FormVersion): Promise<void> {
         message = '';
         warning = '';
         problems = [];
         busy = true;
         try {
-            const used = await formService.usedBy(family.formKey);
+            const used = await formService.usedByVersions([v.id]);
             if (used.length) {
                 const names = used.map((id) => `„${procedureList.find((p) => p.id === id)?.info.title ?? `Verfahren ${id}`}“`);
                 warning =
-                    `Das Formular „${family.title}“ kann nicht gelöscht werden. Es wird noch verwendet von: ${names.join(', ')}. ` +
-                    'Dort zuerst ein anderes Formular wählen oder das Verfahren löschen.';
+                    `Version ${v.version} von „${family.title}“ kann nicht gelöscht werden. Sie wird noch verwendet von: ${names.join(', ')}. ` +
+                    'Dort zuerst eine andere Version wählen oder das Verfahren löschen.';
                 return;
             }
-            const n = family.versions.length;
-            if (!confirm(`Formular „${family.title}“ mit ${n === 1 ? 'seiner Version' : `allen ${n} Versionen`} endgültig löschen?`)) return;
-            await formService.deleteFamily(family.formKey);
-            message = `Formular „${family.title}“ gelöscht.`;
+            const last = family.versions.length === 1;
+            if (!(await ask(`Version ${v.version} von „${family.title}“ endgültig löschen?${last ? ' Es ist die einzige Version, das Formular wird damit entfernt.' : ''}`, 'Löschen'))) return;
+            await formService.deleteVersion(v.id);
+            message = `Version ${v.version} von „${family.title}“ gelöscht.`;
+            if (preview?.id === v.id) preview = undefined;
             await load();
         } catch (e) {
             message = `Fehler: ${errorText(e)}`;
@@ -136,7 +136,7 @@
     }
 
     function edit(family: FormFamily, v: FormVersion): void {
-        designer = { initial: v.formJson as FormJson, formKey: family.formKey, nextVersion: Number(family.versions[0].version) + 1 };
+        designer = { initial: v.formJson as FormJson, formKey: family.formKey, nextVersion: nextVersionLabel(family.versions) };
     }
 
     load().catch((e) => (message = `Fehler: ${errorText(e)}`));
@@ -159,12 +159,11 @@
         <h2>Formulare</h2>
         <p class="muted">Gespeicherte Versionen werden nie verändert: Änderungen im Designer ergeben eine neue Version. Anmeldungen behalten die Version, mit der sie angelegt wurden.</p>
         <p class="actions">
-            <button onclick={() => (designer = { initial: emptyForm(), nextVersion: 1 })} disabled={busy}>Neues Formular</button>
+            <button onclick={() => (designer = { initial: emptyForm(), nextVersion: '1' })} disabled={busy}>Neues Formular</button>
             <label class="button">
                 JSON-Datei importieren
                 <input type="file" accept="application/json,.json" onchange={importFile} disabled={busy} hidden />
             </label>
-            <button class="secondary" onclick={() => importJson(schoolForm)} disabled={busy}>Schulformular anlegen</button>
             <button class="secondary" onclick={() => importJson(testForm)} disabled={busy}>Testformular anlegen</button>
         </p>
         {#if warning}<p class="warning" role="alert">{warning}</p>{/if}
@@ -177,7 +176,6 @@
             <div class="family" data-form-key={family.formKey}>
                 <div class="head">
                     <h3>{family.title} <small class="muted">{family.formKey}</small></h3>
-                    <button class="secondary danger" onclick={() => removeFamily(family)} disabled={busy}>Formular löschen</button>
                 </div>
                 <table>
                     <thead><tr><th>Version</th><th>ID</th><th>Stand</th><th>Verwendet von</th><th></th></tr></thead>
@@ -194,8 +192,9 @@
                                 <td>{usedBy(v.id).join(', ') || '–'}</td>
                                 <td class="tools">
                                     <button class="secondary" onclick={() => showPreview(v)}>Vorschau</button>
-                                    <button class="secondary" onclick={() => edit(family, v)}>Bearbeiten → Version {Number(family.versions[0].version) + 1}</button>
+                                    <button class="secondary" onclick={() => edit(family, v)}>Bearbeiten → neue Version</button>
                                     <button class="secondary" onclick={() => exportJson(v)}>JSON</button>
+                                    <button class="secondary danger" onclick={() => removeVersion(family, v)} disabled={busy}>Löschen</button>
                                 </td>
                             </tr>
                         {/each}
@@ -240,7 +239,9 @@
     button.danger {
         color: var(--danger);
     }
-    .tools {
+    /* buttons wrap in narrow windows, so "Löschen" at the end stays visible */
+    .tools button {
         white-space: nowrap;
+        margin: 0.1rem 0;
     }
 </style>

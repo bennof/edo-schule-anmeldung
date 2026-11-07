@@ -3,6 +3,7 @@
      the right. Saving creates a new version (D3); existing versions are
      never changed. -->
 <script lang="ts">
+    import { untrack } from 'svelte';
     import { FormRenderer, type DesignContainer, type DesignHooks, type DesignTarget } from '@anmeldung/form-ui';
     import { clone, initialData, type FormJson, type Item } from '@anmeldung/forms';
     import { validateFormDefinition } from '@anmeldung/forms/validate';
@@ -15,7 +16,8 @@
         initial: FormJson;
         /** form family; undefined starts a new form (version 1) */
         formKey?: string;
-        nextVersion: number;
+        /** suggested version label */
+        nextVersion: string;
         onsaved: (id: string) => void;
         oncancel: () => void;
     }
@@ -69,12 +71,15 @@
         selected = { kind: 'form' };
     }
 
+    // free text, e.g. "2026/27" or "Entwurf Mai"; must be new within the form
+    let versionLabel = $state(untrack(() => nextVersion));
+
     async function save(): Promise<void> {
-        if (problems.length) return;
+        if (problems.length || !versionLabel.trim()) return;
         busy = true;
         message = '';
         try {
-            const saved = await formService.saveVersion($state.snapshot(form), formKey);
+            const saved = await formService.saveVersion($state.snapshot(form), formKey, versionLabel);
             onsaved(saved.id);
         } catch (e) {
             message = `Fehler: ${errorText(e)}`;
@@ -107,7 +112,8 @@
     <header class="bar">
         <button class="secondary" onclick={oncancel}>← Abbrechen</button>
         <h2>Form-Designer</h2>
-        <button onclick={save} disabled={busy || problems.length > 0}>Als Version {nextVersion} speichern</button>
+        <label class="version">Version <input bind:value={versionLabel} placeholder="z. B. 2026/27" /></label>
+        <button onclick={save} disabled={busy || problems.length > 0 || !versionLabel.trim()}>Speichern</button>
     </header>
     {#if message}<p class="error">{message}</p>{/if}
     {#if problems.length}
@@ -137,6 +143,17 @@
             {#if selected.kind === 'form'}
                 <h3>Formular</h3>
                 <label>Titel <input bind:value={form.title} /></label>
+                <label
+                    >Vortext <textarea
+                        rows="8"
+                        value={form.description ?? ''}
+                        oninput={(e) => {
+                            if (e.currentTarget.value) form.description = e.currentTarget.value;
+                            else delete form.description;
+                        }}
+                    ></textarea></label
+                >
+                <p class="muted">Erscheint im Online-Formular vor dem ersten Abschnitt. Leerzeilen trennen Absätze.</p>
                 <p class="muted">
                     Gespeichert wird als neue Version{formKey ? ` (Formular-Schlüssel ${formKey})` : ' eines neuen Formulars'}. Bestehende Anmeldungen behalten ihre
                     Version.
@@ -235,6 +252,14 @@
         flex-wrap: wrap;
         gap: 0.75rem;
         align-items: center;
+    }
+    .version {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .version input {
+        width: 10rem;
     }
     .bar h2 {
         margin: 0;

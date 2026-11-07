@@ -6,11 +6,12 @@ import { ApplicationService, AppointmentService, ConfigStore, FormService, Graph
 import { getToken } from './auth.ts';
 import { clientConfig } from './config.ts';
 import { createSvwsAdapter } from '@anmeldung/svws';
+import { svwsEndpoint } from './desktop.ts';
 
 // with an invalid configuration only the setup screen is shown; site stays unused
 export const site = new SharePointSite(new GraphClient(getToken), clientConfig?.siteId ?? '');
 /** SVWS boundary (M1); a placeholder until the concrete adapter exists */
-export const svws = createSvwsAdapter(clientConfig?.svws);
+export const svws = createSvwsAdapter(svwsEndpoint(clientConfig?.svws));
 export const config = new ConfigStore(site);
 export const procedures = new Repository<Procedure>(site, 'procedures');
 export const forms = new Repository<FormDefinition>(site, 'forms');

@@ -38,6 +38,8 @@ export interface SvwsAdapter {
     /** connection test: returns e.g. "SVWS 1.4.1 · Albert Zweistein Gymnasium" */
     check(credentials: SvwsCredentials): Promise<string>;
     transfer(items: TransferItem[], credentials: SvwsCredentials): Promise<TransferResult[]>;
+    /** rows of a catalog or school table, path below /db/{schema} (e.g. /schule/religionen) */
+    readRows(path: string, credentials: SvwsCredentials): Promise<Record<string, unknown>[]>;
 }
 
 const failAll = (items: TransferItem[], message: string): TransferResult[] =>
@@ -51,6 +53,9 @@ export class NotConfiguredAdapter implements SvwsAdapter {
         return 'Kein SVWS-Endpunkt konfiguriert (Einstellungen: Adresse und Schema).';
     }
     async check(): Promise<string> {
+        throw new Error(this.status());
+    }
+    async readRows(): Promise<Record<string, unknown>[]> {
         throw new Error(this.status());
     }
     async transfer(items: TransferItem[]): Promise<TransferResult[]> {
@@ -80,6 +85,12 @@ export class SvwsTransferAdapter implements SvwsAdapter {
         const client = new SvwsClient(this.transport, this.endpoint.schema, credentials);
         const schule = await client.get<{ bezeichnung1?: string; schulNr?: number }>('/schule/stammdaten');
         return `SVWS ${String(version.body ?? '').replaceAll('"', '')} · ${schule.bezeichnung1 ?? ''} (${schule.schulNr ?? ''})`;
+    }
+
+    async readRows(path: string, credentials: SvwsCredentials): Promise<Record<string, unknown>[]> {
+        const rows = await new SvwsClient(this.transport, this.endpoint.schema, credentials).get<unknown>(path);
+        if (!Array.isArray(rows)) throw new Error(`SVWS ${path}: keine Tabelle`);
+        return rows.filter((r): r is Record<string, unknown> => !!r && typeof r === 'object');
     }
 
     async transfer(items: TransferItem[], credentials: SvwsCredentials): Promise<TransferResult[]> {

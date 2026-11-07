@@ -1,6 +1,7 @@
 <!-- Appointment planning (backlog E2-E5): generate drafts for a procedure,
      edit or delete drafts, publish them for public booking. -->
 <script lang="ts">
+    import { ask } from '../dialogs.svelte.ts';
     import {
         checkScheduleParams,
         generateSchedule,
@@ -115,9 +116,9 @@
             return `${ids.length} Termine veröffentlicht.`;
         });
 
-    const removeDrafts = (items: Appointment[]) => {
+    const removeDrafts = async (items: Appointment[]) => {
         const ids = drafts(items);
-        if (!confirm(`${ids.length} Entwürfe löschen?`)) return;
+        if (!(await ask(`${ids.length} Entwürfe löschen?`, 'Löschen'))) return;
         return run(async () => {
             await appointments.deleteDrafts(ids);
             return `${ids.length} Entwürfe gelöscht.`;
@@ -125,8 +126,8 @@
     };
 
     /** L1: phone cancellation; the application stays */
-    const cancelBooking = (a: Appointment) => {
-        if (!confirm(`Termin ${a.datetime.slice(11)} Uhr von ${a.nameCustomer ?? 'unbekannt'} freigeben? Die Anmeldung bleibt erhalten.`)) return;
+    const cancelBooking = async (a: Appointment) => {
+        if (!(await ask(`Termin ${a.datetime.slice(11)} Uhr von ${a.nameCustomer ?? 'unbekannt'} freigeben? Die Anmeldung bleibt erhalten.`, 'Freigeben'))) return;
         return run(async () => {
             await appointments.cancelBooking(a.id);
             return 'Termin freigegeben.';

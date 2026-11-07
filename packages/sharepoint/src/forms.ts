@@ -1,5 +1,6 @@
 // Form versions (backlog D3): a saved version is never changed. Saving a
-// change creates a new item with the same formKey and the next version, so
+// change creates a new item with the same formKey and a version label (free
+// text, e.g. "2026/27" or "Entwurf Mai"; default the next number), so
 // applications keep the exact definition they were created with.
 import type { FormDefinition, Procedure } from '@anmeldung/domain';
 import { Repository } from './repository.ts';
@@ -15,6 +16,24 @@ export interface FormFamily {
     title: string;
     /** newest first */
     versions: FormVersion[];
+}
+
+/** Newest first: by save time, then by item id. */
+export function newestFirst(a: FormVersion, b: FormVersion): number {
+    return b.dateLastUpdate.localeCompare(a.dateLastUpdate) || Number(b.id) - Number(a.id);
+}
+
+/** Suggested label for the next version: one more than the highest number used. */
+export function nextVersionLabel(versions: Pick<FormVersion, 'version'>[]): string {
+    const numbers = versions.map((v) => Number(v.version)).filter((n) => Number.isInteger(n) && n > 0);
+    return String(Math.max(versions.length, ...numbers) + 1);
+}
+
+/** A version label that is already used in the form. */
+export class VersionExistsError extends Error {
+    constructor(label: string) {
+        super(`Die Version „${label}“ gibt es in diesem Formular schon. Bitte eine andere Bezeichnung wählen.`);
+    }
 }
 
 const titleOf = (f: FormDefinition) => String((f.formJson as { title?: unknown })?.title ?? 'Formular');
@@ -56,7 +75,11 @@ export class FormService {
      * applications created with it (a procedure may have switched versions).
      */
     async usedBy(formKey: string): Promise<string[]> {
-        const ids = (await this.listVersions()).filter((v) => v.formKey === formKey).map((v) => v.id);
+        return this.usedByVersions((await this.listVersions()).filter((v) => v.formKey === formKey).map((v) => v.id));
+    }
+
+    /** Procedures that use these versions (see usedBy). */
+    async usedByVersions(ids: string[]): Promise<string[]> {
         const procedures = await new Repository<Procedure>(this.site, 'procedures').list();
         const used = new Set(procedures.filter((p) => ids.includes(p.formId)).map((p) => p.id));
         // FormId is not indexed: read both columns of all applications and filter here
@@ -74,6 +97,13 @@ export class FormService {
         if (ids.length) await this.site.deleteItems('forms', ids);
     }
 
+    /** Deletes one version; refused while a procedure uses it. The last version removes the form. */
+    async deleteVersion(id: string): Promise<void> {
+        const used = await this.usedByVersions([id]);
+        if (used.length) throw new FormInUseError(used);
+        await this.site.deleteItems('forms', [id]);
+    }
+
     /** All versions; forms saved before versioning count as version 1 of their own key. */
     async listVersions(): Promise<FormVersion[]> {
         return (await this.repo.list()).map((f) => ({ ...f, formKey: f.formKey ?? `form-${f.id}`, version: f.version ?? '1' }));
@@ -84,7 +114,7 @@ export class FormService {
         for (const v of await this.listVersions()) byKey.set(v.formKey, [...(byKey.get(v.formKey) ?? []), v]);
         return [...byKey.entries()]
             .map(([formKey, versions]) => {
-                versions.sort((a, b) => Number(b.version) - Number(a.version));
+                versions.sort(newestFirst);
                 return { formKey, title: titleOf(versions[0]), versions };
             })
             .sort((a, b) => a.title.localeCompare(b.title, 'de'));
@@ -92,12 +122,14 @@ export class FormService {
 
     /**
      * Saves a definition as a new version. Without `formKey` a new form is
-     * started (version 1). The definition must be validated by the caller.
+     * started. `label` is the version label (default: the next number); it
+     * must be unique within the form. The definition must be validated by the caller.
      */
-    async saveVersion(formJson: unknown, formKey?: string): Promise<FormVersion> {
+    async saveVersion(formJson: unknown, formKey?: string, label?: string): Promise<FormVersion> {
         const key = formKey ?? newFormKey(titleOf({ id: '', formJson, dateLastUpdate: '' }));
         const existing = formKey ? (await this.listVersions()).filter((v) => v.formKey === formKey) : [];
-        const version = String(Math.max(0, ...existing.map((v) => Number(v.version))) + 1);
+        const version = label?.trim() || nextVersionLabel(existing);
+        if (existing.some((v) => v.version === version)) throw new VersionExistsError(version);
         const created = await this.repo.create({ formJson, dateLastUpdate: new Date().toISOString(), formKey: key, version });
         return { ...created, formKey: key, version };
     }

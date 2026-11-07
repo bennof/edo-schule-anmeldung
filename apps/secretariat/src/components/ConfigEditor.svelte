@@ -1,6 +1,8 @@
 <!-- Installation configuration of this browser (backlog N1, N2): edit,
      import and export as JSON. Contains no secrets. -->
 <script lang="ts">
+    import { isDesktop } from '../desktop.ts';
+    import { ask } from '../dialogs.svelte.ts';
     import { exportClientConfig, parseClientConfig, type ClientConfig } from '../client-config.ts';
     import { clientConfig, configErrors, configSource, resetClientConfig, saveClientConfig } from '../config.ts';
 
@@ -76,8 +78,8 @@
         }
     }
 
-    function reset(): void {
-        if (!confirm('Die in diesem Browser gespeicherte Konfiguration löschen?')) return;
+    async function reset(): Promise<void> {
+        if (!(await ask('Die in diesem Browser gespeicherte Konfiguration löschen?', 'Löschen'))) return;
         resetClientConfig();
         location.reload();
     }
@@ -108,14 +110,18 @@
         <fieldset>
             <legend>SVWS (optional)</legend>
             <label>SVWS-Adresse <input bind:value={svwsUrl} placeholder="https://svws.schule.local:8443" /></label>
-            <label>
-                Verbindung
-                <select bind:value={svwsTransport}>
-                    <option value="direct">Browser → SVWS</option>
-                    <option value="proxy">Browser → CORS-Proxy → SVWS</option>
-                </select>
-            </label>
-            {#if svwsTransport === 'proxy'}<label>Proxy-Adresse <input bind:value={svwsProxyUrl} /></label>{/if}
+            {#if isDesktop}
+                <p class="muted">Die Desktop-App verbindet sich über ihren eingebauten Proxy mit SVWS (auch bei selbst signierten Zertifikaten).</p>
+            {:else}
+                <label>
+                    Verbindung
+                    <select bind:value={svwsTransport}>
+                        <option value="direct">Browser → SVWS</option>
+                        <option value="proxy">Browser → CORS-Proxy → SVWS</option>
+                    </select>
+                </label>
+                {#if svwsTransport === 'proxy'}<label>Proxy-Adresse <input bind:value={svwsProxyUrl} /></label>{/if}
+            {/if}
             <label>Datenbank-Schema der Schule <input bind:value={svwsSchema} placeholder="z. B. gymabi" /></label>
             <label>Schuljahr der Neuaufnahmen (optional) <input bind:value={svwsSchuljahr} placeholder="z. B. 2026 für 2026/27; leer = aktueller Abschnitt" /></label>
         </fieldset>{/if}

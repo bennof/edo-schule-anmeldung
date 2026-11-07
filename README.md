@@ -106,7 +106,7 @@ make dev                    # Server :23180, Public :8954, Sekretariat :8944
 ```
 
 Im Sekretariat (http://localhost:8944) anmelden, unter „Einstellungen“ die Site
-initialisieren, unter „Formulare“ das Schulformular anlegen, unter „Verfahren“
+initialisieren, unter „Formulare“ ein Formular importieren (JSON), unter „Dateien“ den Standard-Anmeldebogen hochladen, unter „Verfahren“
 ein Verfahren anlegen, unter „Termine“ Termine erzeugen und veröffentlichen.
 
 ## Make-Targets
@@ -196,9 +196,9 @@ System, keine Capabilities); für Port 80/443 nginx mit dem mitgelieferten Snipp
 **http://localhost:8964** mit dem eingebetteten Sekretariat und öffnet ihn in
 einem Fenster. Unter `/svws-proxy` leitet sie SVWS-Anfragen an die Adresse aus
 `X-SVWS-Target` weiter und akzeptiert selbstsignierte Zertifikate – damit
-entfällt CORS im SVWS-Server. Alle Einstellungen bleiben in der App unter
-„Einstellungen“ (SVWS: Verbindung „Browser → CORS-Proxy“, Proxy-Adresse
-`http://localhost:8964/svws-proxy`). Der Server nimmt nur Anfragen mit Host
+entfällt CORS im SVWS-Server. Die App nutzt diesen Proxy für SVWS immer
+automatisch; unter „Einstellungen“ werden nur SVWS-Adresse, Schema und
+Schuljahr eingetragen. Der Server nimmt nur Anfragen mit Host
 `localhost:8964` an. Für die Anmeldung muss `http://localhost:8964` als
 Redirect-URI der SPA-App eingetragen sein. Die Werte liegen im Speicher des
 WebViews, getrennt vom Browser.
@@ -265,7 +265,7 @@ Standard ist `https://localhost:8443`; abweichend in `.env`: `SVWS_URL`,
 - Für den Weg „Browser → SVWS“ muss im SVWS-Server CORS erlaubt sein
   (`UseCORSHeader` in `svwsconfig.json`), sonst „Browser → CORS-Proxy → SVWS“ wählen.
   Der Entwicklungsserver des Sekretariats leitet `/svws-proxy` an `SVWS_URL` weiter,
-  die Desktop-App bringt einen eigenen Proxy mit (`http://localhost:8964/svws-proxy`).
+  die Desktop-App nutzt immer ihren eingebauten Proxy.
 
 **Übertragung aus dem Sekretariat** (SVWS-Adapter):
 1. Einstellungen → SVWS: Adresse, Verbindung und **Datenbank-Schema** der Schule

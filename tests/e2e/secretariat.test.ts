@@ -5,7 +5,7 @@ import type { Page } from 'playwright-core';
 import { afterAll, beforeAll, it } from 'vitest';
 import type { Application, FormDefinition, Procedure } from '../../packages/domain/src/index.ts';
 import { AppointmentService, Repository } from '../../packages/sharepoint/src/index.ts';
-import { launch, signIn, startDevServer, URLS, watchConsole } from '../support/browser.ts';
+import { confirmDialog, launch, signIn, startDevServer, URLS, watchConsole } from '../support/browser.ts';
 import { env, testSite } from '../support/env.ts';
 
 const site = testSite();
@@ -27,7 +27,6 @@ beforeAll(async () => {
     browser = await launch();
     page = await browser.newPage();
     problems = watchConsole(page);
-    page.on('dialog', (d) => d.accept());
     await page.goto(URLS.secretariat);
     await signIn(page, env.APP_TEST_USER, env.APP_TEST_USER_PWD);
     await page.getByText('Angemeldet als').waitFor({ timeout: 20000 });
@@ -137,8 +136,7 @@ it('create empty application for a procedure', async () => {
 
 it('a form in use cannot be deleted; the warning names the procedure', async () => {
     await nav('Formulare');
-    const family = page.locator('.family').filter({ has: page.locator(`tr[data-id="${created.form}"]`) });
-    await family.getByRole('button', { name: 'Formular löschen' }).click();
+    await page.locator(`tr[data-id="${created.form}"]`).getByRole('button', { name: 'Löschen' }).click();
     await page.getByRole('alert').filter({ hasText: `„${tag}“` }).waitFor({ timeout: 30000 });
     assert(await forms.get(created.form), 'form deleted');
 });
@@ -149,7 +147,8 @@ it('delete procedure removes appointments, applications and uploads, not the for
     await site.putUpload(`${appId}/test.txt`, new Blob(['x'], { type: 'text/plain' }));
     await nav('Verfahren');
     const row = page.getByRole('row').filter({ hasText: tag });
-    await row.getByRole('button', { name: 'Löschen' }).click(); // confirm is accepted
+    await row.getByRole('button', { name: 'Löschen' }).click();
+    await confirmDialog(page);
     await page.getByText(`Verfahren „${tag}“ gelöscht, mit 2 Anmeldung(en) und 1 Termin(en).`).waitFor({ timeout: 30000 });
     await row.waitFor({ state: 'detached' });
     assert(!(await procedures.get(created.procedure).catch(() => undefined)), 'procedure still there');
@@ -161,12 +160,13 @@ it('delete procedure removes appointments, applications and uploads, not the for
     created.applications = [];
 });
 
-it('an unused form can be deleted', async () => {
+it('an unused form version can be deleted', async () => {
     await nav('Formulare');
-    const family = page.locator('.family').filter({ has: page.locator(`tr[data-id="${created.form}"]`) });
-    await family.getByRole('button', { name: 'Formular löschen' }).click(); // confirm is accepted
-    await page.getByText(/^Formular „.*“ gelöscht\.$/).waitFor({ timeout: 30000 });
-    await family.waitFor({ state: 'detached' });
+    const row = page.locator(`tr[data-id="${created.form}"]`);
+    await row.getByRole('button', { name: 'Löschen' }).click();
+    await confirmDialog(page);
+    await page.getByText(/^Version \d+ von „.*“ gelöscht\.$/).waitFor({ timeout: 30000 });
+    await row.waitFor({ state: 'detached' });
     assert(!(await forms.get(created.form).catch(() => undefined)), 'form still there');
     created.form = '';
 });

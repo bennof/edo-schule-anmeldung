@@ -79,6 +79,8 @@ export interface GroupItem {
     id: string;
     group: string;
     label: string;
+    /** info text below the group heading */
+    help?: string;
     visibleIf?: Condition;
     repeat?: { minItems?: number; maxItems?: number; itemLabel?: string };
     copyFrom?: string[];
@@ -102,6 +104,8 @@ export interface Section {
 export interface FormJson {
     formatVersion: 1;
     title: string;
+    /** intro text above the first section (online form and designer) */
+    description?: string;
     groups?: Record<string, GroupDefinition>;
     sections: Section[];
 }

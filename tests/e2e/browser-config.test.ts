@@ -9,7 +9,7 @@ import { afterAll, beforeAll, it } from 'vitest';
 import type { Application, FormDefinition, Procedure } from '../../packages/domain/src/index.ts';
 import testForm from '../../packages/forms/examples/test-form.json' with { type: 'json' };
 import { Repository } from '../../packages/sharepoint/src/index.ts';
-import { launch, signIn, startDevServer, URLS, watchConsole } from '../support/browser.ts';
+import { confirmDialog, launch, signIn, startDevServer, URLS, watchConsole } from '../support/browser.ts';
 import { day, env, testSite } from '../support/env.ts';
 
 const site = testSite();
@@ -43,7 +43,6 @@ beforeAll(async () => {
     browser = await launch();
     page = await (await browser.newContext()).newPage();
     problems = watchConsole(page);
-    page.on('dialog', (d) => d.accept());
     await page.goto(URLS.secretariat);
     await signIn(page, env.APP_TEST_USER, env.APP_TEST_USER_PWD);
     await page.getByText('Angemeldet als').waitFor({ timeout: 20000 });
@@ -108,6 +107,7 @@ it('released applications can be selected; without schema the adapter is not con
 it('reset falls back to the installation defaults', async () => {
     await nav('Einstellungen');
     await page.getByRole('button', { name: 'Zurücksetzen' }).click();
+    await confirmDialog(page);
     await page.getByText('Angemeldet als').waitFor({ timeout: 30000 });
     await nav('Einstellungen');
     await page.getByText('Quelle: Vorgabe der Installation').waitFor({ timeout: 20000 });

@@ -36,7 +36,8 @@ export class SvwsClient {
     /** Request against /db/{schema}{path}; throws SvwsError on HTTP errors. */
     async call<T>(method: string, path: string, body?: unknown): Promise<T> {
         const res = await this.transport.request(method, `/db/${this.schema}${path}`, body, { Authorization: this.auth });
-        if (res.status === 401 || res.status === 403) throw new SvwsError(res.status, 'SVWS-Anmeldung abgelehnt oder keine Berechtigung');
+        if (res.status === 401) throw new SvwsError(401, `SVWS-Anmeldung abgelehnt (401): Benutzername oder Passwort für das Schema „${this.schema}“ falsch`);
+        if (res.status === 403) throw new SvwsError(403, `Kein Zugriff (403): das Schema „${this.schema}“ gibt es auf dem SVWS-Server nicht, oder der Benutzer hat dort keine Berechtigung für ${path}`);
         if (res.status >= 400) {
             const detail = typeof res.body === 'string' ? res.body.slice(0, 200) : JSON.stringify(res.body ?? '').slice(0, 200);
             throw new SvwsError(res.status, `SVWS ${method} ${path}: ${res.status} ${detail}`);

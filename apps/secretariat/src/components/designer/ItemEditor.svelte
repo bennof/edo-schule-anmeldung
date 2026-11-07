@@ -153,6 +153,7 @@
         {/if}
     {:else}
         {@const group = item}
+        <label>Hinweistext <textarea rows="3" value={group.help ?? ''} oninput={(e) => setOptional(group, 'help', e.currentTarget.value)}></textarea></label>
         <label>
             Gruppe (Definition)
             <select bind:value={group.group}>
