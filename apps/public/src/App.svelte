@@ -1,5 +1,6 @@
 <script lang="ts">
     import { api, LOGO_URL, type PublicConfig, type PublicProcedure } from './api.ts';
+    import Legal from './Legal.svelte';
     import Preview from './Preview.svelte';
     import Registration from './Registration.svelte';
     import { session, type Session } from './session.ts';
@@ -19,6 +20,11 @@
     let alreadySubmitted = $state(false);
 
     const schoolName = $derived(config?.config.schoolName ?? '');
+    /** External address from the config (A) or the text page from the Assets library (B). */
+    const legalLink = (url: string | undefined, has: boolean | undefined, page: string) =>
+        url?.trim() ? { href: url.trim(), external: true } : has ? { href: page, external: false } : undefined;
+    const imprint = $derived(legalLink(config?.config.imprintUrl, config?.hasImprint, '#impressum'));
+    const privacy = $derived(legalLink(config?.config.privacyUrl, config?.hasPrivacy, '#datenschutz'));
     const procedure = $derived(
         chosen ??
             config?.procedures.find((p) => p.id === resume?.procedureId) ??
@@ -79,6 +85,8 @@
 <main>
     {#if route === '#vorschau'}
         <Preview />
+    {:else if route === '#impressum' || route === '#datenschutz'}
+        <Legal doc={route === '#impressum' ? 'impressum' : 'datenschutz'} />
     {:else}
         <header>
             {#if config?.hasLogo && logoVisible}<img src={LOGO_URL} alt="" onerror={() => (logoVisible = false)} />{/if}
@@ -107,9 +115,15 @@
         {:else}
             {#if procedure.description}<p class="description">{procedure.description}</p>{/if}
             {#key procedure.id}
-                <Registration {procedure} consentText={config.config.consentText} resume={resume?.procedureId === procedure.id ? resume : undefined} />
+                <Registration {procedure} consentText={config.config.consentText} privacyLink={privacy} resume={resume?.procedureId === procedure.id ? resume : undefined} />
             {/key}
         {/if}
+    {/if}
+    {#if route !== '#vorschau'}
+        <footer>
+            {#if imprint}<a href={imprint.href} target={imprint.external ? '_blank' : undefined} rel="noopener noreferrer">Impressum</a>{/if}
+            {#if privacy}<a href={privacy.href} target={privacy.external ? '_blank' : undefined} rel="noopener noreferrer">Datenschutzerklärung</a>{/if}
+        </footer>
     {/if}
 </main>
 
@@ -180,5 +194,16 @@
     }
     .description {
         color: #444;
+    }
+    footer {
+        display: flex;
+        gap: 1.25rem;
+        margin-top: 2.5rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #ddd;
+        font-size: 0.9rem;
+    }
+    footer a {
+        color: #555;
     }
 </style>

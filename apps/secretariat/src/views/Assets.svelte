@@ -106,7 +106,10 @@
     <p class="muted">
         Das Logo der öffentlichen Anmeldung hat den Schlüssel <code>logo</code>. Dateien mit anderen Schlüsseln sind nur
         öffentlich, wenn ein aktives Formular sie als Optionsliste verwendet. Die PDF-Vorlage des Anmeldebogens hat den
-        Schlüssel <code>anmeldebogen.pdf</code>; eine eigene Vorlage muss dieselben Feldnamen verwenden.
+        Schlüssel <code>anmeldebogen.pdf</code>; eine eigene Vorlage muss dieselben Feldnamen verwenden. Impressum und
+        Datenschutzerklärung sind Markdown-Dateien mit den Schlüsseln <code>impressum.md</code> und <code>datenschutz.md</code>
+        und werden in der Anmeldung verlinkt, sofern in der Konfiguration keine Adresse (<code>imprintUrl</code>,
+        <code>privacyUrl</code>) eingetragen ist.
     </p>
     <p><button class="secondary" onclick={uploadTemplate} disabled={busy}>Standard-Anmeldebogen hochladen</button></p>
     <form class="upload" onsubmit={upload}>
@@ -116,6 +119,8 @@
             <input bind:value={key} placeholder="z. B. logo" aria-invalid={!!key && !keyValid} />
         </label>
         <button type="button" class="secondary" onclick={() => (key = 'logo')}>Als Logo</button>
+        <button type="button" class="secondary" onclick={() => (key = 'impressum.md')}>Als Impressum</button>
+        <button type="button" class="secondary" onclick={() => (key = 'datenschutz.md')}>Als Datenschutzerklärung</button>
         <button type="submit" disabled={busy || !file || !keyValid}>{exists ? 'Ersetzen' : 'Hochladen'}</button>
     </form>
     {#if key && !keyValid}<p class="error">Schlüssel: nur Buchstaben, Ziffern, Punkt, Minus und Unterstrich.</p>{/if}

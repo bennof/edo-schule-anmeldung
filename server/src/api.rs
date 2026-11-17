@@ -59,6 +59,9 @@ impl ApiRequest {
 const LOGO_KEY: &str = "logo";
 /// Registration form template (I4), filled in the browser after submission.
 const PDF_TEMPLATE_KEY: &str = "anmeldebogen.pdf";
+/// Legal texts (Markdown) in the Assets library, shown in the registration page.
+const IMPRINT_KEY: &str = "impressum.md";
+const PRIVACY_KEY: &str = "datenschutz.md";
 /// Used when the config entry is missing (see DEFAULT_CONFIG in schema.ts).
 const DEFAULT_MAX_BOOKINGS_PER_IP: usize = 3;
 
@@ -160,9 +163,17 @@ impl Api {
             })
             .collect();
         let has_logo = self.site.asset_exists(LOGO_KEY)?;
+        let has_imprint = self.site.asset_exists(IMPRINT_KEY)?;
+        let has_privacy = self.site.asset_exists(PRIVACY_KEY)?;
         Ok(Reply::json(
             200,
-            json!({ "config": config, "procedures": procedures, "hasLogo": has_logo }),
+            json!({
+                "config": config,
+                "procedures": procedures,
+                "hasLogo": has_logo,
+                "hasImprint": has_imprint,
+                "hasPrivacy": has_privacy,
+            }),
         ))
     }
 
@@ -540,9 +551,9 @@ impl Api {
         Ok(self.site.list_items(APPOINTMENTS, Some(&filter))?.len() >= limit)
     }
 
-    /// Public assets: the logo and option lists referenced by active forms.
+    /// Public assets: logo, PDF template, legal texts and option lists referenced by active forms.
     fn asset(&self, key: &str) -> Result<Reply, String> {
-        if key != LOGO_KEY && key != PDF_TEMPLATE_KEY {
+        if ![LOGO_KEY, PDF_TEMPLATE_KEY, IMPRINT_KEY, PRIVACY_KEY].contains(&key) {
             let mut sources = Vec::new();
             for p in self.active_procedures()? {
                 if let Some(form) = self.form_json(&p.form_id)? {
@@ -555,7 +566,12 @@ impl Api {
         }
         Ok(match self.site.get_asset(key)? {
             Some((content_type, body)) => {
-                let content_type = sniff_image(&body).map(str::to_string).unwrap_or(content_type);
+                let content_type = if key == IMPRINT_KEY || key == PRIVACY_KEY {
+                    // text for the page to render itself, never interpreted by the browser
+                    "text/plain; charset=utf-8".to_string()
+                } else {
+                    sniff_image(&body).map(str::to_string).unwrap_or(content_type)
+                };
                 Reply {
                     status: 200,
                     content_type,

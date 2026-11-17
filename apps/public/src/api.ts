@@ -13,6 +13,9 @@ export interface PublicConfig {
     config: Record<string, string>;
     procedures: PublicProcedure[];
     hasLogo: boolean;
+    /** texts impressum.md / datenschutz.md exist in the Assets library; absent with older servers */
+    hasImprint?: boolean;
+    hasPrivacy?: boolean;
 }
 
 export interface Slot {
@@ -106,4 +109,12 @@ export const LOGO_URL = 'api/assets/logo';
 
 export function formatDay(date: string): string {
     return new Date(`${date}T12:00`).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+export type LegalDoc = 'impressum' | 'datenschutz';
+
+/** Text of a legal page from the Assets library (Markdown); undefined if there is none. */
+export async function loadLegalText(doc: LegalDoc): Promise<string | undefined> {
+    const res = await fetch(`api/assets/${doc}.md`).catch(() => undefined);
+    return res?.ok ? res.text() : undefined;
 }

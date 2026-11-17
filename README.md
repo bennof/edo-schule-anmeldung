@@ -147,6 +147,16 @@ gelangen als Entwicklungs-Vorgabe in den Browser. Passwörter und Secrets aus
 | `mailSender` | nein | Absenderpostfach der Bestätigungsmail (leer = keine Mail) |
 | `confirmationMailSubject`, `confirmationMailText` | nein | Betreff und Vorlage (`{name}`, `{verfahren}`, `{datum}`, `{uhrzeit}`, `{link}`) |
 | `publicUrl` | nein | Adresse der öffentlichen SPA für Links in Mails |
+| `imprintUrl` | nein | Adresse des Impressums (öffentlich); hat Vorrang vor `impressum.md` |
+| `privacyUrl` | nein | Adresse der Datenschutzerklärung (öffentlich); hat Vorrang vor `datenschutz.md` |
+
+**Impressum und Datenschutzerklärung:** Die Anmeldeseite verlinkt beide im Fuß
+und die Datenschutzerklärung zusätzlich bei der Einwilligung. Entweder tragen
+Sie die Adressen als öffentliche Einträge `imprintUrl` / `privacyUrl` ein, oder
+Sie laden die Texte unter „Dateien“ als `impressum.md` und `datenschutz.md`
+(Markdown: Überschriften, Absätze, Listen, `**fett**`, `[Text](https://…)`) hoch.
+Ohne beides erscheint kein Link. Am SharePoint-Schema ändert sich nichts; Vorlagen
+in [`docs/vorlagen`](docs/vorlagen).
 
 **Browser-Konfiguration des Sekretariats**: Tenant, Client-ID, Site und
 optional der SVWS-Endpunkt werden pro Browser gespeichert und als JSON

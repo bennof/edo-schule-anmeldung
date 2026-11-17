@@ -274,6 +274,23 @@ it('assets: unlisted keys are not public', async () => {
     assert((await get('/assets/..%2F.env')).status === 404, 'traversal');
 });
 
+it('legal texts: flags in the config, served as plain text, only the two keys', async () => {
+    const before = (await get('/config')).body;
+    assert(typeof before.hasImprint === 'boolean' && typeof before.hasPrivacy === 'boolean', 'flags missing');
+    // do not touch texts the test site already has
+    if (before.hasImprint) return;
+    await site.putAsset('impressum.md', new Blob(['# Impressum\n\nTest'], { type: 'text/markdown' }));
+    try {
+        assert((await get('/config')).body.hasImprint === true, 'hasImprint not set');
+        const res = await fetch(`${API}/assets/impressum.md`);
+        assert(res.status === 200, `status ${res.status}`);
+        assert(res.headers.get('content-type')?.startsWith('text/plain') === true, `type ${res.headers.get('content-type')}`);
+        assert((await res.text()).includes('Test'), 'content');
+    } finally {
+        await site.deleteAsset('impressum.md').catch(() => {});
+    }
+});
+
 it('daemon has list-level access only: non-granted library content is invisible', async () => {
     const token = await clientCredentialsToken(env.DAEMON_CLIENT_ID, env.DAEMON_CLIENT_SECRET);
     const daemonGet = (path: string) =>

@@ -54,6 +54,9 @@
             return `Fertig. Neue Listen: ${r.createdLists.join(', ') || 'keine'}; neue Spalten: ${r.createdColumns.join(', ') || 'keine'}.`;
         });
 
+    /** keys the public page reads: created as public */
+    const PUBLIC_KEYS = ['schoolName', 'imprintUrl', 'privacyUrl'];
+
     const saveEntry = (entry: ConfigEntry) => run(() => config.set(entry.key, entry.value, entry.isPublic));
 
     initialLoad();
@@ -86,6 +89,11 @@
     <section>
         <h2>Konfiguration</h2>
         <p class="muted">Keine Geheimnisse eintragen – öffentliche Einträge sind für jeden sichtbar.</p>
+        <p class="muted">
+            Impressum und Datenschutzerklärung: entweder die Adressen als öffentliche Einträge <code>imprintUrl</code> und
+            <code>privacyUrl</code> eintragen oder die Texte unter „Dateien“ als <code>impressum.md</code> und
+            <code>datenschutz.md</code> hochladen. Eine Adresse hat Vorrang.
+        </p>
         <table>
             <thead><tr><th>Schlüssel</th><th>Wert</th><th>Öffentlich</th><th></th></tr></thead>
             <tbody>
@@ -105,7 +113,7 @@
         <form
             onsubmit={(e) => {
                 e.preventDefault();
-                if (newKey.trim()) saveEntry({ key: newKey.trim(), value: '', isPublic: false });
+                if (newKey.trim()) saveEntry({ key: newKey.trim(), value: '', isPublic: PUBLIC_KEYS.includes(newKey.trim()) });
                 newKey = '';
             }}
         >

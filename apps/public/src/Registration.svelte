@@ -13,11 +13,13 @@
         procedure: PublicProcedure;
         /** from the public config entry `consentText` */
         consentText?: string;
+        /** privacy notice: external address or the page in this app */
+        privacyLink?: { href: string; external: boolean };
         /** continue a booking made earlier on this device */
         resume?: Session;
     }
 
-    let { procedure, consentText, resume }: Props = $props();
+    let { procedure, consentText, privacyLink, resume }: Props = $props();
     // the session only sets the starting point; the component is keyed per procedure
     const resumed = untrack(() => resume);
     const FALLBACK_CONSENT = 'Ich bin einverstanden, dass meine Angaben zur Terminvergabe gespeichert werden.';
@@ -237,6 +239,12 @@
             <input type="checkbox" bind:checked={consent} />
             <span data-testid="consent-text">{consentText?.trim() || FALLBACK_CONSENT}</span>
         </label>
+        {#if privacyLink}
+            <p class="privacy">
+                Hinweise zur Verarbeitung Ihrer Daten finden Sie in der
+                <a href={privacyLink.href} target="_blank" rel="noopener noreferrer">Datenschutzerklärung</a>.
+            </p>
+        {/if}
         <p>
             <button type="submit" disabled={busy || !contactValid}>Termin verbindlich buchen</button>
             <button type="button" class="secondary" onclick={() => (step = 'slots')} disabled={busy}>Anderen Termin wählen</button>
@@ -293,6 +301,11 @@
         display: flex;
         gap: 0.5rem;
         align-items: start;
+    }
+    .privacy {
+        font-size: 0.9rem;
+        color: #555;
+        margin: 0;
     }
     .chosen {
         font-size: 1.1rem;
