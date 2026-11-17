@@ -67,6 +67,7 @@ server                öffentlicher Server (Rust: tiny_http, ureq)
 desktop               Sekretariat als Desktop-App (Tauri) mit SVWS-Proxy
 tests                 Integrations-, Browser-, SVWS- und Mailtests (Vitest)
 scripts               daemon-permissions (Listenrechte der Daemon-App), check-version (Release)
+scripts/licenses      collect.ts: THIRD_PARTY_LICENSES.txt (license-checker-rseidelsohn, cargo-about)
 scripts/tenant        setup-tenant.ps1: Einrichtung eines Tenants; sharepoint-schema.json
 packaging             Debian-Paket des Servers: systemd-Dienst, config.env, build-deb.sh; nginx-Snippet
 .github/workflows     CI (jeder Push) und Release (Tag vX.Y.Z)
@@ -114,6 +115,7 @@ ein Verfahren anlegen, unter „Termine“ Termine erzeugen und veröffentlichen
 |---|---|
 | `make build` / `make dist` | Sekretariat, Server (mit Anmeldeseite) und Desktop-App bauen / nach `dist/` |
 | `make deb` | Debian-Paket des Servers nach `dist/` (arm64: `MUSL=aarch64-unknown-linux-musl DEB_ARCH=arm64`) |
+| `make licenses` | `dist/THIRD_PARTY_LICENSES.txt`: Lizenzen aller enthaltenen Fremdkomponenten (braucht `cargo install cargo-about --features cli`) |
 | `make check` | Typprüfung, Rust-Lints, Formatierung |
 | `make test` | Unit-Tests (TypeScript, Rust) |
 | `make test-integration` | gegen die SharePoint-Test-Site |
@@ -225,6 +227,7 @@ nur Tests ohne Tenant und Zugangsdaten). Ein Tag `vX.Y.Z` startet
 | `edo-anmeldung.dmg` | Desktop-App macOS, Apple Silicon und Intel (ohne Signatur: beim ersten Start erlauben) |
 | `edo-anmeldung-web.zip` | Sekretariat als statische Dateien, ohne Tenant (Einrichtung über das Zahnrad) |
 | `edo-anmeldung-tenant-setup.zip` | `setup-tenant.ps1` und `sharepoint-schema.json` |
+| `THIRD_PARTY_LICENSES.txt` | Lizenzen aller enthaltenen Fremdkomponenten (npm-Pakete der beiden SPAs, Rust-Crates von Server und Desktop-App, PDF-Schrift); auch im deb |
 
 ## Microsoft 365
 

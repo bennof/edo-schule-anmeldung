@@ -11,12 +11,13 @@
   },
   "dependencies": {
     "@anmeldung/domain": "workspace:*",
-    "@anmeldung/sharepoint": "workspace:*",
-    "@azure/msal-browser": "^4.0.0",
-    "@anmeldung/forms": "workspace:*",
     "@anmeldung/form-ui": "workspace:*",
+    "@anmeldung/forms": "workspace:*",
     "@anmeldung/pdf": "workspace:*",
-    "@anmeldung/svws": "workspace:*"
+    "@anmeldung/sharepoint": "workspace:*",
+    "@anmeldung/svws": "workspace:*",
+    "@azure/msal-browser": "^4.0.0",
+    "svelte": "^5.57.1"
   },
   "author": "Benjamin Benno Falkner <benno@falkner.xyz>",
   "license": "MIT"

@@ -33,7 +33,7 @@ help: ## Show this help
 
 .PHONY: doctor
 doctor: ## Check the required tools
-	@for tool in node $(PNPM) $(CARGO); do \
+	@for tool in node $(PNPM) $(CARGO) cargo-about; do \
 		printf '%-8s ' $$tool; command -v $$tool >/dev/null && ($$tool --version | head -1) || echo 'MISSING'; \
 	done
 	@test -f .env && echo '.env     present' || echo '.env     MISSING (copy .env.example)'
@@ -71,16 +71,21 @@ build-server: build-public ## Build the server (static musl); the registration p
 build-desktop: build-secretariat ## Build the desktop app; the secretariat is embedded
 	cd $(DESKTOP) && $(CARGO) build --release
 
+.PHONY: licenses
+licenses: install ## dist/THIRD_PARTY_LICENSES.txt: licenses of all bundled components (needs cargo-about)
+	$(NODE) scripts/licenses/collect.ts $(DIST)/THIRD_PARTY_LICENSES.txt
+
 .PHONY: deb
-deb: build-server ## Debian package of the server in dist/ (arm64: MUSL=aarch64-unknown-linux-musl DEB_ARCH=arm64)
-	packaging/build-deb.sh $(SERVER_BIN) $(VERSION) $(DEB_ARCH) $(DIST)
+deb: build-server licenses ## Debian package of the server in dist/ (arm64: MUSL=aarch64-unknown-linux-musl DEB_ARCH=arm64)
+	packaging/build-deb.sh $(SERVER_BIN) $(VERSION) $(DEB_ARCH) $(DIST) $(DIST)/THIRD_PARTY_LICENSES.txt
 
 .PHONY: dist
 dist: build ## Collect deployable artifacts in dist/
 	rm -rf $(DIST) && mkdir -p $(DIST)
 	cp -r apps/secretariat/dist $(DIST)/secretariat
 	cp $(SERVER_BIN) $(DESKTOP)/target/release/edo-anmeldung $(DIST)/
-	@echo "dist/: edo-anmeldung-server (API + registration page), edo-anmeldung (secretariat app), secretariat/ (static files)"
+	@$(MAKE) licenses
+	@echo "dist/: edo-anmeldung-server (API + registration page), edo-anmeldung (secretariat app), secretariat/ (static files), THIRD_PARTY_LICENSES.txt"
 
 .PHONY: generate
 generate: install ## Regenerate catalogs and the PDF template

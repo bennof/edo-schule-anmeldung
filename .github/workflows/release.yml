@@ -55,8 +55,29 @@ jobs:
           name: secretariat-dist
           path: apps/secretariat/dist/
 
+  # THIRD_PARTY_LICENSES.txt: licenses of all JavaScript packages and Rust crates
+  # in the artifacts (scripts/licenses/collect.ts); attached to the release and the deb
+  licenses:
+    needs: [ci, version]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm install -g pnpm@$PNPM_VERSION
+      - run: rustup toolchain install stable --profile minimal && rustup default stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-about
+      - run: make licenses DIST=out
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-licenses
+          path: out/THIRD_PARTY_LICENSES.txt
+
   server:
-    needs: web
+    needs: [web, licenses]
     strategy:
       matrix:
         include:
@@ -69,6 +90,10 @@ jobs:
         with:
           name: public-dist
           path: apps/public/dist
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-licenses
+          path: licenses
       - run: sudo apt-get update && sudo apt-get install -y musl-tools
       - run: rustup toolchain install stable --profile minimal --target ${{ matrix.target }} && rustup default stable
       - uses: Swatinem/rust-cache@v2
@@ -82,7 +107,7 @@ jobs:
           mkdir out
           bin=server/target/${{ matrix.target }}/release/edo-anmeldung-server
           cp "$bin" out/edo-anmeldung-server-linux-${{ matrix.arch }}
-          packaging/build-deb.sh "$bin" "${GITHUB_REF_NAME#v}" ${{ matrix.arch }} out
+          packaging/build-deb.sh "$bin" "${GITHUB_REF_NAME#v}" ${{ matrix.arch }} out licenses/THIRD_PARTY_LICENSES.txt
       - uses: actions/upload-artifact@v7
         with:
           name: release-server-${{ matrix.arch }}
@@ -169,7 +194,7 @@ jobs:
           path: out/
 
   prerelease:
-    needs: [web, server, desktop-linux, desktop-windows, desktop-macos]
+    needs: [web, licenses, server, desktop-linux, desktop-windows, desktop-macos]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

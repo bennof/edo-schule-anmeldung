@@ -1,9 +1,9 @@
 #!/bin/sh
-# Debian package of the server: build-deb.sh <binary> <version> <arch> <out-dir>
-# (make deb). Uses only dpkg-deb; the binary is static (musl), so the
+# Debian package of the server: build-deb.sh <binary> <version> <arch> <out-dir> <third-party-licenses>
+# (make deb; the licenses file comes from make licenses). Uses only dpkg-deb; the binary is static (musl), so the
 # package has no library dependencies.
 set -eu
-bin=$1 version=$2 arch=$3 out=$4
+bin=$1 version=$2 arch=$3 out=$4 licenses=$5
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(mktemp -d)
 chmod 755 "$root"
@@ -14,6 +14,9 @@ install -D -m 644 "$here/edo-anmeldung-server.service" "$root/usr/lib/systemd/sy
 install -D -m 600 "$here/config.env" "$root/etc/edo-anmeldung-server/config.env"
 # nginx snippet; postinst copies it to /etc/nginx/snippets when nginx is installed
 install -D -m 644 "$here/nginx/edo-anmeldung.conf" "$root/usr/share/edo-anmeldung-server/nginx/edo-anmeldung.conf"
+# own license and the licenses of all bundled components
+install -D -m 644 "$here/../LICENSE" "$root/usr/share/doc/edo-anmeldung-server/copyright"
+install -D -m 644 "$licenses" "$root/usr/share/doc/edo-anmeldung-server/THIRD_PARTY_LICENSES.txt"
 install -d "$root/DEBIAN"
 for script in postinst prerm postrm; do install -m 755 "$here/debian/$script" "$root/DEBIAN/$script"; done
 echo /etc/edo-anmeldung-server/config.env > "$root/DEBIAN/conffiles"

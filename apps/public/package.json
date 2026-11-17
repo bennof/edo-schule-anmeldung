@@ -10,9 +10,10 @@
   },
   "dependencies": {
     "@anmeldung/domain": "workspace:*",
-    "@anmeldung/forms": "workspace:*",
     "@anmeldung/form-ui": "workspace:*",
-    "@anmeldung/pdf": "workspace:*"
+    "@anmeldung/forms": "workspace:*",
+    "@anmeldung/pdf": "workspace:*",
+    "svelte": "^5.57.1"
   },
   "author": "Benjamin Benno Falkner <benno@falkner.xyz>",
   "license": "MIT"

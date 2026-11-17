@@ -29,6 +29,8 @@ Das Paket installiert:
 | `/usr/lib/systemd/system/edo-anmeldung-server.service` | der Dienst ([Vorlage](../packaging/edo-anmeldung-server.service)) |
 | `/etc/edo-anmeldung-server/config.env` | Einstellungen, nur für root lesbar ([Vorlage](../packaging/config.env)) |
 | `/usr/share/edo-anmeldung-server/nginx/edo-anmeldung.conf` | nginx-Snippet ([Vorlage](../packaging/nginx/edo-anmeldung.conf)) |
+| `/usr/share/doc/edo-anmeldung-server/copyright` | Lizenz des Servers (MIT) |
+| `/usr/share/doc/edo-anmeldung-server/THIRD_PARTY_LICENSES.txt` | Lizenzen aller enthaltenen Fremdkomponenten |
 | `/etc/nginx/snippets/edo-anmeldung.conf` | Kopie des Snippets, nur wenn nginx schon installiert ist |
 
 Dazu legt es den Systembenutzer `edo-anmeldung-server` an. Der Dienst wird
