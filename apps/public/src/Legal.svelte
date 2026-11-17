@@ -49,4 +49,3 @@
         {/each}
     </div>
 {/if}
-<p><a href="#start">Zurück zur Anmeldung</a></p>

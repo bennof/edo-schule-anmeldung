@@ -121,8 +121,9 @@
     {/if}
     {#if route !== '#vorschau'}
         <footer>
-            {#if imprint}<a href={imprint.href} target={imprint.external ? '_blank' : undefined} rel="noopener noreferrer">Impressum</a>{/if}
-            {#if privacy}<a href={privacy.href} target={privacy.external ? '_blank' : undefined} rel="noopener noreferrer">Datenschutzerklärung</a>{/if}
+            <!-- always a new tab: the booking or the form in this tab stays untouched -->
+            {#if imprint}<a href={imprint.href} target="_blank" rel="noopener noreferrer">Impressum</a>{/if}
+            {#if privacy}<a href={privacy.href} target="_blank" rel="noopener noreferrer">Datenschutzerklärung</a>{/if}
         </footer>
     {/if}
 </main>
