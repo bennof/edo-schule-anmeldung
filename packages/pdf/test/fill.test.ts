@@ -7,7 +7,7 @@ import laender from '../../forms/catalogs/laender.json' with { type: 'json' };
 import sprachen from '../../forms/catalogs/sprachen.json' with { type: 'json' };
 import staaten from '../../forms/catalogs/staatsangehoerigkeiten.json' with { type: 'json' };
 import type { FormJson } from '../../forms/src/types.ts';
-import { fillRegistrationPdf, templateFieldNames } from '../src/fill.ts';
+import { fillRegistrationPdf, templateFieldNames, templateFields } from '../src/fill.ts';
 import { pdfValues } from '../src/values.ts';
 
 const form = schoolForm as FormJson;
@@ -125,5 +125,66 @@ describe('fill template (I1)', () => {
         const photo = acro.getButton('passfoto');
         const widget = photo.acroField.getWidgets()[0];
         expect(widget.getNormalAppearance()).toBeDefined();
+    });
+});
+
+describe('own PDF with an assignment of its field names', () => {
+    /** A PDF as made in Word: arbitrary field names. */
+    async function wordPdf(): Promise<Uint8Array> {
+        const doc = await PDFDocument.create();
+        const page = doc.addPage();
+        const acro = doc.getForm();
+        const box = { x: 20, y: 700, width: 100, height: 14 };
+        for (const [i, name] of ['Kind_Nachname', 'Kind_Vorname', 'Schule1', 'Termin', 'Nicht_zugeordnet'].entries())
+            acro.createTextField(name).addToPage(page, { ...box, y: 700 - i * 20 });
+        for (const [i, name] of ['Maedchen', 'Maennlich', 'Bus_Ja'].entries()) acro.createCheckBox(name).addToPage(page, { ...box, width: 14, y: 560 - i * 20 });
+        const radio = acro.createRadioGroup('Konfession');
+        for (const [i, o] of ['römisch-katholisch', 'evangelisch'].entries()) radio.addOptionToPage(o, page, { ...box, width: 14, y: 480 - i * 20 });
+        return doc.save();
+    }
+
+    const own: FormJson = {
+        ...form,
+        pdf: {
+            asset: 'form-test.pdf',
+            fields: {
+                Kind_Nachname: 'nachname',
+                Kind_Vorname: 'vorname',
+                Schule1: 'weitereSchulen[0].schule.name',
+                Termin: 'anmeldung.termin',
+                Maedchen: 'geschlecht=w',
+                Maennlich: 'geschlecht=m',
+                Bus_Ja: 'oepnv',
+                Konfession: 'religion',
+            },
+        },
+    };
+
+    it('lists the fields with their type', async () => {
+        const fields = await templateFields(await wordPdf());
+        expect(fields.find((f) => f.name === 'Kind_Nachname')?.type).toBe('text');
+        expect(fields.find((f) => f.name === 'Maedchen')?.type).toBe('checkbox');
+        expect(fields.find((f) => f.name === 'Konfession')).toEqual({ name: 'Konfession', type: 'radio', options: ['römisch-katholisch', 'evangelisch'] });
+    });
+
+    it('fills by the assignment; fields without one stay empty', async () => {
+        const bytes = await fillRegistrationPdf({ template: await wordPdf(), font, form: own, data: sample, options, extra: { 'anmeldung.termin': 'Mi, 7.10.' } });
+        const acro = (await PDFDocument.load(bytes)).getForm();
+        expect(acro.getTextField('Kind_Nachname').getText()).toBe('Şahin');
+        expect(acro.getTextField('Schule1').getText()).toBe('KGS Süd');
+        expect(acro.getTextField('Termin').getText()).toBe('Mi, 7.10.');
+        expect(acro.getTextField('Nicht_zugeordnet').getText()).toBeUndefined();
+        expect(acro.getCheckBox('Maennlich').isChecked()).toBe(true);
+        expect(acro.getCheckBox('Maedchen').isChecked()).toBe(false);
+        expect(acro.getCheckBox('Bus_Ja').isChecked()).toBe(true);
+        expect(acro.getRadioGroup('Konfession').getSelected()).toBe('römisch-katholisch');
+    });
+
+    it('does not use field names as data paths when an assignment exists', async () => {
+        const doc = await PDFDocument.create();
+        doc.getForm().createTextField('nachname').addToPage(doc.addPage(), { x: 20, y: 700, width: 100, height: 14 });
+        const unassigned = { ...form, pdf: { asset: 'x.pdf', fields: {} } };
+        const bytes = await fillRegistrationPdf({ template: await doc.save(), font, form: unassigned, data: sample, options });
+        expect((await PDFDocument.load(bytes)).getForm().getTextField('nachname').getText()).toBeUndefined();
     });
 });

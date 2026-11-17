@@ -74,6 +74,77 @@ pub fn message(to: &str, subject: &str, text: &str) -> Value {
     })
 }
 
+/// Largest PDF the server accepts for mailing. Graph's sendMail takes about
+/// 4 MB of JSON; base64 makes the attachment a third larger.
+pub const MAX_PDF: usize = 2_500_000;
+
+/// Fills `{name}` and `{verfahren}` of the mail with the filled-in form.
+pub fn render_pdf_text(template: &str, name: &str, procedure: &str) -> String {
+    template.replace("{name}", name).replace("{verfahren}", procedure)
+}
+
+pub const DEFAULT_PDF_SUBJECT: &str = "Ihre Anmeldung: das ausgefüllte Formular";
+pub const DEFAULT_PDF_TEXT: &str = "Guten Tag {name},\n\nvielen Dank für Ihre Anmeldung ({verfahren}). Im Anhang finden Sie das ausgefüllte Formular als PDF.\n\nBitte bewahren Sie es für Ihre Unterlagen auf.\n\nMit freundlichen Grüßen\nIhr Sekretariat";
+
+/// Graph sendMail request body with the PDF as attachment.
+pub fn message_with_pdf(to: &str, subject: &str, text: &str, file_name: &str, pdf: &[u8]) -> Value {
+    let mut m = message(to, subject, text);
+    m["message"]["attachments"] = json!([{
+        "@odata.type": "#microsoft.graph.fileAttachment",
+        "name": file_name,
+        "contentType": "application/pdf",
+        "contentBytes": base64(pdf),
+    }]);
+    m
+}
+
+/// "Anmeldung_Sahin_Lukasz.pdf": ASCII only, from the child's name.
+pub fn pdf_file_name(child_name: &str) -> String {
+    let mut ascii = String::new();
+    for c in child_name.chars() {
+        match c {
+            'a'..='z' | 'A'..='Z' | '0'..='9' => ascii.push(c),
+            'ä' => ascii.push_str("ae"),
+            'ö' => ascii.push_str("oe"),
+            'ü' => ascii.push_str("ue"),
+            'Ä' => ascii.push_str("Ae"),
+            'Ö' => ascii.push_str("Oe"),
+            'Ü' => ascii.push_str("Ue"),
+            'ß' => ascii.push_str("ss"),
+            _ if !ascii.ends_with('_') && !ascii.is_empty() => ascii.push('_'),
+            _ => {}
+        }
+    }
+    let ascii = ascii.trim_end_matches('_');
+    if ascii.is_empty() {
+        "Anmeldung.pdf".to_string()
+    } else {
+        format!("Anmeldung_{ascii}.pdf")
+    }
+}
+
+fn base64(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let n =
+            (chunk[0] as u32) << 16 | (*chunk.get(1).unwrap_or(&0) as u32) << 8 | *chunk.get(2).unwrap_or(&0) as u32;
+        out.push(ALPHABET[(n >> 18) as usize & 63] as char);
+        out.push(ALPHABET[(n >> 12) as usize & 63] as char);
+        out.push(if chunk.len() > 1 {
+            ALPHABET[(n >> 6) as usize & 63] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            ALPHABET[n as usize & 63] as char
+        } else {
+            '='
+        });
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,6 +180,33 @@ mod tests {
     #[test]
     fn drops_empty_link_line() {
         assert_eq!(render("A\n{link}\nB", &confirmation("")), "A\nB");
+    }
+
+    #[test]
+    fn encodes_base64() {
+        assert_eq!(base64(b""), "");
+        assert_eq!(base64(b"f"), "Zg==");
+        assert_eq!(base64(b"fo"), "Zm8=");
+        assert_eq!(base64(b"foo"), "Zm9v");
+        assert_eq!(base64(b"foobar"), "Zm9vYmFy");
+    }
+
+    #[test]
+    fn names_the_pdf_after_the_child() {
+        assert_eq!(pdf_file_name("Şahin Łukasz"), "Anmeldung_ahin_ukasz.pdf");
+        assert_eq!(pdf_file_name("Müller, Jörg"), "Anmeldung_Mueller_Joerg.pdf");
+        assert_eq!(pdf_file_name("../x\\"), "Anmeldung_x.pdf");
+        assert_eq!(pdf_file_name(""), "Anmeldung.pdf");
+    }
+
+    #[test]
+    fn attaches_the_pdf() {
+        let m = message_with_pdf("a@b.de", "S", "T", "Anmeldung.pdf", b"%PDF-1.7");
+        let a = &m["message"]["attachments"][0];
+        assert_eq!(a["name"], "Anmeldung.pdf");
+        assert_eq!(a["contentType"], "application/pdf");
+        assert_eq!(a["contentBytes"], "JVBERi0xLjc=");
+        assert_eq!(render_pdf_text("{name}/{verfahren}", "Eva", "Klasse 5"), "Eva/Klasse 5");
     }
 
     #[test]

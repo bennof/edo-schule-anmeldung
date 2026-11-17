@@ -159,7 +159,7 @@
         try {
             const { fillRegistrationPdf, saveAs, pdfFileName, PDF_TEMPLATE_KEY } = await import('@anmeldung/pdf');
             const [template, font] = await Promise.all([
-                site.getAsset(PDF_TEMPLATE_KEY).then((b) => b?.arrayBuffer()),
+                site.getAsset(form.pdf?.asset ?? PDF_TEMPLATE_KEY).then((b) => b?.arrayBuffer()),
                 fetch(fontUrl).then((r) => r.arrayBuffer()),
             ]);
             if (!template) {

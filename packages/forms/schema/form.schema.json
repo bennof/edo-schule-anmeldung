@@ -23,6 +23,20 @@
       "type": "array",
       "minItems": 1,
       "items": { "$ref": "#/$defs/section" }
+    },
+    "pdf": {
+      "description": "Optional print version: a PDF with form fields in the Assets library and the assignment of its field names to data paths (`path`, `path=value` for checkboxes) or `anmeldung.termin` / `anmeldung.nummer`.",
+      "type": "object",
+      "required": ["asset", "fields"],
+      "additionalProperties": false,
+      "properties": {
+        "asset": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$", "maxLength": 100 },
+        "fields": {
+          "type": "object",
+          "propertyNames": { "minLength": 1 },
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        }
+      }
     }
   },
   "$defs": {

@@ -91,6 +91,13 @@ export const api = {
     },
     deleteUpload: (id: string, token: string, ref: FileRef) =>
         call<unknown>(`/applications/${id}/uploads/${ref.id.split('/')[1]}`, { method: 'DELETE', headers: bearer(token) }),
+    /** The filled-in PDF goes by mail to the address of the booking; sent: false when no mail is configured. */
+    mailPdf: (id: string, token: string, pdf: Uint8Array) =>
+        call<{ sent: boolean }>(`/applications/${id}/pdf-mail`, {
+            method: 'POST',
+            headers: { ...bearer(token), 'Content-Type': 'application/pdf' },
+            body: pdf as BodyInit,
+        }),
     submit: (id: string, token: string, data: unknown) =>
         call<{ state: string }>(`/applications/${id}/submit`, {
             method: 'POST',

@@ -147,8 +147,19 @@ gelangen als Entwicklungs-Vorgabe in den Browser. Passwörter und Secrets aus
 | `mailSender` | nein | Absenderpostfach der Bestätigungsmail (leer = keine Mail) |
 | `confirmationMailSubject`, `confirmationMailText` | nein | Betreff und Vorlage (`{name}`, `{verfahren}`, `{datum}`, `{uhrzeit}`, `{link}`) |
 | `publicUrl` | nein | Adresse der öffentlichen SPA für Links in Mails |
+| `pdfMailSubject`, `pdfMailText` | nein | Betreff und Text der Mail mit dem ausgefüllten PDF (`{name}`, `{verfahren}`); ohne Eintrag gilt ein Standardtext |
 | `imprintUrl` | nein | Adresse des Impressums (öffentlich); hat Vorrang vor `impressum.md` |
 | `privacyUrl` | nein | Adresse der Datenschutzerklärung (öffentlich); hat Vorrang vor `datenschutz.md` |
+
+**PDF zum Formular:** Unter „Formulare“ lässt sich einer Formularversion ein PDF mit
+Formularfeldern zuweisen („PDF zuweisen“). Das PDF entsteht außerhalb der App (Word,
+PDFgear); die App liest seine Felder aus und bietet je Feld eine Auswahl der Formularfelder
+(bei Kästchen auch „Feld = Wert“, bei Wiederholgruppen die Einträge 1, 2, …). Die Zuordnung
+steht im Formular (`pdf`), das PDF in den Dateien. Das Speichern ergibt eine neue
+Formularversion, die im Verfahren ausgewählt werden muss. Nach dem Absenden füllt die
+Anmeldeseite das PDF im Browser und der Server schickt es an die bei der Buchung angegebene
+Adresse (nur mit gesetztem `mailSender`, einmal je Anmeldung, nur kurz nach dem Absenden).
+Formulare ohne zugewiesenes PDF behalten den Standard-Anmeldebogen zum Herunterladen.
 
 **Impressum und Datenschutzerklärung:** Die Anmeldeseite verlinkt beide im Fuß
 und die Datenschutzerklärung zusätzlich bei der Einwilligung. Entweder tragen

@@ -7,8 +7,10 @@ use crate::mail;
 use crate::sharepoint::{APPLICATIONS, APPOINTMENTS, CONFIG, FORMS, Item, PROCEDURES, Site, UPLOADS, Update};
 use crate::token;
 use crate::uploads;
-use chrono::{Local, SecondsFormat, Utc};
+use chrono::{DateTime, Local, SecondsFormat, Utc};
 use serde_json::{Map, Value, json};
+use std::collections::HashSet;
+use std::sync::Mutex;
 
 pub struct Reply {
     pub status: u16,
@@ -65,9 +67,14 @@ const PRIVACY_KEY: &str = "datenschutz.md";
 /// Used when the config entry is missing (see DEFAULT_CONFIG in schema.ts).
 const DEFAULT_MAX_BOOKINGS_PER_IP: usize = 3;
 
+/// The filled-in form can be mailed only this long after submitting.
+const PDF_MAIL_WINDOW_MINUTES: i64 = 30;
+
 pub struct Api {
     site: Site,
     mail: MailMode,
+    /// applications whose filled-in form was mailed (once per application)
+    pdf_mailed: Mutex<HashSet<String>>,
 }
 
 pub enum MailMode {
@@ -87,7 +94,11 @@ struct Procedure {
 
 impl Api {
     pub fn new(site: Site, mail: MailMode) -> Api {
-        Api { site, mail }
+        Api {
+            site,
+            mail,
+            pdf_mailed: Mutex::new(HashSet::new()),
+        }
     }
 
     pub fn handle(&self, req: &ApiRequest) -> Reply {
@@ -107,6 +118,7 @@ impl Api {
             ("POST", ["api", "applications", id, "start"]) if is_item_id(id) => self.start(id, req),
             ("POST", ["api", "applications", id, "submit"]) if is_item_id(id) => self.submit(id, req),
             ("POST", ["api", "applications", id, "uploads"]) if is_item_id(id) => self.upload(id, req),
+            ("POST", ["api", "applications", id, "pdf-mail"]) if is_item_id(id) => self.pdf_mail(id, req),
             ("GET", ["api", "applications", id, "uploads", file]) if is_item_id(id) && uploads::is_file_name(file) => {
                 self.get_upload(id, file, req)
             }
@@ -264,6 +276,115 @@ impl Api {
         ))
     }
 
+    /// All Config entries (also internal ones; they never leave the server).
+    fn config_entries(&self) -> Result<Map<String, Value>, String> {
+        Ok(self
+            .site
+            .list_items(CONFIG, None)?
+            .iter()
+            .filter_map(|i| Some((i.text("Title")?.to_string(), json!(i.text("Value").unwrap_or("")))))
+            .collect())
+    }
+
+    /// The filled-in form as PDF (made by the browser from the form's PDF
+    /// assignment) goes by mail to the address of the booking. Only shortly
+    /// after submitting, once per application, and the recipient is never
+    /// taken from the request.
+    fn pdf_mail(&self, id: &str, req: &ApiRequest) -> Result<Reply, String> {
+        let Some(app) = self.authorized_application(id, req)? else {
+            return Ok(Reply::not_found());
+        };
+        if app.text("State") != Some("submitted") {
+            return Ok(Reply::error(
+                409,
+                "not_submitted",
+                "Die Anmeldung wurde noch nicht abgeschickt",
+            ));
+        }
+        let recent = app
+            .text("SubmittedAt")
+            .and_then(|t| DateTime::parse_from_rfc3339(t).ok())
+            .is_some_and(|t| Utc::now().signed_duration_since(t).num_minutes() < PDF_MAIL_WINDOW_MINUTES);
+        if !recent {
+            return Ok(Reply::error(
+                409,
+                "too_late",
+                "Das Formular kann nicht mehr verschickt werden",
+            ));
+        }
+        let Some(form) = self.form_json(app.text("FormId").unwrap_or_default())? else {
+            return Ok(Reply::not_found());
+        };
+        if form["pdf"]["asset"].as_str().is_none() {
+            return Ok(Reply::error(
+                409,
+                "no_pdf",
+                "Für dieses Formular ist kein PDF hinterlegt",
+            ));
+        }
+        let is_pdf = req
+            .content_type
+            .as_deref()
+            .is_some_and(|c| c.starts_with("application/pdf"))
+            && uploads::content_matches("application/pdf", &req.body);
+        if !is_pdf {
+            return Ok(Reply::error(415, "invalid_type", "Erwartet wird eine PDF-Datei"));
+        }
+        if req.body.len() > mail::MAX_PDF {
+            return Ok(Reply::error(413, "too_large", "Das PDF ist zu groß"));
+        }
+        let to = match (&self.mail, app.text("ContactEmail")) {
+            (MailMode::Disabled, _) | (_, None) => return Ok(Reply::json(200, json!({ "sent": false }))),
+            (MailMode::Redirect(address), _) => address.clone(),
+            (MailMode::Send, Some(email)) => email.to_string(),
+        };
+        let config = self.config_entries()?;
+        let text = |key: &str| config.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
+        let sender = text("mailSender");
+        if sender.is_empty() {
+            return Ok(Reply::json(200, json!({ "sent": false })));
+        }
+        if !self
+            .pdf_mailed
+            .lock()
+            .map_err(|e| e.to_string())?
+            .insert(id.to_string())
+        {
+            return Ok(Reply::error(
+                409,
+                "already_sent",
+                "Das Formular wurde bereits verschickt",
+            ));
+        }
+        let procedure = self
+            .site
+            .get_item(PROCEDURES, app.text("ProcedureId").unwrap_or_default())?
+            .and_then(|p| to_procedure(&p));
+        let title = procedure
+            .as_ref()
+            .and_then(|p| p.info["title"].as_str())
+            .unwrap_or("Anmeldung");
+        let or_default =
+            |key: &str, default: &str| Some(text(key)).filter(|v| !v.is_empty()).unwrap_or(default.to_string());
+        let subject = or_default("pdfMailSubject", mail::DEFAULT_PDF_SUBJECT);
+        let body = mail::render_pdf_text(
+            &or_default("pdfMailText", mail::DEFAULT_PDF_TEXT),
+            app.text("ContactName").unwrap_or_default(),
+            title,
+        );
+        let file_name = mail::pdf_file_name(app.text("ChildName").unwrap_or_default());
+        let message = mail::message_with_pdf(&to, &subject, &body, &file_name, &req.body);
+        if let Err(e) = self.site.send_mail(&sender, &message) {
+            // allow a retry
+            if let Ok(mut sent) = self.pdf_mailed.lock() {
+                sent.remove(id);
+            }
+            return Err(e);
+        }
+        println!("filled-in form mailed for application {id}");
+        Ok(Reply::json(200, json!({ "sent": true })))
+    }
+
     /// H1: confirmation mail with procedure, date, time and a resume link,
     /// configured in the Config list (no mail while `mailSender` is empty).
     fn send_confirmation(
@@ -280,12 +401,7 @@ impl Api {
             MailMode::Redirect(address) => address.as_str(),
             MailMode::Send => email,
         };
-        let config: Map<String, Value> = self
-            .site
-            .list_items(CONFIG, None)?
-            .iter()
-            .filter_map(|i| Some((i.text("Title")?.to_string(), json!(i.text("Value").unwrap_or("")))))
-            .collect();
+        let config = self.config_entries()?;
         let text = |key: &str| config.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
         let sender = text("mailSender");
         if sender.is_empty() {
@@ -558,6 +674,8 @@ impl Api {
             for p in self.active_procedures()? {
                 if let Some(form) = self.form_json(&p.form_id)? {
                     collect_option_sources(&form, &mut sources);
+                    // the print version (PDF) of an active form
+                    sources.extend(form["pdf"]["asset"].as_str().map(str::to_string));
                 }
             }
             if !sources.iter().any(|s| s == key) {

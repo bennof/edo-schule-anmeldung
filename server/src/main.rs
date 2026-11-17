@@ -71,6 +71,8 @@ fn handle(api: &api::Api, mut request: Request, trust_proxy: bool) {
     // uploads may be larger than ordinary JSON requests
     let max_body = if method == "POST" && path.ends_with("/uploads") {
         uploads::MAX_SIZE as u64 + 1
+    } else if method == "POST" && path.ends_with("/pdf-mail") {
+        mail::MAX_PDF as u64 + 1
     } else {
         MAX_BODY
     };

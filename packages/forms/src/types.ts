@@ -101,6 +101,20 @@ export interface Section {
     items: Item[];
 }
 
+/**
+ * Print version of the form: a PDF with form fields from the Assets library
+ * and the assignment of its field names to data of the form.
+ * Targets: a data path (`erziehungsberechtigter1.vorname`, `weitereSchulen[0].schule.name`),
+ * `path=value` for a checkbox that is ticked for that value (`geschlecht=w`, `oepnv=true`),
+ * or `anmeldung.termin` / `anmeldung.nummer`.
+ */
+export interface PdfAssignment {
+    /** key of the PDF in the Assets library */
+    asset: string;
+    /** PDF field name -> target */
+    fields: Record<string, string>;
+}
+
 export interface FormJson {
     formatVersion: 1;
     title: string;
@@ -108,4 +122,6 @@ export interface FormJson {
     description?: string;
     groups?: Record<string, GroupDefinition>;
     sections: Section[];
+    /** optional print version (PDF), also sent by mail after submitting */
+    pdf?: PdfAssignment;
 }

@@ -1,5 +1,6 @@
 // Semantic checks that JSON Schema cannot express: unique ids, group
 // references, copy sources and condition targets. Run after schema validation.
+import { checkPdfAssignment } from './pdf-targets.ts';
 import type { Condition, FormJson, Item } from './types.ts';
 
 export function checkFormDefinition(form: FormJson): string[] {
@@ -113,5 +114,6 @@ export function checkFormDefinition(form: FormJson): string[] {
     checkScope(rootItems, '');
     for (const [name, def] of Object.entries(groups)) checkScope(def.items, `group:${name}`);
     if (photoFields.length > 1) errors.push(`only one photo field allowed: ${photoFields.join(', ')}`);
+    errors.push(...checkPdfAssignment(form));
     return errors;
 }

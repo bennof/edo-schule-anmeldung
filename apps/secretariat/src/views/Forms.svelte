@@ -13,6 +13,7 @@
     import { validateFormDefinition } from '@anmeldung/forms/validate';
     import { nextVersionLabel, type FormFamily, type FormVersion } from '@anmeldung/sharepoint';
     import FormDesigner from '../components/designer/FormDesigner.svelte';
+    import FormPdf from '../components/FormPdf.svelte';
     import { emptyForm } from '../components/designer/designer.ts';
     import { errorText, formService, loadOptions, procedures, site } from '../services.ts';
 
@@ -33,6 +34,7 @@
     let preview: FormVersion | undefined = $state();
     let previewData = $state({});
     let assetKeys: Set<string> = $state(new Set());
+    let pdfTarget: { family: FormFamily; version: FormVersion } | undefined = $state();
     let designer: { initial: FormJson; formKey?: string; nextVersion: string } | undefined = $state();
 
     const usedBy = (formId: string) => procedureList.filter((p) => p.formId === formId).map((p) => p.info.title);
@@ -142,7 +144,18 @@
     load().catch((e) => (message = `Fehler: ${errorText(e)}`));
 </script>
 
-{#if designer}
+{#if pdfTarget}
+    <FormPdf
+        family={pdfTarget.family}
+        version={pdfTarget.version}
+        oncancel={() => (pdfTarget = undefined)}
+        onsaved={async (text) => {
+            pdfTarget = undefined;
+            message = text;
+            await load();
+        }}
+    />
+{:else if designer}
     <FormDesigner
         initial={designer.initial}
         formKey={designer.formKey}
@@ -185,6 +198,7 @@
                                 <td>
                                     {v.version}{#if i === 0} <span class="badge">neueste</span>{/if}
                                     {#if titleOf(v) !== family.title}<br /><small class="muted">{titleOf(v)}</small>{/if}
+                                    {#if (v.formJson as FormJson).pdf}<br /><small class="muted">PDF: <code>{(v.formJson as FormJson).pdf?.asset}</code></small>{/if}
                                     {#if missingAssets(v).length}<br /><small class="error">Fehlende Kataloge: {missingAssets(v).join(', ')}</small>{/if}
                                 </td>
                                 <td>{v.id}</td>
@@ -193,6 +207,7 @@
                                 <td class="tools">
                                     <button class="secondary" onclick={() => showPreview(v)}>Vorschau</button>
                                     <button class="secondary" onclick={() => edit(family, v)}>Bearbeiten → neue Version</button>
+                                    <button class="secondary" onclick={() => (pdfTarget = { family, version: v })}>{(v.formJson as FormJson).pdf ? 'PDF ändern' : 'PDF zuweisen'}</button>
                                     <button class="secondary" onclick={() => exportJson(v)}>JSON</button>
                                     <button class="secondary danger" onclick={() => removeVersion(family, v)} disabled={busy}>Löschen</button>
                                 </td>

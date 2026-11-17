@@ -174,6 +174,10 @@ it('application endpoints reject wrong or missing tokens with 404', async () => 
     assert((await authed(appId, 'f'.repeat(64))).status === 404, 'wrong token');
     assert((await fetch(`${API}/applications/${appId}`)).status === 404, 'no token');
     assert((await authed(`${appId}/submit`, 'x', { method: 'POST', body: '{}' })).status === 404, 'submit wrong token');
+    const mailPdf = (token: string) => authed(`${appId}/pdf-mail`, token, { method: 'POST', headers: { 'Content-Type': 'application/pdf' }, body: '%PDF-1.7' });
+    assert((await mailPdf('x')).status === 404, 'pdf-mail wrong token');
+    const early = await mailPdf(appToken);
+    assert(early.status === 409 && early.body.error === 'not_submitted', `pdf-mail before submit ${early.status}`);
 });
 
 it('uploads: store a file and return its reference', async () => {
@@ -237,6 +241,9 @@ it('start, reject invalid data, submit once', async () => {
     const again = await post(data);
     assert(again.status === 409 && again.body.error === 'already_submitted', `second submit ${again.status}`);
     assert((await authed(`${appId}/start`, appToken, { method: 'POST' })).status === 409, 'start after submit');
+    // the test form has no PDF assigned: nothing is mailed
+    const noPdf = await authed(`${appId}/pdf-mail`, appToken, { method: 'POST', headers: { 'Content-Type': 'application/pdf' }, body: '%PDF-1.7' });
+    assert(noPdf.status === 409 && noPdf.body.error === 'no_pdf', `pdf-mail without pdf ${noPdf.status}`);
     assert((await upload(PNG, 'image/png', 'spaet.png')).status === 409, 'upload after submit');
     const file = photoRef!.id.split('/')[1];
     const del = await fetch(`${API}/applications/${appId}/uploads/${file}`, { method: 'DELETE', headers: { Authorization: `Bearer ${appToken}` } });
