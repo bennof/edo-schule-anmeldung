@@ -15,7 +15,7 @@
     import FormDesigner from '../components/designer/FormDesigner.svelte';
     import FormPdf from '../components/FormPdf.svelte';
     import { emptyForm } from '../components/designer/designer.ts';
-    import { errorText, formService, loadOptions, procedures, site } from '../services.ts';
+    import { downloadDefaultTemplate, errorText, formService, loadOptions, procedures, site } from '../services.ts';
 
     /** Catalogs bundled with the app (generated, see packages/forms/scripts). */
     const CATALOGS: Record<string, unknown> = {
@@ -178,6 +178,13 @@
                 <input type="file" accept="application/json,.json" onchange={importFile} disabled={busy} hidden />
             </label>
             <button class="secondary" onclick={() => importJson(testForm)} disabled={busy}>Testformular anlegen</button>
+            <button class="secondary" onclick={() => downloadDefaultTemplate().catch((e) => (message = `Fehler: ${errorText(e)}`))}>
+                Standard-PDF herunterladen
+            </button>
+        </p>
+        <p class="muted">
+            Das Standard-PDF ist der Anmeldebogen mit Formularfeldern. Es dient als Vorlage, die in Word oder PDFgear angepasst und mit
+            „PDF zuweisen“ einem Formular zugeordnet werden kann.
         </p>
         {#if warning}<p class="warning" role="alert">{warning}</p>{/if}
         {#if message}
@@ -205,11 +212,15 @@
                                 <td>{new Date(v.dateLastUpdate).toLocaleString('de-DE')}</td>
                                 <td>{usedBy(v.id).join(', ') || '–'}</td>
                                 <td class="tools">
-                                    <button class="secondary" onclick={() => showPreview(v)}>Vorschau</button>
+                                    <button class="secondary icon" onclick={() => showPreview(v)} title="Vorschau" aria-label="Vorschau">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" /></svg>
+                                    </button>
                                     <button class="secondary" onclick={() => edit(family, v)}>Bearbeiten → neue Version</button>
                                     <button class="secondary" onclick={() => (pdfTarget = { family, version: v })}>{(v.formJson as FormJson).pdf ? 'PDF ändern' : 'PDF zuweisen'}</button>
                                     <button class="secondary" onclick={() => exportJson(v)}>JSON</button>
-                                    <button class="secondary danger" onclick={() => removeVersion(family, v)} disabled={busy}>Löschen</button>
+                                    <button class="secondary icon danger" onclick={() => removeVersion(family, v)} disabled={busy} title="Löschen" aria-label="Löschen">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6" /></svg>
+                                    </button>
                                 </td>
                             </tr>
                         {/each}
@@ -253,6 +264,20 @@
     }
     button.danger {
         color: var(--danger);
+    }
+    /* icon-only row actions: name and tooltip come from aria-label / title */
+    button.icon {
+        padding: 0.3rem 0.5rem;
+        line-height: 0;
+    }
+    button.icon svg {
+        width: 1.1rem;
+        height: 1.1rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
     }
     /* buttons wrap in narrow windows, so "Löschen" at the end stays visible */
     .tools button {

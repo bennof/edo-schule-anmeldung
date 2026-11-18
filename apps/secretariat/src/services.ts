@@ -37,6 +37,15 @@ export function errorText(e: unknown): string {
     return e instanceof Error ? e.message : String(e);
 }
 
+/** Offers the bundled standard registration form (PDF with form fields) as a download. */
+export async function downloadDefaultTemplate(): Promise<void> {
+    const [{ saveAs, PDF_TEMPLATE_KEY }, { default: url }] = await Promise.all([
+        import('@anmeldung/pdf'),
+        import('@anmeldung/pdf/templates/anmeldebogen.pdf?url'),
+    ]);
+    saveAs(new Uint8Array(await (await fetch(url)).arrayBuffer()), PDF_TEMPLATE_KEY);
+}
+
 /** Uploads the bundled default template unless one exists (or `force`). */
 export async function uploadDefaultTemplate(force = false): Promise<boolean> {
     const { PDF_TEMPLATE_KEY } = await import('@anmeldung/pdf');
