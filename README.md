@@ -23,7 +23,7 @@ Offene Punkte und Betriebsvarianten: [`todo.md`](todo.md).
 - Entwurf optional auf dem Gerät speichern, Absenden, Anmeldebogen als PDF
 
 **Sekretariat** (`apps/secretariat`, Anmeldung mit Microsoft 365)
-- Tagesansicht mit parallelen Räumen, „Erschienen“, telefonische Absage
+- Tagesansicht mit parallelen Räumen, „Erschienen“, telefonische Absage (gibt den Termin frei), telefonische Anmeldung auf einem freien Termin
 - Anmeldungs-Editor mit allen Feldern, Kommentaren, automatischem Speichern und
   Konflikterkennung, Prüfschritte bis „Für SVWS freigeben“, Anmeldebogen als PDF
 - Anmeldungen: Namenssuche (auch nach Absage), Statusfilter, Auswahl für die SVWS-Übertragung

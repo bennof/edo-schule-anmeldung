@@ -79,6 +79,11 @@ export class AppointmentService {
         await this.transition(id, 'booked', 'available', cleared);
     }
 
+    /** Books a free appointment (booking by the secretariat); fails if it was taken meanwhile. */
+    async book(id: string, booking: { applicationId: string; nameCustomer: string; emailCustomer?: string }): Promise<void> {
+        await this.transition(id, 'available', 'booked', { ...booking, requestTime: new Date().toISOString() });
+    }
+
     private async transition(
         id: string,
         from: AppointmentState,

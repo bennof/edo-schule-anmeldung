@@ -1,17 +1,20 @@
+import type { Procedure } from '@anmeldung/domain';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ApplicationService, ConflictError, childNameOf } from './applications.ts';
 import { AppointmentService } from './appointments.ts';
 import { FakeGraph } from './fake-graph.ts';
 import { GraphClient } from './graph.ts';
 import { provision } from './provision.ts';
+import { Repository } from './repository.ts';
 import { SharePointSite } from './site.ts';
 
+let site: SharePointSite;
 let service: ApplicationService;
 let appointments: AppointmentService;
 
 beforeEach(async () => {
     const fake = new FakeGraph();
-    const site = new SharePointSite(new GraphClient(async () => 't', fake.fetch), 'site');
+    site = new SharePointSite(new GraphClient(async () => 't', fake.fetch), 'site');
     await provision(site);
     service = new ApplicationService(site);
     appointments = new AppointmentService(site);
@@ -83,4 +86,45 @@ describe('application service', () => {
         expect((await appointments.repo.get(slot.id))?.state).toBe('done');
         expect((await service.load(app.id)).application.state).toBe('interview');
     });
+
+    describe('registration by phone', () => {
+        async function freeSlot() {
+            const procedure = await new Repository<Procedure>(site, 'procedures').create({
+                formId: 'f1',
+                info: { title: 'Klasse 5' },
+                startDate: '2030-01-01',
+                endDate: '2030-12-31',
+            });
+            const [slot] = await appointments.createDrafts([{ procedureId: procedure.id, datetime: '2030-03-04T08:00', state: 'draft' }]);
+            await appointments.publish([slot.id]);
+            return (await appointments.repo.get(slot.id))!;
+        }
+
+        it('books the free slot and creates the application for it', async () => {
+            const slot = await freeSlot();
+            const app = await service.bookByPhone(slot, { name: ' Eva Muster ', phone: '02402 12345', email: '' });
+            expect(app).toMatchObject({ state: 'created', formId: 'f1', contactName: 'Eva Muster' });
+            expect(app.secretariatComment).toBe('Telefonisch angemeldet, Telefon 02402 12345');
+            expect(await appointments.repo.get(slot.id)).toMatchObject({ state: 'booked', applicationId: app.id, nameCustomer: 'Eva Muster' });
+            expect((await appointments.repo.get(slot.id))?.emailCustomer).toBeUndefined();
+        });
+
+        it('refuses a taken slot and leaves no application behind', async () => {
+            const slot = await freeSlot();
+            await service.bookByPhone(slot, { name: 'Erste Person' });
+            const before = (await service.listSummaries()).length;
+            await expect(service.bookByPhone(slot, { name: 'Zweite Person' })).rejects.toThrow(/nicht available/);
+            expect((await service.listSummaries()).length).toBe(before);
+        });
+
+        it('needs a name, and the slot can be released again', async () => {
+            const slot = await freeSlot();
+            await expect(service.bookByPhone(slot, { name: '  ' })).rejects.toThrow(/Name/);
+            await service.bookByPhone(slot, { name: 'Eva', email: 'eva@example.org' });
+            await appointments.cancelBooking(slot.id);
+            expect(await appointments.repo.get(slot.id)).toMatchObject({ state: 'available' });
+            expect((await appointments.repo.get(slot.id))?.applicationId).toBeUndefined();
+        });
+    });
 });
+

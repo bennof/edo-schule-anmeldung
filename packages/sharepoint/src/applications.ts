@@ -1,6 +1,6 @@
 // Application service for the secretariat (backlog J3-J6, K1-K5): checked
 // state transitions, saving with eTag so concurrent edits are detected.
-import { canTransitionApplication, type Application, type ApplicationState } from '@anmeldung/domain';
+import { canTransitionApplication, type Application, type ApplicationState, type Appointment, type Procedure } from '@anmeldung/domain';
 import { AppointmentService } from './appointments.ts';
 import { GraphError } from './graph.ts';
 import { Repository } from './repository.ts';
@@ -10,6 +10,13 @@ export class ApplicationError extends Error {}
 
 /** Thrown when the application was changed by someone else since loading. */
 export class ConflictError extends ApplicationError {}
+
+/** Contact of a family that registered by phone. */
+export interface PhoneBooking {
+    name: string;
+    phone?: string;
+    email?: string;
+}
 
 export type ApplicationSummary = Omit<Application, 'data' | 'secretariatComment' | 'interviewerComment'>;
 
@@ -34,10 +41,44 @@ const SUMMARY_PROPS = ['procedureId', 'formId', 'state', 'submittedAt', 'childNa
 export class ApplicationService {
     readonly repo: Repository<Application>;
     private readonly appointments: AppointmentService;
+    private readonly procedures: Repository<Procedure>;
 
     constructor(site: SharePointSite) {
+        this.procedures = new Repository<Procedure>(site, 'procedures');
         this.repo = new Repository<Application>(site, 'applications');
         this.appointments = new AppointmentService(site);
+    }
+
+    /**
+     * A family registered by phone: books the free appointment and creates the
+     * application for it, which the secretariat then fills in. There is no
+     * access token, so the family has no link for the online form. The phone
+     * number goes into the secretariat comment (no extra column).
+     */
+    async bookByPhone(appointment: Appointment, contact: PhoneBooking): Promise<Application> {
+        const name = contact.name.trim();
+        if (!name) throw new ApplicationError('Der Name fehlt.');
+        const procedure = await this.procedures.get(appointment.procedureId);
+        if (!procedure) throw new ApplicationError('Das Verfahren des Termins gibt es nicht mehr.');
+        const phone = contact.phone?.trim();
+        const email = contact.email?.trim();
+        const application = await this.repo.create({
+            procedureId: procedure.id,
+            formId: procedure.formId,
+            data: {},
+            state: 'created',
+            contactName: name,
+            ...(email && { contactEmail: email }),
+            secretariatComment: `Telefonisch angemeldet${phone ? `, Telefon ${phone}` : ''}`,
+        });
+        try {
+            await this.appointments.book(appointment.id, { applicationId: application.id, nameCustomer: name, ...(email && { emailCustomer: email }) });
+        } catch (e) {
+            // the appointment was taken meanwhile: no orphan application
+            await this.repo.delete(application.id).catch(() => {});
+            throw e;
+        }
+        return application;
     }
 
     /** All applications without form data and comments (fast list for K1). */

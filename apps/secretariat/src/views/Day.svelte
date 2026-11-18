@@ -18,6 +18,8 @@
     let message = $state('');
     let busy = $state(false);
     let openId: string | undefined = $state();
+    /** registration by phone: the free slot being filled in */
+    let entry: { id: string; name: string; phone: string; email: string } | undefined = $state();
 
     const tracks = $derived([...new Set(list.map((a) => a.verantwortlicherId ?? ''))].sort((a, b) => a.localeCompare(b, 'de')));
     const times = $derived([...new Set(list.map((a) => a.datetime.slice(11, 16)))].sort());
@@ -71,6 +73,15 @@
         }
     }
 
+    /** Registration by phone: books the free slot for the family and creates the application. */
+    const enter = (a: Appointment) =>
+        run(async () => {
+            if (!entry || entry.id !== a.id) return;
+            const { name, phone, email } = entry;
+            await applicationService.bookByPhone(a, { name, phone, email });
+            entry = undefined;
+        });
+
     /** J4: family showed up */
     const arrived = (a: Appointment) =>
         run(async () => {
@@ -117,6 +128,25 @@
                                     {#if a}
                                         <span class="badge {a.state}">{APPOINTMENT_STATE_LABEL[a.state]}</span>
                                         {#if multipleProcedures}<small class="muted">{procedureTitle(a.procedureId)}</small>{/if}
+                                        {#if a.state === 'available'}
+                                            {#if entry?.id === a.id}
+                                                <form class="entry" onsubmit={(e) => (e.preventDefault(), enter(a))}>
+                                                    <input bind:value={entry.name} placeholder="Name (Sorgeberechtigte)" aria-label="Name" required />
+                                                    <input bind:value={entry.phone} placeholder="Telefon" aria-label="Telefon" type="tel" />
+                                                    <input bind:value={entry.email} placeholder="E-Mail (optional)" aria-label="E-Mail" type="email" />
+                                                    <div class="actions">
+                                                        <button type="submit" disabled={busy || !entry.name.trim()}>Eintragen</button>
+                                                        <button type="button" class="secondary" onclick={() => (entry = undefined)} disabled={busy}>Abbrechen</button>
+                                                    </div>
+                                                </form>
+                                            {:else}
+                                                <div class="actions">
+                                                    <button class="secondary" onclick={() => (entry = { id: a.id, name: '', phone: '', email: '' })} disabled={busy}>
+                                                        Telefonisch eintragen
+                                                    </button>
+                                                </div>
+                                            {/if}
+                                        {/if}
                                         {#if a.state === 'booked' || a.state === 'done'}
                                             <div class="who">{app?.childName ?? a.nameCustomer ?? ''}</div>
                                             {#if app?.childName && a.nameCustomer}<small class="muted">{a.nameCustomer}</small>{/if}
@@ -163,6 +193,15 @@
     }
     .slot.done {
         color: var(--text-muted);
+    }
+    .entry {
+        display: grid;
+        gap: 0.3rem;
+        margin-top: 0.3rem;
+    }
+    .entry input {
+        width: 100%;
+        box-sizing: border-box;
     }
     .who {
         font-weight: 600;
