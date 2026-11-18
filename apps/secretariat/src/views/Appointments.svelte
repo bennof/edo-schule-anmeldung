@@ -147,6 +147,50 @@
         });
     };
 
+    const SLOT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+
+    /** Slot times of the procedure as a file (no personal data), to plan the same again elsewhere. */
+    function exportSlots(): void {
+        const title = procedureList.find((p) => p.id === procedureId)?.info.title ?? 'verfahren';
+        const slots = list.map((a) => ({ datetime: a.datetime, ...(a.verantwortlicherId && { verantwortlicherId: a.verantwortlicherId }) }));
+        const url = URL.createObjectURL(new Blob([JSON.stringify({ formatVersion: 1, appointments: slots }, null, 2)], { type: 'application/json' }));
+        const name = `termine-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'verfahren'}.json`;
+        const a = Object.assign(document.createElement('a'), { href: url, download: name });
+        document.body.append(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    }
+
+    /** Creates drafts from an exported file; slots that exist already are skipped. */
+    async function importSlots(e: Event & { currentTarget: HTMLInputElement }): Promise<void> {
+        const file = e.currentTarget.files?.[0];
+        e.currentTarget.value = '';
+        if (!file || !procedureId) return;
+        let slots: { datetime: string; verantwortlicherId?: string }[];
+        try {
+            const json = JSON.parse(await file.text());
+            slots = json?.formatVersion === 1 && Array.isArray(json.appointments) ? json.appointments : [];
+            const valid = slots.length > 0 && slots.every((s) => typeof s?.datetime === 'string' && SLOT.test(s.datetime) && (s.verantwortlicherId === undefined || typeof s.verantwortlicherId === 'string'));
+            if (!valid) throw new Error();
+        } catch {
+            message = 'Die Datei ist keine gültige Terminliste (Export aus „Termine“).';
+            return;
+        }
+        const fresh = slots.filter((s, i) => !existingKeys.has(slotKey(s)) && slots.findIndex((t) => slotKey(t) === slotKey(s)) === i);
+        if (!fresh.length) {
+            message = 'Alle Termine der Datei sind in diesem Verfahren schon vorhanden.';
+            return;
+        }
+        const title = procedureList.find((p) => p.id === procedureId)?.info.title;
+        if (!(await ask(`${fresh.length} Termine als Entwürfe in „${title}“ anlegen?`, 'Anlegen'))) return;
+        return run(async () => {
+            await appointments.createDrafts(fresh.map((s) => ({ procedureId, datetime: s.datetime, verantwortlicherId: s.verantwortlicherId, state: 'draft' as const })));
+            const skipped = slots.length - fresh.length;
+            return `${fresh.length} Entwürfe angelegt${skipped ? `, ${skipped} bereits vorhandene übersprungen` : ''}. Sie sind noch nicht veröffentlicht.`;
+        });
+    }
+
     loadProcedures().catch((e) => (message = `Fehler: ${errorText(e)}`));
 </script>
 
@@ -158,6 +202,16 @@
             {#each procedureList as p (p.id)}<option value={p.id}>{p.info.title}</option>{/each}
         </select>
     </p>
+    {#if procedureId}
+        <p class="actions">
+            <button class="secondary" onclick={exportSlots} disabled={!list.length}>Termine exportieren</button>
+            <label class="button secondary">
+                Termine importieren
+                <input type="file" accept="application/json,.json" onchange={importSlots} disabled={busy} hidden />
+            </label>
+            <small class="muted">Nur Uhrzeiten und Räume, keine Daten von Familien. Importierte Termine sind Entwürfe.</small>
+        </p>
+    {/if}
     {#if !procedureList.length}<p class="muted">Zuerst unter „Verfahren“ ein Verfahren anlegen.</p>{/if}
     {#if message}<p role="status">{message}</p>{/if}
 </section>
