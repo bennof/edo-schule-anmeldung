@@ -7,6 +7,8 @@
 
     let list: AssetInfo[] = $state([]);
     let previews: Record<string, string> = $state({});
+    /** why an image-like asset has no preview */
+    let noPreview: Record<string, string> = $state({});
     let message = $state('');
     let busy = $state(false);
     let key = $state('');
@@ -20,9 +22,17 @@
         for (const a of list) {
             // extension-less keys like "logo" are stored as octet-stream
             const maybeImage = a.contentType.startsWith('image/') || a.contentType === 'application/octet-stream';
-            if (maybeImage && a.size < 2 * 1024 * 1024 && !previews[a.key]) {
+            if (!maybeImage || previews[a.key]) continue;
+            if (a.size >= 8 * 1024 * 1024) {
+                noPreview[a.key] = 'zu groß für die Vorschau';
+                continue;
+            }
+            try {
                 const blob = await site.getAsset(a.key);
                 if (blob && (await isImage(blob))) previews[a.key] = URL.createObjectURL(blob);
+                else noPreview[a.key] = 'kein erkanntes Bild';
+            } catch (e) {
+                noPreview[a.key] = `nicht lesbar (${errorText(e)})`;
             }
         }
     }
@@ -55,6 +65,7 @@
             await site.putAsset(key, file);
             if (previews[key]) URL.revokeObjectURL(previews[key]);
             delete previews[key];
+            delete noPreview[key];
             message = `„${key}“ gespeichert.`;
             key = '';
             file = undefined;
@@ -135,7 +146,9 @@
                     <td>{a.contentType}</td>
                     <td>{size(a.size)}</td>
                     <td>{new Date(a.lastModified).toLocaleString('de-DE')}</td>
-                    <td>{#if previews[a.key]}<img src={previews[a.key]} alt={a.key} />{/if}</td>
+                    <td>
+                        {#if previews[a.key]}<img src={previews[a.key]} alt={a.key} />{:else if noPreview[a.key]}<small class="muted">{noPreview[a.key]}</small>{/if}
+                    </td>
                     <td><button class="secondary" onclick={() => remove(a)} disabled={busy}>Löschen</button></td>
                 </tr>
             {:else}

@@ -15,14 +15,27 @@
     let busy = $state(false);
     let newKey = $state('');
 
+    /**
+     * Optional entries the app and the server read. They are not seeded (that would
+     * change the schema version), so they are listed here when missing; saving creates them.
+     */
+    const OPTIONAL: ConfigEntry[] = [
+        { key: 'schoolName', value: '', isPublic: true },
+        { key: 'imprintUrl', value: '', isPublic: true },
+        { key: 'privacyUrl', value: '', isPublic: true },
+        { key: 'pdfMailSubject', value: '', isPublic: false },
+        { key: 'pdfMailText', value: '', isPublic: false },
+    ];
+
     async function load(): Promise<void> {
         if (!(await site.findListId(LISTS.config.name))) {
             schemaVersion = undefined;
             entries = [];
             return;
         }
-        entries = await config.all();
-        schemaVersion = entries.find((e) => e.key === 'schemaVersion')?.value;
+        const stored = await config.all();
+        entries = [...stored, ...OPTIONAL.filter((o) => !stored.some((e) => e.key === o.key)).map((o) => ({ ...o }))];
+        schemaVersion = stored.find((e) => e.key === 'schemaVersion')?.value;
     }
 
     async function initialLoad(): Promise<void> {
@@ -55,7 +68,7 @@
         });
 
     /** keys the public page reads: created as public */
-    const PUBLIC_KEYS = ['schoolName', 'imprintUrl', 'privacyUrl'];
+    const PUBLIC_KEYS = OPTIONAL.filter((o) => o.isPublic).map((o) => o.key);
 
     const saveEntry = (entry: ConfigEntry) => run(() => config.set(entry.key, entry.value, entry.isPublic));
 
@@ -90,9 +103,10 @@
         <h2>Konfiguration</h2>
         <p class="muted">Keine Geheimnisse eintragen – öffentliche Einträge sind für jeden sichtbar.</p>
         <p class="muted">
-            Impressum und Datenschutzerklärung: entweder die Adressen als öffentliche Einträge <code>imprintUrl</code> und
+            Impressum und Datenschutzerklärung: entweder die Adressen in <code>imprintUrl</code> und
             <code>privacyUrl</code> eintragen oder die Texte unter „Dateien“ als <code>impressum.md</code> und
-            <code>datenschutz.md</code> hochladen. Eine Adresse hat Vorrang.
+            <code>datenschutz.md</code> hochladen. Eine Adresse hat Vorrang. Einträge, die noch nicht gespeichert sind, werden beim
+            ersten „Speichern“ angelegt.
         </p>
         <table>
             <thead><tr><th>Schlüssel</th><th>Wert</th><th>Öffentlich</th><th></th></tr></thead>
